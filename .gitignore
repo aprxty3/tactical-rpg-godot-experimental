@@ -1,0 +1,59 @@
+# ==========================================
+# Godot 4.x Specific Ignores
+# ==========================================
+# Godot 4 cache, imported assets cache, and build intermediates
+.godot/
+
+# Exported binaries & templates
+/android/
+/ios/
+*.apk
+*.aab
+*.exe
+*.zip
+*.tar.gz
+*.dmg
+*.pck
+
+# ==========================================
+# Graphify & AI MCP Tooling (Local Cache)
+# ==========================================
+graphify-out/
+.graphifyignore
+*.db
+*.sqlite
+*.sqlite3
+sqlite_mcp_server.db
+
+# ==========================================
+# Operating System & Editor Metadata
+# ==========================================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Linux
+*~
+.directory
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.swp
+*.bak
+*.tmp
+*.log
+
+# ==========================================
+# Note on Godot Asset .import files
+# ==========================================
+# DO NOT ignore *.import files in assets/ because they store essential
+# Godot import settings (filtering, compression, pixel art mode).
