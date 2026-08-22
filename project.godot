@@ -16,8 +16,8 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
-AudioManager="*res://scripts/autoload/AudioManager.gd"
 
+AudioManager="*res://scripts/autoload/AudioManager.gd"
 EventBus="*res://scripts/autoload/EventBus.gd"
 GameConfig="*res://scripts/autoload/GameConfig.gd"
 TurnManager="*res://scripts/autoload/TurnManager.gd"

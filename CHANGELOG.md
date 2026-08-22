@@ -34,6 +34,11 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Robust Victory Checks**: Upgraded `TurnManager.gd` to correctly calculate "Defeat by Castle Capture" and "Defeat by Annihilation" (0 units & 0 castles).
 - **SFX Framework**: Created an `AudioManager.gd` autoload that seamlessly hooks into `EventBus` signals (`unit_move_completed`, `combat_resolved`, `victory_condition_met`). Generated procedural placeholder `.wav` assets for instant feedback.
 
+### 5. 🩹 Dynamic Floating Health Bars & Combat Stat Rebalance
+- **Overhead Health Bars**: Added dynamic, programmatic floating `ProgressBar` and `Label` to `TacticalUnit.gd` with smooth tweening and real-time color gradient indicators (Green > 50%, Amber 25-50%, Sekarat/Low Red <= 25%).
+- **Combat Rebalancing**: Rebalanced unit stats across all unit `.tres` resources. Scaled Worker Pawn from 100 HP down to 45 HP (DEF 4) and Warrior to 75 HP (DEF 8), transforming combat from a 7-10 turn sponge slog into snappy, decisive 2-3 engagement tactics.
+- **Bug Fixes**: Fixed `MainHUD.gd` property bindings (`attack_power` and `defense_power`), cleaned unused signal parameter warnings, and formatted recruit popup buttons with live cost displays.
+
 ---
 
 ## 📅 2026-08-22

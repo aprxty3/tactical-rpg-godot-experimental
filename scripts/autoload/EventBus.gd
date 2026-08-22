@@ -59,4 +59,3 @@ signal logistics_collapse_ended(faction_id: int)
 signal dialogue_generated(speaker_name: String, text: String, emotion: String)
 signal story_event_narrated(title: String, body: String)
 signal ai_generation_failed(error_message: String)
-

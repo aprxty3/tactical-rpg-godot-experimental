@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b2qt60trmgtul"
-path="res://.godot/imported/Dungeon_Character_at.png-d38bfed8305147c53342ef90280910d0.ctex"
+path="res://.godot/imported/Dungeon_Character_at.png-faeec598abdf384779cf5d62541d8f7c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/Dungeon_Character_at.png"
-dest_files=["res://.godot/imported/Dungeon_Character_at.png-d38bfed8305147c53342ef90280910d0.ctex"]
+source_file="res://assets/Unused_Legacy/Dungeon_Character_at.png"
+dest_files=["res://.godot/imported/Dungeon_Character_at.png-faeec598abdf384779cf5d62541d8f7c.ctex"]
 
 [params]
 

@@ -67,8 +67,7 @@ func show_recruit_popup(building: Node) -> void:
 	
 	for unit_data in building.get("recruitable_units"):
 		var btn = Button.new()
-		# Assuming standard cost for now, or we can fetch if UnitData had cost.
-		btn.text = "%s" % [unit_data.unit_name]
+		btn.text = "%s (💰%d | ⛏️%d)" % [unit_data.unit_name, unit_data.recruit_cost_gold, unit_data.recruit_cost_iron]
 		btn.pressed.connect(func(): 
 			recruit_popup.hide()
 			recruit_unit_requested.emit(building, unit_data)
@@ -128,10 +127,10 @@ func _refresh_turn_label() -> void:
 
 func _on_unit_selected(unit: Node) -> void:
 	inspector_panel.show()
-	var u_name = unit.unit_data.unit_name if is_instance_valid(unit.unit_data) else unit.name
-	var hp_max = unit.unit_data.max_health if is_instance_valid(unit.unit_data) else 100
-	var atk = unit.unit_data.attack_damage if is_instance_valid(unit.unit_data) else 0
-	var def = unit.unit_data.defense if is_instance_valid(unit.unit_data) else 0
+	var u_name: String = unit.unit_data.unit_name if is_instance_valid(unit.unit_data) else unit.name
+	var hp_max: int = unit.unit_data.max_health if is_instance_valid(unit.unit_data) else 100
+	var atk: int = unit.unit_data.attack_power if is_instance_valid(unit.unit_data) else 0
+	var def: int = unit.unit_data.defense_power if is_instance_valid(unit.unit_data) else 0
 	
 	inspector_title.text = "⚔️ " + u_name
 	inspector_stats.text = "HP: %d/%d | Move: %d\nATK: %d | DEF: %d\nAct: %s" % [
@@ -144,7 +143,7 @@ func _on_unit_selected(unit: Node) -> void:
 
 func show_building_info(bld: Node) -> void:
 	inspector_panel.show()
-	var f_name = "Neutral"
+	var f_name: String = "Neutral"
 	if bld.faction_id == 0:
 		f_name = "Blue Kingdom"
 	elif bld.faction_id == 1:
@@ -166,14 +165,14 @@ func _on_unit_deselected() -> void:
 	if current_faction_id != 1:
 		_update_context_text("Select unit or Castle.")
 
-func _on_building_captured(building: Node, faction_id: int) -> void:
+func _on_building_captured(building: Node, _faction_id: int) -> void:
 	if inspector_panel.visible and inspector_title.text.contains(building.name):
 		show_building_info(building)
 
 func _update_context_text(text: String) -> void:
 	context_label.text = text
 
-func _on_victory_condition_met(faction_id: int, condition: String) -> void:
+func _on_victory_condition_met(faction_id: int, _condition: String) -> void:
 	if faction_id == 0: # Blue (Player)
 		victory_label.text = "VICTORY"
 		victory_label.add_theme_color_override("font_color", Color(0.2, 0.8, 0.2))
@@ -182,7 +181,7 @@ func _on_victory_condition_met(faction_id: int, condition: String) -> void:
 		victory_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))
 	victory_label.show()
 
-func _on_defeat_condition_met(faction_id: int, condition: String) -> void:
+func _on_defeat_condition_met(faction_id: int, _condition: String) -> void:
 	if faction_id == 0: # Blue (Player)
 		victory_label.text = "DEFEAT"
 		victory_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))

@@ -3,12 +3,13 @@
 [ext_resource type="Script" path="res://scripts/buildings/Building.gd" id="1_bld"]
 [ext_resource type="Texture2D" path="res://assets/Buildings/Castle/Castle_Blue.png" id="2_castle_tex"]
 [ext_resource type="Resource" path="res://resources/units/pawn_blue.tres" id="3_pawn_res"]
+[ext_resource type="Resource" path="res://resources/units/archer_blue.tres" id="4_archer_res"]
 
 [node name="Castle" type="Node2D"]
 script = ExtResource("1_bld")
 building_type = 0
 faction_id = 0
-recruitable_units = [ExtResource("3_pawn_res")]
+recruitable_units = [ExtResource("3_pawn_res"), ExtResource("4_archer_res")]
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_castle_tex")
