@@ -1,71 +1,70 @@
-[gd_scene load_steps=11 format=3 uid="uid://c6g7y7ukmvl1x"]
+[gd_scene format=4 uid="uid://c6g7y7ukmvl1x"]
 
-[ext_resource type="Script" path="res://scripts/test/TestGridController.gd" id="1_test_ctrl"]
-[ext_resource type="Script" path="res://scripts/managers/GridManager.gd" id="2_grid_mgr"]
-[ext_resource type="Script" path="res://scripts/managers/CombatResolver.gd" id="3_combat_mgr"]
-[ext_resource type="Script" path="res://scripts/managers/EconomyManager.gd" id="4_eco_mgr"]
+[ext_resource type="Script" uid="uid://c3q0vupw8la0g" path="res://scripts/test/TestGridController.gd" id="1_test_ctrl"]
+[ext_resource type="Script" uid="uid://mgpfxow11fwb" path="res://scripts/managers/GridManager.gd" id="2_grid_mgr"]
+[ext_resource type="Script" uid="uid://c1a801qtgic3a" path="res://scripts/managers/CombatResolver.gd" id="3_combat_mgr"]
+[ext_resource type="Script" uid="uid://57oobv1s4pc6" path="res://scripts/managers/EconomyManager.gd" id="4_eco_mgr"]
 [ext_resource type="TileSet" uid="uid://cxhy51g182n7k" path="res://resources/tilesets/terrain_flat_tileset.tres" id="5_tileset"]
-[ext_resource type="PackedScene" uid="uid://bv8vqm8r7j2kx" path="res://scenes/units/TacticalUnit.tscn" id="6_unit_scene"]
 [ext_resource type="PackedScene" uid="uid://c0e6k08t4p8m2" path="res://scenes/units/TacticalUnit_Red.tscn" id="7_enemy_scene"]
 [ext_resource type="PackedScene" uid="uid://dmhpx8e30k2t7" path="res://scenes/buildings/Castle.tscn" id="8_castle_scene"]
 [ext_resource type="PackedScene" uid="uid://c3qg0m0k0x8m1" path="res://scenes/buildings/GoldMine.tscn" id="9_mine_scene"]
 [ext_resource type="Resource" path="res://resources/units/warrior_red.tres" id="10_warrior_data"]
 
-[node name="TestGridScene" type="Node2D"]
+[node name="TestGridScene" type="Node2D" unique_id=759926285]
 script = ExtResource("1_test_ctrl")
 
-[node name="GridManager" type="Node" parent="."]
+[node name="GridManager" type="Node" parent="." unique_id=38520685]
 script = ExtResource("2_grid_mgr")
 cell_size = Vector2i(64, 64)
 grid_size = Vector2i(16, 10)
 
-[node name="CombatResolver" type="Node" parent="."]
+[node name="CombatResolver" type="Node" parent="." unique_id=1764263584]
 script = ExtResource("3_combat_mgr")
 
-[node name="EconomyManager" type="Node" parent="."]
+[node name="EconomyManager" type="Node" parent="." unique_id=621649682]
 script = ExtResource("4_eco_mgr")
 
-[node name="TileMapLayer" type="TileMapLayer" parent="."]
+[node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=1652895324]
+tile_map_data = PackedByteArray("AAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAACAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAA=")
 tile_set = ExtResource("5_tileset")
-tile_map_data = PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
-[node name="Buildings" type="Node2D" parent="."]
+[node name="Buildings" type="Node2D" parent="." unique_id=1898671100]
 
-[node name="Castle_Blue" parent="Buildings" instance=ExtResource("8_castle_scene")]
+[node name="Castle_Blue" parent="Buildings" unique_id=495782484 instance=ExtResource("8_castle_scene")]
 position = Vector2(96, 96)
 grid_position = Vector2i(1, 1)
 
-[node name="GoldMine_Neutral" parent="Buildings" instance=ExtResource("9_mine_scene")]
+[node name="GoldMine_Neutral" parent="Buildings" unique_id=254339010 instance=ExtResource("9_mine_scene")]
 position = Vector2(288, 288)
 grid_position = Vector2i(4, 4)
 
-[node name="Units" type="Node2D" parent="."]
+[node name="Units" type="Node2D" parent="." unique_id=1946996107]
 
-[node name="Red_Warrior" parent="Units" instance=ExtResource("7_enemy_scene")]
+[node name="Red_Warrior" parent="Units" unique_id=274577363 instance=ExtResource("7_enemy_scene")]
 position = Vector2(416, 288)
 scale = Vector2(0.45, 0.45)
 unit_data = ExtResource("10_warrior_data")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1301725068]
 position = Vector2(512, 320)
 zoom = Vector2(1.1, 1.1)
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=476981306]
 
-[node name="InstructionPanel" type="PanelContainer" parent="CanvasLayer"]
-offset_left = 16.0
-offset_top = 16.0
+[node name="InstructionPanel" type="PanelContainer" parent="CanvasLayer" unique_id=937454627]
+offset_left = 23.0
+offset_top = 343.0
 offset_right = 780.0
-offset_bottom = 86.0
+offset_bottom = 408.0
 
-[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/InstructionPanel"]
+[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/InstructionPanel" unique_id=389234205]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 8
 
-[node name="Label" type="Label" parent="CanvasLayer/InstructionPanel/MarginContainer"]
+[node name="Label" type="Label" parent="CanvasLayer/InstructionPanel/MarginContainer" unique_id=1093449827]
 layout_mode = 2
 text = "💰 Resource Bar Loading...
 🎮 Klik Castle untuk rekrut [R]. Klik Gold Mine untuk merebut tambang. [SPASI] untuk End Turn."
