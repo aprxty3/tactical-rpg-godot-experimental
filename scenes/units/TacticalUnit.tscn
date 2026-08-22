@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://bv8vqm8r7j2kx"]
+
+[ext_resource type="Script" path="res://scripts/units/TacticalUnit.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://assets/Character_animation/Pawn/Blue/Pawn_Blue.png" id="2_pawn_tex"]
+
+[node name="TacticalUnit" type="Node2D"]
+script = ExtResource("1_unit")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_pawn_tex")
+hframes = 6
+vframes = 6
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]

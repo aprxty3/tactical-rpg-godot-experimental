@@ -27,6 +27,20 @@ var _moving_units: Dictionary = {}
 func _ready() -> void:
 	_initialize_astar_grid()
 	_connect_event_bus()
+	# Daftarkan unit yang sudah ada di scene tree saat load
+	call_deferred("_auto_register_existing_units")
+
+
+func _auto_register_existing_units() -> void:
+	var tree = get_tree()
+	if not tree:
+		return
+	var existing_units = tree.get_nodes_in_group("tactical_units")
+	# Cari juga semua node TacticalUnit di scene
+	for node in get_tree().root.find_children("*", "TacticalUnit", true, false):
+		if node is TacticalUnit:
+			var cell = world_to_grid(node.global_position)
+			register_unit(node, cell)
 
 
 # ==============================================================================
