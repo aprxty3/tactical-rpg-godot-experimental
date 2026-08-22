@@ -1,12 +1,15 @@
 extends Node2D
-## TestGridController — Controller visual dan input interaktif untuk testing GridManager.
+## TestGridController — Controller interaktif untuk testing Grid, Movement & Combat.
 ## Fitur:
-## - Klik kiri pada Unit untuk memilih unit (dan highlight petak jangkauan jalan).
-## - Klik kiri pada petak biru (reachable) untuk memindahkan unit.
-## - Menampilkan garis grid dan area jangkauan dengan warna visual.
+## - [ESC]: Keluar dari game seketika.
+## - Klik Unit Kamu: Pilih unit (Highlight Biru = Area Jalan, Highlight Merah = Area Serang).
+## - Klik Petak Biru: Bergerak ke petak tersebut.
+## - Klik Unit Musuh (Petak Merah): Menyerang musuh (memicu CombatResolver)!
 
 @onready var grid_manager: GridManager = $GridManager
+@onready var combat_resolver: CombatResolver = $CombatResolver
 @onready var unit_container: Node2D = $Units
+@onready var hud_label: Label = $CanvasLayer/InstructionPanel/MarginContainer/Label
 
 var selected_unit: TacticalUnit = null
 var reachable_cells: Array[Vector2i] = []
@@ -14,12 +17,23 @@ var attackable_cells: Array[Vector2i] = []
 
 
 func _ready() -> void:
-	# Hubungkan event saat movement selesai agar highlight di-refresh
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
+	EventBus.combat_resolved.connect(_on_combat_resolved)
+	_update_hud_text("🎮 Klik Blue Pawn untuk pilih unit. Klik petak biru untuk gerak. Klik Red Warrior untuk serang!\nTekan [ESC] untuk keluar game.")
 	queue_redraw()
 
 
+func _update_hud_text(text: String) -> void:
+	if hud_label:
+		hud_label.text = text
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	# Shortcut ESC untuk keluar langsung
+	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
+		get_tree().quit()
+		return
+
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var mouse_pos = get_global_mouse_position()
 		var clicked_cell = grid_manager.world_to_grid(mouse_pos)
@@ -33,21 +47,27 @@ func _handle_cell_click(cell: Vector2i) -> void:
 
 	var unit_at_cell = grid_manager.get_unit_at(cell)
 
-	# 1. Jika ada unit di petak ini, pilih unit tersebut
+	# 1. Jika ada unit terpilih dan klik pada musuh yang berada dalam jangkauan serang -> SERANG!
+	if selected_unit != null and unit_at_cell != null and unit_at_cell != selected_unit:
+		if unit_at_cell.faction_id != selected_unit.faction_id and attackable_cells.has(cell):
+			EventBus.unit_attack_requested.emit(selected_unit, unit_at_cell)
+			_deselect_unit()
+			return
+
+	# 2. Jika klik unit sendiri, pilih unit tersebut
 	if unit_at_cell != null:
 		_select_unit(unit_at_cell)
 		return
 
-	# 2. Jika ada unit terpilih dan klik di petak yang bisa dijangkau, minta gerak!
+	# 3. Jika ada unit terpilih dan klik petak biru (jangkauan gerak), jalankan!
 	if selected_unit != null and reachable_cells.has(cell):
 		EventBus.unit_move_requested.emit(selected_unit, cell)
-		# Kosongkan highlight sementara saat bergerak
 		reachable_cells.clear()
 		attackable_cells.clear()
 		queue_redraw()
 		return
 
-	# 3. Klik di luar jangkauan -> deselect
+	# 4. Klik petak kosong di luar jangkauan -> Deselect
 	_deselect_unit()
 
 
@@ -61,6 +81,11 @@ func _select_unit(unit: TacticalUnit) -> void:
 			unit.unit_data.attack_range_max
 		)
 	EventBus.unit_selected.emit(unit)
+	var u_name = unit.unit_data.unit_name if unit.unit_data else unit.name
+	var hp_max = unit.unit_data.max_health if unit.unit_data else 100
+	_update_hud_text("⚔️ Dipilih: %s | HP: %d/%d | Sisa Move: %d | Bisa Act: %s\n👉 Klik petak biru untuk gerak atau klik musuh di jangkauan merah untuk serang!" % [
+		u_name, unit.current_health, hp_max, unit.current_movement, str(unit.can_act())
+	])
 	queue_redraw()
 
 
@@ -69,13 +94,38 @@ func _deselect_unit() -> void:
 	reachable_cells.clear()
 	attackable_cells.clear()
 	EventBus.unit_deselected.emit()
+	_update_hud_text("🎮 Klik Blue Pawn untuk pilih unit. Klik petak biru untuk gerak. Klik Red Warrior untuk serang!\nTekan [ESC] untuk keluar.")
 	queue_redraw()
 
 
 func _on_unit_move_completed(unit: Node, _from: Vector2i, _to: Vector2i) -> void:
 	if unit == selected_unit:
-		# Update highlight setelah sampai di tujuan
 		_select_unit(selected_unit)
+
+
+func _on_combat_resolved(result: Dictionary) -> void:
+	var att: TacticalUnit = result["attacker"]
+	var def: TacticalUnit = result["defender"]
+	var pri = result["primary_attack"]
+	var ctr = result.get("counter_attack", {})
+
+	var att_name = att.unit_data.unit_name if att.unit_data else att.name
+	var def_name = def.unit_data.unit_name if def.unit_data else def.name
+
+	var log_str = "💥 COMBAT REPORT:\n"
+	log_str += "• %s serang %s ➔ Damage: -%d HP (%s, mult: x%.2f)" % [
+		att_name, def_name, pri["damage"], pri["advantage_type"], pri["multiplier"]
+	]
+
+	if ctr.has("damage"):
+		log_str += "\n• %s balas counter ➔ Damage: -%d HP!" % [def_name, ctr["damage"]]
+
+	if result.get("defender_killed", false):
+		log_str += " ➔ ☠️ %s TEWAS!" % def_name
+
+	_update_hud_text(log_str)
+	print(log_str)
+	queue_redraw()
 
 
 func _draw() -> void:
@@ -85,30 +135,26 @@ func _draw() -> void:
 	var cs = grid_manager.cell_size
 	var gs = grid_manager.grid_size
 
-	# 1. Gambar Garis Grid Background (Abu-abu tipis)
+	# 1. Garis Grid
 	for x in range(gs.x + 1):
-		var start = Vector2(x * cs.x, 0)
-		var end = Vector2(x * cs.x, gs.y * cs.y)
-		draw_line(start, end, Color(1, 1, 1, 0.15), 1.0)
-
+		draw_line(Vector2(x * cs.x, 0), Vector2(x * cs.x, gs.y * cs.y), Color(1, 1, 1, 0.12), 1.0)
 	for y in range(gs.y + 1):
-		var start = Vector2(0, y * cs.y)
-		var end = Vector2(gs.x * cs.x, y * cs.y)
-		draw_line(start, end, Color(1, 1, 1, 0.15), 1.0)
+		draw_line(Vector2(0, y * cs.y), Vector2(gs.x * cs.x, y * cs.y), Color(1, 1, 1, 0.12), 1.0)
 
-	# 2. Gambar Highlight Jangkauan Serang (Merah Transparan)
+	# 2. Area Jangkauan Serang (Merah)
 	for cell in attackable_cells:
 		var rect = Rect2(Vector2(cell.x * cs.x, cell.y * cs.y), Vector2(cs.x, cs.y))
 		draw_rect(rect, Color(1.0, 0.2, 0.2, 0.25))
+		draw_rect(rect, Color(1.0, 0.2, 0.2, 0.6), false, 1.0)
 
-	# 3. Gambar Highlight Jangkauan Gerak (Biru Transparan)
+	# 3. Area Jangkauan Gerak (Biru)
 	for cell in reachable_cells:
 		var rect = Rect2(Vector2(cell.x * cs.x, cell.y * cs.y), Vector2(cs.x, cs.y))
-		draw_rect(rect, Color(0.2, 0.5, 1.0, 0.4))
+		draw_rect(rect, Color(0.2, 0.5, 1.0, 0.35))
 		draw_rect(rect, Color(0.2, 0.6, 1.0, 0.8), false, 1.0)
 
-	# 4. Highlight Petak Unit yang Dipilih (Kuning)
+	# 4. Highlight Unit Aktif (Kuning)
 	if selected_unit:
 		var u_cell = selected_unit.grid_position
 		var rect = Rect2(Vector2(u_cell.x * cs.x, u_cell.y * cs.y), Vector2(cs.x, cs.y))
-		draw_rect(rect, Color(1.0, 0.9, 0.1, 0.8), false, 2.0)
+		draw_rect(rect, Color(1.0, 0.9, 0.1, 0.85), false, 2.0)

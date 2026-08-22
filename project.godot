@@ -11,6 +11,7 @@ config_version=5
 [application]
 
 config/name="war-perang-tactics"
+run/main_scene="uid://c6g7y7ukmvl1x"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 

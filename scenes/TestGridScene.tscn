@@ -1,30 +1,62 @@
-[gd_scene format=3 uid="uid://c6g7y7ukmvl1x"]
+[gd_scene format=4 uid="uid://c6g7y7ukmvl1x"]
 
-[ext_resource type="Script" path="res://scripts/test/TestGridController.gd" id="1_test_ctrl"]
-[ext_resource type="Script" path="res://scripts/managers/GridManager.gd" id="2_grid_mgr"]
-[ext_resource type="PackedScene" uid="uid://bv8vqm8r7j2kx" path="res://scenes/units/TacticalUnit.tscn" id="3_unit_scene"]
-[ext_resource type="Resource" path="res://resources/units/pawn_blue.tres" id="4_pawn_data"]
+[ext_resource type="Script" uid="uid://c3q0vupw8la0g" path="res://scripts/test/TestGridController.gd" id="1_test_ctrl"]
+[ext_resource type="Script" uid="uid://mgpfxow11fwb" path="res://scripts/managers/GridManager.gd" id="2_grid_mgr"]
+[ext_resource type="Script" path="res://scripts/managers/CombatResolver.gd" id="3_combat_mgr"]
+[ext_resource type="TileSet" uid="uid://cxhy51g182n7k" path="res://resources/tilesets/terrain_flat_tileset.tres" id="4_tileset"]
+[ext_resource type="PackedScene" uid="uid://bv8vqm8r7j2kx" path="res://scenes/units/TacticalUnit.tscn" id="5_unit_scene"]
+[ext_resource type="PackedScene" uid="uid://c0e6k08t4p8m2" path="res://scenes/units/TacticalUnit_Red.tscn" id="6_enemy_scene"]
+[ext_resource type="Resource" path="res://resources/units/pawn_blue.tres" id="7_pawn_data"]
+[ext_resource type="Resource" path="res://resources/units/warrior_red.tres" id="8_warrior_data"]
 
-[node name="TestGridScene" type="Node2D"]
+[node name="TestGridScene" type="Node2D" unique_id=1768681942]
 script = ExtResource("1_test_ctrl")
 
-[node name="GridManager" type="Node" parent="."]
+[node name="GridManager" type="Node" parent="." unique_id=1342802367]
 script = ExtResource("2_grid_mgr")
-cell_size = Vector2i(48, 48)
-grid_size = Vector2i(20, 14)
+cell_size = Vector2i(64, 64)
+grid_size = Vector2i(16, 10)
 
-[node name="Units" type="Node2D" parent="."]
+[node name="CombatResolver" type="Node" parent="." unique_id=2139042163]
+script = ExtResource("3_combat_mgr")
 
-[node name="Pawn_1" parent="Units" instance=ExtResource("3_unit_scene")]
-position = Vector2(72, 72)
-scale = Vector2(0.35, 0.35)
-unit_data = ExtResource("4_pawn_data")
+[node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=1401844578]
+tile_map_data = PackedByteArray("AAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAACAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAA=")
+tile_set = ExtResource("4_tileset")
 
-[node name="Pawn_2" parent="Units" instance=ExtResource("3_unit_scene")]
-position = Vector2(168, 72)
-scale = Vector2(0.35, 0.35)
-unit_data = ExtResource("4_pawn_data")
+[node name="Units" type="Node2D" parent="." unique_id=1034639122]
 
-[node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(480, 336)
-zoom = Vector2(1.2, 1.2)
+[node name="Blue_Pawn" parent="Units" unique_id=1435716060 instance=ExtResource("5_unit_scene")]
+position = Vector2(96, 96)
+scale = Vector2(0.45, 0.45)
+unit_data = ExtResource("7_pawn_data")
+
+[node name="Red_Warrior" parent="Units" unique_id=588226432 instance=ExtResource("6_enemy_scene")]
+position = Vector2(288, 96)
+scale = Vector2(0.45, 0.45)
+unit_data = ExtResource("8_warrior_data")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1929018632]
+position = Vector2(512, 320)
+zoom = Vector2(1.1, 1.1)
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=355276137]
+
+[node name="InstructionPanel" type="PanelContainer" parent="CanvasLayer" unique_id=1613906403]
+visible = false
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 700.0
+offset_bottom = 76.0
+
+[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/InstructionPanel" unique_id=1848424589]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="Label" type="Label" parent="CanvasLayer/InstructionPanel/MarginContainer" unique_id=467378289]
+layout_mode = 2
+text = "🎮 Klik Blue Pawn untuk pilih unit. Klik petak biru untuk gerak. Klik Red Warrior untuk serang!
+Tekan [ESC] untuk keluar game."

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_1w"]
+
+[resource]
+script = ExtResource("1_1w")
+unit_name = "Red Warrior"
+unit_class = "Melee"
+tier = 1
+description = "Frontline combatant with sword. Strong against ranged and workers."
+max_health = 120
+attack_power = 32
+defense_power = 14
+movement_points = 3
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 80
+recruit_cost_iron = 2
+capacity_weight = 2
+upgrade_paths = {}
