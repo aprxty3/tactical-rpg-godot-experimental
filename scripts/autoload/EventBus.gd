@@ -1,3 +1,4 @@
+@warning_ignore("unused_signal")
 extends Node
 ## EventBus — Central typed signal hub (Autoload Singleton).
 ## All cross-system communication flows through here.

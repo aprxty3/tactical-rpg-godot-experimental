@@ -47,8 +47,8 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	var counter_result: Dictionary = {}
 	if not defender_died and enable_counter_attack:
 		var distance = _get_manhattan_distance(attacker.grid_position, defender.grid_position)
-		var def_min_range = defender.unit_data.attack_range_min if defender.unit_data else 1
-		var def_max_range = defender.unit_data.attack_range_max if defender.unit_data else 1
+		var def_min_range: int = defender.unit_data.attack_range_min if is_instance_valid(defender.unit_data) else 1
+		var def_max_range: int = defender.unit_data.attack_range_max if is_instance_valid(defender.unit_data) else 1
 
 		# Defender hanya bisa counter jika penyerang ada dalam jangkauan serangnya
 		if distance >= def_min_range and distance <= def_max_range:
@@ -73,10 +73,10 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 	var att_data: UnitData = att.unit_data
 	var def_data: UnitData = def.unit_data
 
-	var atk_power: int = att_data.attack_power if att_data else 20
-	var def_power: int = def_data.defense_power if def_data else 10
-	var att_class: String = att_data.unit_class if att_data else "Worker"
-	var def_class: String = def_data.unit_class if def_data else "Worker"
+	var atk_power: int = att_data.attack_power if is_instance_valid(att_data) else 20
+	var def_power: int = def_data.defense_power if is_instance_valid(def_data) else 10
+	var att_class: String = att_data.unit_class if is_instance_valid(att_data) else "Worker"
+	var def_class: String = def_data.unit_class if is_instance_valid(def_data) else "Worker"
 
 	# Formula Base Damage: ATK - (DEF * 0.5)
 	var base_damage: float = float(atk_power) - (float(def_power) * 0.5)

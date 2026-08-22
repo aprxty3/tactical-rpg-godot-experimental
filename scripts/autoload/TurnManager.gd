@@ -42,6 +42,14 @@ func setup_match(factions: Array[int], eco_manager: Node) -> void:
 	for faction_id in faction_order:
 		faction_units[faction_id] = []
 
+	# Daftarkan semua unit yang sudah ada di tree
+	var tree = get_tree()
+	if tree:
+		for node in tree.root.find_children("*", "TacticalUnit", true, false):
+			if node is TacticalUnit:
+				if node.faction_id in faction_units:
+					faction_units[node.faction_id].append(node)
+
 
 ## Get the faction ID of the currently active faction.
 func get_current_faction() -> int:

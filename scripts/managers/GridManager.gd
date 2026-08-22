@@ -35,9 +35,8 @@ func _auto_register_existing_units() -> void:
 	var tree = get_tree()
 	if not tree:
 		return
-	var existing_units = tree.get_nodes_in_group("tactical_units")
-	# Cari juga semua node TacticalUnit di scene
-	for node in get_tree().root.find_children("*", "TacticalUnit", true, false):
+	# Cari semua node TacticalUnit di scene
+	for node in tree.root.find_children("*", "TacticalUnit", true, false):
 		if node is TacticalUnit:
 			var cell = world_to_grid(node.global_position)
 			register_unit(node, cell)
@@ -211,7 +210,7 @@ func get_attackable_cells(origin_cell: Vector2i, min_range: int, max_range: int)
 
 
 ## Mendapatkan rute petak dari titik awal ke titik tujuan menggunakan AStar
-func get_path_cells(from_cell: Vector2i, to_cell: Vector2i, unit: TacticalUnit = null) -> Array[Vector2i]:
+func get_path_cells(from_cell: Vector2i, to_cell: Vector2i, _unit: TacticalUnit = null) -> Array[Vector2i]:
 	var path_array: Array[Vector2i] = []
 	if not is_within_bounds(from_cell) or not is_within_bounds(to_cell):
 		return path_array

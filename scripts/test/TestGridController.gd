@@ -19,7 +19,12 @@ var attackable_cells: Array[Vector2i] = []
 func _ready() -> void:
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
 	EventBus.combat_resolved.connect(_on_combat_resolved)
-	_update_hud_text("🎮 Klik Blue Pawn untuk pilih unit. Klik petak biru untuk gerak. Klik Red Warrior untuk serang!\nTekan [ESC] untuk keluar game.")
+	EventBus.turn_started.connect(_on_turn_started)
+	
+	# Setup match 2 Faction: 0 (Blue), 1 (Red)
+	TurnManager.setup_match([GameConfig.Faction.BLUE_KINGDOM, GameConfig.Faction.RED_LEGION], null)
+	TurnManager.start_turn()
+	
 	queue_redraw()
 
 
@@ -29,15 +34,36 @@ func _update_hud_text(text: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Shortcut ESC untuk keluar langsung
+	# Shortcut ESC untuk keluar
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
 		get_tree().quit()
+		return
+
+	# Shortcut SPACE untuk End Turn / Ganti Giliran Faction
+	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
+		end_turn()
 		return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var mouse_pos = get_global_mouse_position()
 		var clicked_cell = grid_manager.world_to_grid(mouse_pos)
 		_handle_cell_click(clicked_cell)
+
+
+func end_turn() -> void:
+	_deselect_unit()
+	TurnManager.advance_phase()
+	# Karena ini prototipe cepat, jika masih di phase Action, kita skip ke End Turn
+	if TurnManager.current_phase != GameConfig.Phase.UPKEEP:
+		TurnManager._end_current_turn()
+
+
+func _on_turn_started(faction_id: int) -> void:
+	var faction_name = "BLUE KINGDOM" if faction_id == GameConfig.Faction.BLUE_KINGDOM else "RED LEGION"
+	var color_emoji = "🔵" if faction_id == GameConfig.Faction.BLUE_KINGDOM else "🔴"
+	_update_hud_text("%s GILIRAN %s (Turn %d)\n👉 Klik unitmu untuk bertindak. Tekan [SPASI] untuk End Turn / Ganti Giliran." % [
+		color_emoji, faction_name, TurnManager.turn_number
+	])
 
 
 func _handle_cell_click(cell: Vector2i) -> void:
@@ -54,9 +80,12 @@ func _handle_cell_click(cell: Vector2i) -> void:
 			_deselect_unit()
 			return
 
-	# 2. Jika klik unit sendiri, pilih unit tersebut
+	# 2. Jika klik unit, cek apakah unit milik faction yang sedang aktif
 	if unit_at_cell != null:
-		_select_unit(unit_at_cell)
+		if unit_at_cell.faction_id == TurnManager.get_current_faction():
+			_select_unit(unit_at_cell)
+		else:
+			_update_hud_text("⚠️ Ini unit musuh / bukan giliran faction ini! Pilih unitmu sendiri untuk bergerak.")
 		return
 
 	# 3. Jika ada unit terpilih dan klik petak biru (jangkauan gerak), jalankan!
@@ -81,8 +110,8 @@ func _select_unit(unit: TacticalUnit) -> void:
 			unit.unit_data.attack_range_max
 		)
 	EventBus.unit_selected.emit(unit)
-	var u_name = unit.unit_data.unit_name if unit.unit_data else unit.name
-	var hp_max = unit.unit_data.max_health if unit.unit_data else 100
+	var u_name: String = unit.unit_data.unit_name if is_instance_valid(unit.unit_data) else unit.name
+	var hp_max: int = unit.unit_data.max_health if is_instance_valid(unit.unit_data) else 100
 	_update_hud_text("⚔️ Dipilih: %s | HP: %d/%d | Sisa Move: %d | Bisa Act: %s\n👉 Klik petak biru untuk gerak atau klik musuh di jangkauan merah untuk serang!" % [
 		u_name, unit.current_health, hp_max, unit.current_movement, str(unit.can_act())
 	])

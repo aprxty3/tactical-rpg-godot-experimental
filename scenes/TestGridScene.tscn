@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c3q0vupw8la0g" path="res://scripts/test/TestGridController.gd" id="1_test_ctrl"]
 [ext_resource type="Script" uid="uid://mgpfxow11fwb" path="res://scripts/managers/GridManager.gd" id="2_grid_mgr"]
-[ext_resource type="Script" path="res://scripts/managers/CombatResolver.gd" id="3_combat_mgr"]
+[ext_resource type="Script" uid="uid://c1a801qtgic3a" path="res://scripts/managers/CombatResolver.gd" id="3_combat_mgr"]
 [ext_resource type="TileSet" uid="uid://cxhy51g182n7k" path="res://resources/tilesets/terrain_flat_tileset.tres" id="4_tileset"]
 [ext_resource type="PackedScene" uid="uid://bv8vqm8r7j2kx" path="res://scenes/units/TacticalUnit.tscn" id="5_unit_scene"]
 [ext_resource type="PackedScene" uid="uid://c0e6k08t4p8m2" path="res://scenes/units/TacticalUnit_Red.tscn" id="6_enemy_scene"]
@@ -43,11 +43,10 @@ zoom = Vector2(1.1, 1.1)
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=355276137]
 
 [node name="InstructionPanel" type="PanelContainer" parent="CanvasLayer" unique_id=1613906403]
-visible = false
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 700.0
-offset_bottom = 76.0
+offset_left = -18.0
+offset_top = 243.0
+offset_right = 727.0
+offset_bottom = 321.0
 
 [node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/InstructionPanel" unique_id=1848424589]
 layout_mode = 2
