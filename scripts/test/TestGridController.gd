@@ -12,9 +12,13 @@ var selected_unit: TacticalUnit = null
 var selected_building: Building = null
 var reachable_cells: Array[Vector2i] = []
 var attackable_cells: Array[Vector2i] = []
+var hovered_cell: Vector2i = Vector2i(-1, -1)
 
 
 func _ready() -> void:
+	# Ensure grid highlights render ON TOP of the TileMapLayer
+	z_index = 2
+
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
 	EventBus.combat_resolved.connect(_on_combat_resolved)
 	EventBus.turn_started.connect(_on_turn_started)
@@ -247,26 +251,26 @@ func _deselect_all() -> void:
 	queue_redraw()
 
 
-func _on_unit_move_completed(unit: Node, _from: Vector2i, _to: Vector2i) -> void:
-	if unit == selected_unit:
-		_select_unit(selected_unit)
+func _on_unit_move_completed(unit: TacticalUnit) -> void:
+	if unit.faction_id == 0:
+		_select_unit(unit)
+	queue_redraw()
 
 
-func _on_building_captured(building: Node, faction_id: int) -> void:
-	var f_name = "BLUE KINGDOM" if faction_id == GameConfig.Faction.BLUE_KINGDOM else "RED LEGION"
-	_update_hud_text("🚩 %s captured by %s!" % [building.name, f_name])
+func _on_building_captured(building: Building, _new_faction_id: int) -> void:
+	_update_hud_text("🚩 Building captured: %s!" % building.name)
+	queue_redraw()
 
 
 func _on_combat_resolved(result: Dictionary) -> void:
-	var att: TacticalUnit = result["attacker"]
-	var def: TacticalUnit = result["defender"]
-	var pri = result["primary_attack"]
-	var ctr = result.get("counter_attack", { })
+	var att_name = result.get("attacker", null)
+	var def_name = result.get("defender", null)
+	att_name = att_name.unit_data.unit_name if is_instance_valid(att_name) and is_instance_valid(att_name.unit_data) else "Attacker"
+	def_name = def_name.unit_data.unit_name if is_instance_valid(def_name) and is_instance_valid(def_name.unit_data) else "Defender"
 
-	var att_name = att.unit_data.unit_name if is_instance_valid(att.unit_data) else att.name
-	var def_name = def.unit_data.unit_name if is_instance_valid(def.unit_data) else def.name
-
-	var log_str = "💥 %s hit %s for %d HP" % [att_name, def_name, pri["damage"]]
+	var prim = result.get("primary_attack", {})
+	var ctr = result.get("counter_attack", {})
+	var log_str = "⚔️ %s hit %s for %d HP" % [att_name, def_name, prim.get("damage", 0)]
 
 	if ctr.has("damage"):
 		log_str += " | Counter: %d HP" % ctr["damage"]
@@ -292,27 +296,60 @@ func _draw() -> void:
 	var cs = grid_manager.cell_size
 	var gs = grid_manager.grid_size
 
+	# 1. Grid lines (Tactical overlay mesh)
 	for x in range(gs.x + 1):
-		draw_line(Vector2(x * cs.x, 0), Vector2(x * cs.x, gs.y * cs.y), Color(1, 1, 1, 0.12), 1.0)
+		draw_line(Vector2(x * cs.x, 0), Vector2(x * cs.x, gs.y * cs.y), Color(1, 1, 1, 0.18), 1.0)
 	for y in range(gs.y + 1):
-		draw_line(Vector2(0, y * cs.y), Vector2(gs.x * cs.x, y * cs.y), Color(1, 1, 1, 0.12), 1.0)
+		draw_line(Vector2(0, y * cs.y), Vector2(gs.x * cs.x, y * cs.y), Color(1, 1, 1, 0.18), 1.0)
 
-	for cell in attackable_cells:
-		var rect = Rect2(Vector2(cell.x * cs.x, cell.y * cs.y), Vector2(cs.x, cs.y))
-		draw_rect(rect, Color(1.0, 0.2, 0.2, 0.25))
-		draw_rect(rect, Color(1.0, 0.2, 0.2, 0.6), false, 1.0)
-
+	# 2. Reachable Move Cells (Vibrant Blue with glowing border and center dot)
 	for cell in reachable_cells:
 		var rect = Rect2(Vector2(cell.x * cs.x, cell.y * cs.y), Vector2(cs.x, cs.y))
-		draw_rect(rect, Color(0.2, 0.5, 1.0, 0.35))
-		draw_rect(rect, Color(0.2, 0.6, 1.0, 0.8), false, 1.0)
+		var center = rect.get_center()
+		draw_rect(rect, Color(0.12, 0.58, 1.0, 0.42))
+		draw_rect(rect, Color(0.35, 0.9, 1.0, 0.95), false, 2.5)
+		draw_circle(center, 4.5, Color(0.6, 0.95, 1.0, 0.9))
 
+	# 3. Attackable Cells (Vibrant Crimson Red with Hazard border and Crosshair)
+	for cell in attackable_cells:
+		var rect = Rect2(Vector2(cell.x * cs.x, cell.y * cs.y), Vector2(cs.x, cs.y))
+		var center = rect.get_center()
+		draw_rect(rect, Color(1.0, 0.15, 0.15, 0.48))
+		draw_rect(rect, Color(1.0, 0.35, 0.35, 1.0), false, 3.0)
+		# Crosshair reticle
+		draw_line(center - Vector2(10, 0), center + Vector2(10, 0), Color(1.0, 0.9, 0.9, 0.95), 2.0)
+		draw_line(center - Vector2(0, 10), center + Vector2(0, 10), Color(1.0, 0.9, 0.9, 0.95), 2.0)
+		draw_circle(center, 4.0, Color(1.0, 0.2, 0.2, 0.9))
+
+	# 4. Selected Unit Highlight (Golden double ring)
 	if selected_unit:
 		var u_cell = selected_unit.grid_position
 		var rect = Rect2(Vector2(u_cell.x * cs.x, u_cell.y * cs.y), Vector2(cs.x, cs.y))
-		draw_rect(rect, Color(1.0, 0.9, 0.1, 0.85), false, 2.0)
+		draw_rect(rect, Color(1.0, 0.85, 0.15, 0.25))
+		draw_rect(rect, Color(1.0, 0.92, 0.2, 1.0), false, 3.5)
 
+	# 5. Selected Building Highlight (Emerald ring)
 	if selected_building:
 		var b_cell = selected_building.grid_position
 		var rect = Rect2(Vector2(b_cell.x * cs.x, b_cell.y * cs.y), Vector2(cs.x, cs.y))
-		draw_rect(rect, Color(0.2, 1.0, 0.4, 0.85), false, 2.0)
+		draw_rect(rect, Color(0.2, 0.95, 0.45, 0.25))
+		draw_rect(rect, Color(0.3, 1.0, 0.5, 1.0), false, 3.5)
+
+	# 6. Hovered Cell Cursor
+	if hovered_cell.x >= 0 and hovered_cell.x < gs.x and hovered_cell.y >= 0 and hovered_cell.y < gs.y:
+		var rect = Rect2(Vector2(hovered_cell.x * cs.x, hovered_cell.y * cs.y), Vector2(cs.x, cs.y))
+		var pad = 4.0
+		# Corner brackets
+		var tl = rect.position + Vector2(pad, pad)
+		var tr = Vector2(rect.end.x - pad, rect.position.y + pad)
+		var bl = Vector2(rect.position.x + pad, rect.end.y - pad)
+		var br = rect.end - Vector2(pad, pad)
+		var clr = Color(1.0, 1.0, 1.0, 0.8)
+		draw_line(tl, tl + Vector2(10, 0), clr, 2.0)
+		draw_line(tl, tl + Vector2(0, 10), clr, 2.0)
+		draw_line(tr, tr - Vector2(10, 0), clr, 2.0)
+		draw_line(tr, tr + Vector2(0, 10), clr, 2.0)
+		draw_line(bl, bl + Vector2(10, 0), clr, 2.0)
+		draw_line(bl, bl - Vector2(0, 10), clr, 2.0)
+		draw_line(br, br - Vector2(10, 0), clr, 2.0)
+		draw_line(br, br - Vector2(0, 10), clr, 2.0)

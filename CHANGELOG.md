@@ -82,6 +82,16 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Automated Test Validation**: Added `scenes/test_combat_mechanics.tscn` verifying all 6 combat traits and calculations with 100% pass rate.
 
 
+### 11. 🎯 High-Visibility Tactical Grid Highlights & Z-Index Elevation
+- **Z-Index Layer Elevation**: Set `z_index = 2` for the grid drawing layer in `TestGridController.gd`. Completely resolved the issue where highlights were occluded and buried underneath the opaque `TileMapLayer` terrain tiles.
+- **Vibrant Tactical Highlights**:
+  - 🔵 **Reachable Move Cells**: High-contrast vibrant cyan-blue fill (`Color(0.12, 0.58, 1.0, 0.42)`) with glowing cyan borders and center pathing dot markers.
+  - 🔴 **Attackable Cells**: High-contrast hazard crimson fill (`Color(1.0, 0.15, 0.15, 0.48)`) with bold red borders and precision crosshair reticle markers.
+  - 🟡 **Selected Unit**: Golden pulse fill with bold double golden border (`Color(1.0, 0.92, 0.2, 1.0)`).
+  - 🟢 **Selected Building**: Emerald green fill with glowing borders.
+  - ◽ **Dynamic Cursor Hover**: Crisp white corner bracket highlights tracking the player's mouse over grid cells.
+
+
 ---
 
 ## 📅 2026-08-22
