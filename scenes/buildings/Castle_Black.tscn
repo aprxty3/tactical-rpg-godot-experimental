@@ -8,14 +8,14 @@
 [ext_resource type="Resource" path="res://resources/units/monk_black.tres" id="6_u_monk_black"]
 [ext_resource type="Resource" path="res://resources/units/wizzard_black.tres" id="7_u_wizzard_black"]
 [ext_resource type="Resource" path="res://resources/units/rogue_black.tres" id="8_u_rogue_black"]
-[ext_resource type="Resource" path="res://resources/units/skeleton_black.tres" id="9_u_skeleton_black"]
+[ext_resource type="Resource" path="res://resources/units/skeleton_base_black.tres" id="9_u_skeleton_fodder_black"]
 [ext_resource type="Resource" path="res://resources/units/vampire_black.tres" id="10_u_vampire_black"]
 
 [node name="Castle_Black" type="Node2D"]
 script = ExtResource("1_bld")
 building_type = 0
 faction_id = 4
-recruitable_units = [ExtResource("3_u_pawn_black"), ExtResource("4_u_warrior_black"), ExtResource("5_u_archer_black"), ExtResource("6_u_monk_black"), ExtResource("7_u_wizzard_black"), ExtResource("8_u_rogue_black"), ExtResource("9_u_skeleton_black"), ExtResource("10_u_vampire_black")]
+recruitable_units = [ExtResource("3_u_pawn_black"), ExtResource("4_u_warrior_black"), ExtResource("5_u_archer_black"), ExtResource("6_u_monk_black"), ExtResource("7_u_wizzard_black"), ExtResource("8_u_rogue_black"), ExtResource("9_u_skeleton_fodder_black"), ExtResource("10_u_vampire_black")]
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_tex")

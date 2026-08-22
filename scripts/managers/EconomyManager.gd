@@ -155,14 +155,16 @@ func _apply_starvation(active_units: Array, faction_id: int) -> void:
 
 # === Signal Handlers ===
 
-func _on_resource_node_captured(node_type: String, faction_id: int) -> void:
+func _on_resource_node_captured(node_type: String, new_faction_id: int, old_faction_id: int) -> void:
 	match node_type:
 		"village":
-			_faction_villages[faction_id] = _faction_villages.get(faction_id, 0) + 1
+			if old_faction_id in _faction_villages:
+				_faction_villages[old_faction_id] = maxi(0, _faction_villages[old_faction_id] - 1)
+			_faction_villages[new_faction_id] = _faction_villages.get(new_faction_id, 0) + 1
 			EventBus.capacity_changed.emit(
-				faction_id,
+				new_faction_id,
 				0,  # Will be recalculated on next check
-				get_max_capacity(faction_id)
+				get_max_capacity(new_faction_id)
 			)
 
 

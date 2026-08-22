@@ -52,7 +52,7 @@ Status: 🟢 Completed
 
 
 ## Milestone 3: Economy & Advanced Progression (Unit Upgrade Tree)
-Status: 🟡 In Progress — core tree, promotion mechanic, and roster symmetry shipped; economy tasks below remain
+Status: 🟢 Completed — human tree, Undead lineage, promotion mechanic, and Village economy all shipped
 
 ### 1. Unit Upgrade Tree Architecture
 All 5 factions (Blue Kingdom, Red Legion, Purple Syndicate, Yellow Empire, Black Coven) now share the same symmetric human tree. Tier-1 (Pawn) and Tier-2 units are directly recruitable at a Castle; **Tier-3 units are promotion-only** — reached exclusively via the `[U]` Upgrade action on an existing Tier-2 unit, never recruited directly:
@@ -73,22 +73,33 @@ All 5 factions (Blue Kingdom, Red Legion, Purple Syndicate, Yellow Empire, Black
                                 └──► [ Stealth ] ─► Rogue ──────┬──► Assassin (Lethal Backstab)
                                                                  └──► Shadowblade (Stealth/Ambush)
 
-[ Undead Lineage (Black Coven) — separate from the tree above, not yet reconciled ]
-Skeleton (Fodder) ─────────────► Skeleton Warrior ──────────────► Lich (Necromancer)
-Vampire (Bruiser) ─────────────► Vampire Lord ──────────────────► Nightstalker (Flight/Lifesteal)
+[ Undead Lineage (Black Coven only) — a separate, parallel track, NOT merged into the tree above ]
+                          ┌──► Skeleton Warrior ──► Bone Reaper (Heavy Melee)
+                          │
+[ Tier 1: Skeleton Fodder ]──► Skeleton Mage ────► Lich (Necromancer Caster)
+                          │
+                          └──► Skeleton Rogue ───► Wraith (Stealth Ambusher)
+
+[ Tier 2: Vampire (Lifesteal Bruiser, own entry point — no Tier-1 parent) ]──┬──► Vampire Lord (Heavier Bruiser)
+                                                                              └──► Nightstalker (Mobile/Evasive)
 ```
 
 Since Knight/Lancer (Melee) and Archer (Ranged) already had full art, and Monk/Wizzard/Rogue already existed on at least one faction, "shipping" this tree meant: fixing `Warrior`'s tier (was incorrectly `1`, same as Pawn), filling in the missing Tier-2 units per faction (Wizzard/Rogue), generating all 8 new Tier-3 branches (×5 factions), and building a runtime faction palette-tint shader (`assets/shaders/faction_tint.gdshader`) so the units without hand-painted per-faction art (Knight/Rogue/Wizzard and their Tier-3 offshoots) still render in the correct faction color instead of one shared generic sprite.
 
+The Undead lineage is intentionally **not** folded into the 5-faction symmetric tree — it's a Black-Coven-exclusive track with its own simpler branching (one Tier-3 per Tier-2, not two) that reuses the identical `[U]` Upgrade mechanic. `skeleton_mage_black.tres`/`skeleton_rogue_black.tres` existed fully-built but were never wired into any recruit list before this pass; `skeleton_black.tres` (Skeleton Warrior) was wrongly tagged tier 1 (same as Fodder); `vampire_black.tres` was a dead-end Tier-3 with no promotion path. All five new Tier-3 Undead units (Bone Reaper, Lich, Wraith, Vampire Lord, Nightstalker) reuse existing small icon art (`assets/characters/skeleton/skeleton1|skeleton2|skull/`, `assets/characters/vampire/v2/`) rather than the palette-tint shader, since each already has unique art and Undead units don't vary by faction.
+
 ### 2. Progression & Economy Tasks
-- [x] **UnitData Progression Blueprint**: `upgrade_paths: Dictionary[String, Resource]` on `UnitData.gd`, now populated on every Tier-1/Tier-2 unit across all 5 factions.
+- [x] **UnitData Progression Blueprint**: `upgrade_paths: Dictionary[String, Resource]` on `UnitData.gd`, now populated on every Tier-1/Tier-2 unit across all 5 factions (human tree) and the full Undead lineage (Black Coven).
 - [x] **Dynamic Upgrade Action & UI**: `[U]` key opens an Upgrade popup (`MainHUD.show_upgrade_popup`) listing the selected unit's `upgrade_paths`; mirrors the existing `[R]` Recruit popup.
 - [x] **Field Tax Implementation**: `EconomyManager.get_upgrade_cost()` / `process_upgrade()` already existed and are now actually wired up; off-Castle promotions correctly cost $200\%$ of the tier-difference price.
-- [ ] **Troop Capacity System & Logistics Collapse**: Starvation logic exists in `EconomyManager`; still needs Village-capture integration.
-- [ ] **Village Economy Nodes**: Capturing villages grants $+2$ TC cap and $+10$ Gold passive revenue.
-- [x] **Dual Upgrade Specializations**: Every Tier-2 unit offers exactly two Tier-3 choices (e.g. Warrior → Knight *or* Lancer).
-- [ ] **Recruitment Pool Refresh**: Replenishment timers for elite tier units at Castles every $N$ turns.
-- [ ] **Undead Lineage Reconciliation**: Black Coven's Skeleton/Vampire sub-tree (Lich, Vampire Lord, Nightstalker) still needs the same tier-fix + promotion-only treatment as the human tree above — deferred as a follow-up.
+- [x] **Troop Capacity System & Logistics Collapse**: Starvation logic already existed in `EconomyManager`; fixed a real bug where `Building.capture()` only reported the *new* owner, so a village's capacity bonus was never removed from whoever lost it on recapture. `EventBus.resource_node_captured` now carries both `new_faction_id` and `old_faction_id`.
+- [x] **Village Economy Nodes**: New `scenes/buildings/House.tscn` (neutral capturable node, mirrors `GoldMine.tscn`'s pattern) grants $+2$ TC cap and $+10$ Gold passive revenue on capture — the mechanic already existed in `EconomyManager`/`Building.gd` (`BuildingType.HOUSE` → `"village"`) but no scene or map placement existed until now. Two neutral villages placed on `TestGridScene.tscn`.
+- [x] **Dual Upgrade Specializations**: Every Tier-2 unit in the human tree offers exactly two Tier-3 choices (e.g. Warrior → Knight *or* Lancer); the Undead lineage uses a simpler 1:1 branching by design (see above).
+- [x] **Undead Lineage Reconciliation**: Black Coven's Skeleton/Vampire sub-tree is a finished parallel track — see the diagram above.
+
+**Dropped**: *Recruitment Pool Refresh* (replenishment timers for elite units at Castles) — this item predated the decision to make Tier-3 promotion-only. Since elite units are no longer recruited at Castles at all, a refresh timer for them no longer applies; access is already gated by gold/iron cost and the Upgrade action itself.
+
+**Known remaining gap**: `skull_black.tres` ("Cursed Skull", tier 1, Undead) exists as a resource but is not wired into any recruit list or upgrade path — out of scope for this pass, flagged for a future one.
 
 
 ## Milestone 4: Advanced Tactical Systems & Morale

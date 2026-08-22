@@ -1,7 +1,8 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
 [ext_resource type="Texture2D" path="res://assets/characters/skeleton/mage/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/lich_black.tres" id="3_up"]
 
 [resource]
 script = ExtResource("1_scr")
@@ -17,8 +18,10 @@ attack_range_min = 2
 attack_range_max = 2
 recruit_cost_gold = 70
 recruit_cost_iron = 0
-capacity_weight = 1
+capacity_weight = 2
 spritesheet = ExtResource("2_tex")
 hframes = 4
 vframes = 1
-upgrade_paths = {}
+upgrade_paths = {
+"Lich": ExtResource("3_up")
+}

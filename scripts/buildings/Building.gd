@@ -76,7 +76,7 @@ func capture(new_faction_id: int) -> void:
 	_update_visuals()
 	
 	EventBus.building_captured.emit(self, new_faction_id)
-	EventBus.resource_node_captured.emit(get_type_string(), new_faction_id)
+	EventBus.resource_node_captured.emit(get_type_string(), new_faction_id, old_faction)
 
 
 ## Check if this castle can recruit a specific unit (cost & capacity)
@@ -137,5 +137,11 @@ func _update_visuals() -> void:
 			modulate = Color(1.0, 1.0, 1.0, 1.0)
 		GameConfig.Faction.RED_LEGION:
 			modulate = Color(1.0, 0.6, 0.6, 1.0)
+		GameConfig.Faction.PURPLE_SYNDICATE:
+			modulate = Color(0.85, 0.6, 1.0, 1.0)
+		GameConfig.Faction.YELLOW_EMPIRE:
+			modulate = Color(1.0, 0.95, 0.55, 1.0)
+		GameConfig.Faction.BLACK_COVEN:
+			modulate = Color(0.55, 0.55, 0.6, 1.0)
 		_:
 			modulate = Color(0.8, 0.8, 0.8, 1.0)

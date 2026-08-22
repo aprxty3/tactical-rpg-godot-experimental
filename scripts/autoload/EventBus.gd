@@ -13,7 +13,7 @@ signal turn_ended(faction_id: int)
 signal gold_changed(faction_id: int, new_amount: int)
 signal iron_changed(faction_id: int, new_amount: int)
 signal capacity_changed(faction_id: int, used: int, max_cap: int)
-signal resource_node_captured(node_type: String, faction_id: int)
+signal resource_node_captured(node_type: String, new_faction_id: int, old_faction_id: int)
 signal resources_insufficient(faction_id: int, resource_type: String)
 
 # === Unit Lifecycle Signals ===

@@ -1,7 +1,10 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
 [ext_resource type="Texture2D" path="res://assets/characters/skeleton/base/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/skeleton_black.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/skeleton_mage_black.tres" id="4_up"]
+[ext_resource type="Resource" path="res://resources/units/skeleton_rogue_black.tres" id="5_up"]
 
 [resource]
 script = ExtResource("1_scr")
@@ -21,4 +24,8 @@ capacity_weight = 1
 spritesheet = ExtResource("2_tex")
 hframes = 4
 vframes = 1
-upgrade_paths = {}
+upgrade_paths = {
+"Skeleton Warrior": ExtResource("3_up"),
+"Skeleton Mage": ExtResource("4_up"),
+"Skeleton Rogue": ExtResource("5_up")
+}

@@ -112,6 +112,17 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Deferred**: Black Coven's separate Undead lineage (Skeleton/Vampire → Lich/Vampire Lord/Nightstalker) has its own tier inconsistencies and was intentionally left out of this pass — see `Roadmap.md` Milestone 3.
 
 
+### 14. 🏚️ Milestone 3 Completion — Village Economy, Troop Capacity Fix & Undead Lineage
+- **Troop Capacity Bug Fix**: `Building.capture()` only ever reported the *new* owning faction via `EventBus.resource_node_captured`, so `EconomyManager` incremented the capturer's village count but never decremented the previous owner's — recapturing a village permanently inflated whoever held it first. Signal now carries both `new_faction_id` and `old_faction_id`; `EconomyManager._on_resource_node_captured` decrements the loser and increments the winner.
+- **Village Economy Nodes Shipped**: `BuildingType.HOUSE` was already wired end-to-end (`"village"` type string, `+10` Gold via `collect_income`, `+2` TC via `get_max_capacity`) but no scene or map content existed. Added `scenes/buildings/House.tscn` (neutral, capturable, mirrors `GoldMine.tscn`'s pattern) and placed two neutral villages on `TestGridScene.tscn`.
+- **`Building._update_visuals()`**: extended the faction modulate-tint match from 2 factions (Blue/Red) to all 5, so Purple/Yellow/Black captures now render distinctly instead of falling into the generic grey default.
+- **Undead Lineage Reconciliation**: Black Coven's Skeleton/Vampire sub-tree is now a finished parallel track, independent of the human tree, reusing the identical `[U]` Upgrade mechanic with no new UI/backend code. `skeleton_black.tres` (Skeleton Warrior) retiered 1→2; previously-orphaned `skeleton_mage_black.tres`/`skeleton_rogue_black.tres` wired into `skeleton_base_black.tres`'s (Skeleton Fodder) `upgrade_paths`; `vampire_black.tres` retiered 3→2 and restatted into a Castle-recruitable Tier-2 entry point. 5 new Tier-3 units created — Bone Reaper, Lich, Wraith, Vampire Lord, Nightstalker — reusing existing small icon art (`skeleton1`/`skeleton2`/`skull`/`vampire v2`) rather than the palette-tint shader, since Undead units don't vary by faction.
+- **`CombatResolver.gd`**: added `"nightstalker"` to the Vampire Lifesteal name check (previously only `"vampire"`, which would have silently excluded Nightstalker from its own signature trait).
+- **Dropped `Recruitment Pool Refresh`**: this Roadmap item predated Tier-3 becoming promotion-only; a Castle-side elite-unit refresh timer no longer means anything once elites are never recruited at Castles.
+- **New Tests**: `scenes/test_village_capacity.tscn` / `TestVillageCapacity.gd` verifies capture, recapture, and the capacity decrement-on-loss fix headlessly (avoids the live-mouse-click calibration issues noted in a prior session). `TestUpgradeFlow.gd` extended with a Skeleton Fodder → Skeleton Mage → Lich case to confirm the shared promotion mechanic works identically for the Undead track.
+- **Known remaining gap**: `skull_black.tres` ("Cursed Skull") exists as a resource but isn't wired into any recruit list or upgrade path — flagged, not fixed, in this pass.
+
+
 ---
 
 ## 📅 2026-08-22

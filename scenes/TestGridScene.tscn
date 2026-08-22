@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle.tscn" id="9_castle_scene"]
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Red.tscn" id="10_castle_red_scene"]
 [ext_resource type="PackedScene" uid="uid://c3qg0m0k0x8m1" path="res://scenes/buildings/GoldMine.tscn" id="11_mine_scene"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/House.tscn" id="15_house_scene"]
 [ext_resource type="Resource" uid="uid://ctkc3to4m8rix" path="res://resources/units/pawn_blue.tres" id="12_pawn_data"]
 [ext_resource type="Resource" uid="uid://dhkf4ocir0a84" path="res://resources/units/warrior_red.tres" id="13_warrior_data"]
 [ext_resource type="PackedScene" uid="uid://b7vkm8r7j2lax" path="res://scenes/ui/MainHUD.tscn" id="14_main_hud"]
@@ -50,6 +51,14 @@ grid_position = Vector2i(10, 6)
 [node name="GoldMine_Neutral" parent="Buildings" unique_id=1777931152 instance=ExtResource("11_mine_scene")]
 position = Vector2(352, 288)
 grid_position = Vector2i(5, 4)
+
+[node name="House_Neutral_A" parent="Buildings" instance=ExtResource("15_house_scene")]
+position = Vector2(224, 480)
+grid_position = Vector2i(3, 7)
+
+[node name="House_Neutral_B" parent="Buildings" instance=ExtResource("15_house_scene")]
+position = Vector2(800, 160)
+grid_position = Vector2i(12, 2)
 
 [node name="Units" type="Node2D" parent="." unique_id=31378510]
 

@@ -39,7 +39,7 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	
 	# Special Trait: Vampire Lifesteal (recovers 40% of damage dealt)
 	var att_name = attacker.unit_data.unit_name.to_lower() if is_instance_valid(attacker.unit_data) else ""
-	if "vampire" in att_name and attack_result["damage"] > 0:
+	if ("vampire" in att_name or "nightstalker" in att_name) and attack_result["damage"] > 0:
 		var lifesteal_amount = maxi(1, int(round(attack_result["damage"] * 0.4)))
 		attacker.heal(lifesteal_amount)
 

@@ -30,7 +30,7 @@ As of the Milestone 3 Unit Upgrade Tree pass, **all 5 factions field the identic
    - *Flavor Units*: **Wizzard**, **Archmage**, **High Priest**.
 5. **Black Coven / Necropolis**:
    - *Theme*: Dark death cult summoning legions of skeletal minions and cursed vitality.
-   - *Flavor Units*: the full shared human roster (renamed — e.g. "Black Cultist Pawn", "Necromancer Monk") **plus** an exclusive Undead sub-roster: **Skeleton Army (Fodder, Warrior, Rogue, Mage)**, **Cursed Skull**, **Vampire**. The Undead sub-tree's own tier/promotion structure (→ Lich, Vampire Lord, Nightstalker) is still being reconciled — see `Roadmap.md` Milestone 3.
+   - *Flavor Units*: the full shared human roster (renamed — e.g. "Black Cultist Pawn", "Necromancer Monk") **plus** an exclusive Undead sub-roster with its own finished parallel promotion tree: **Skeleton Fodder** → **Skeleton Warrior / Skeleton Mage / Skeleton Rogue** → **Bone Reaper / Lich / Wraith**, and **Vampire** (its own Tier-2 entry point) → **Vampire Lord / Nightstalker**. See Section 2 below for the full table.
 
 ---
 
@@ -67,12 +67,32 @@ As of the Milestone 3 Unit Upgrade Tree pass, **all 5 factions field the identic
 | **Assassin** | Rogue | Glass-Cannon Backstab | 4 Tiles | 1 Tile (Melee) | Highest single-target burst, lowest defense. |
 | **Shadowblade** | Rogue | Mobile Ambusher | 5 Tiles | 1 Tile (Melee) | More HP/defense than Assassin, slightly less burst. |
 
-**Black Coven exclusive (Undead lineage, not yet reconciled into the tier system above):**
+**Black Coven exclusive — Undead lineage (a separate, parallel track from the tree above, reusing the same `[U]` Upgrade mechanic):**
+
+Tier 1 (recruitable at Castle):
 
 | Unit Class | Primary Role | Move Range | Attack Range | Special Traits & Capabilities |
 | :--- | :--- | :---: | :---: | :--- |
-| **Vampire** | Hybrid Bruiser | 4 Tiles | 1 Tile (Melee) | Recovers health proportional to damage dealt (*Lifesteal*). |
-| **Skeleton Army** | Undead Swarm | 3 Tiles | 1-2 Tiles | Inexpensive fodder unit that can be reanimated on death by necromantic spells. |
+| **Skeleton Fodder** | Undead Swarm | 3 Tiles | 1 Tile (Melee) | Inexpensive fodder unit, entry point into the Skeleton branch. |
+
+Tier 2 (promotes from Skeleton Fodder, except Vampire which recruits directly at Castle):
+
+| Unit Class | Promotes From | Primary Role | Move Range | Attack Range | Special Traits & Capabilities |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| **Skeleton Warrior** | Skeleton Fodder | Undead Melee | 3 Tiles | 1 Tile (Melee) | Reanimated warrior fighting with a rusty blade. |
+| **Skeleton Mage** | Skeleton Fodder | Undead Caster | 2 Tiles | 2 Tiles | Casts cursed soul bolts at range. |
+| **Skeleton Rogue** | Skeleton Fodder | Undead Skirmisher | 4 Tiles | 1 Tile (Melee) | Nimble undead striking from the dead of night. |
+| **Vampire** | *(recruits directly)* | Hybrid Bruiser | 4 Tiles | 1 Tile (Melee) | Recovers health proportional to damage dealt (*Lifesteal*). |
+
+Tier 3 (promotion-only, one option per Tier-2 parent for the Skeleton branch, two for Vampire):
+
+| Unit Class | Promotes From | Primary Role | Move Range | Attack Range | Special Traits & Capabilities |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| **Bone Reaper** | Skeleton Warrior | Heavy Undead Melee | 4 Tiles | 1 Tile (Melee) | Hulking brute wielding a massive cursed blade. |
+| **Lich** | Skeleton Mage | Necromancer Caster | 2 Tiles | 2-3 Tiles | Undead master of death magic, highest Undead-line damage. |
+| **Wraith** | Skeleton Rogue | Stealth Ambusher | 5 Tiles | 1 Tile (Melee) | Hooded undead stalker that vanishes between strikes. |
+| **Vampire Lord** | Vampire | Heavier Bruiser | 4 Tiles | 1 Tile (Melee) | Ascended vampire, gorged on stolen vitality; retains Lifesteal. |
+| **Nightstalker** | Vampire | Mobile/Evasive | 5 Tiles | 1 Tile (Melee) | Feral, highly mobile vampire that hunts down fleeing prey; retains Lifesteal. |
 
 ### Resource Cost Matrix
 | Unit | Tier | Gold Cost | Iron Cost | TC Weight | Notes |
@@ -93,8 +113,16 @@ As of the Milestone 3 Unit Upgrade Tree pass, **all 5 factions field the identic
 | Paladin | 3 | 150 | 2 | 3 | Melee/Holy hybrid (promotion only) |
 | Assassin | 3 | 140 | 1 | 3 | Lethal backstab (promotion only) |
 | Shadowblade | 3 | 140 | 1 | 3 | Stealth/ambush (promotion only) |
-| Vampire | 3 | 130 | 2 | 3 | Lifesteal bruiser (Black Coven only) |
-| Skeleton | 1 | 30 | 0 | 1 | Cheap fodder, reanimatable (Black Coven only) |
+| Skeleton Fodder | 1 | 30 | 0 | 1 | Cheap Undead fodder, entry point (Black Coven only) |
+| Skeleton Warrior | 2 | 40 | 1 | 2 | Undead melee (promotion only, Black Coven only) |
+| Skeleton Mage | 2 | 70 | 0 | 2 | Undead caster (promotion only, Black Coven only) |
+| Skeleton Rogue | 2 | 60 | 1 | 2 | Undead skirmisher (promotion only, Black Coven only) |
+| Vampire | 2 | 110 | 2 | 2 | Lifesteal bruiser, direct recruit (Black Coven only) |
+| Bone Reaper | 3 | 150 | 3 | 3 | Heavy Undead melee (promotion only, Black Coven only) |
+| Lich | 3 | 150 | 1 | 3 | Necromancer caster (promotion only, Black Coven only) |
+| Wraith | 3 | 140 | 1 | 3 | Undead stealth ambusher (promotion only, Black Coven only) |
+| Vampire Lord | 3 | 150 | 2 | 3 | Heavier lifesteal bruiser (promotion only, Black Coven only) |
+| Nightstalker | 3 | 140 | 1 | 3 | Mobile lifesteal ambusher (promotion only, Black Coven only) |
 
 ---
 

@@ -63,5 +63,26 @@ func _ready() -> void:
 	assert(not pawn_data.needs_palette_tint, "Pawn keeps its hand-painted art, no tint")
 	print("✅ [Palette Tint Flags] Knight=true, Pawn=false as expected")
 
-	print("🎉 Unit Upgrade Tree verified: promotion, Field Tax, funds-guard, and tint flags all correct!")
+	# 5. Undead lineage: Skeleton Fodder -> Skeleton Mage -> Lich (own parallel track)
+	economy.register_faction(GameConfig.Faction.BLACK_COVEN, 200, 5)
+	var undead_scene: PackedScene = load("res://scenes/units/TacticalUnit.tscn")
+	var fodder: TacticalUnit = undead_scene.instantiate()
+	fodder.unit_data = load("res://resources/units/skeleton_base_black.tres")
+	fodder.faction_id = GameConfig.Faction.BLACK_COVEN
+	add_child(fodder)
+	fodder._initialize_from_data()
+
+	var mage_data: UnitData = load("res://resources/units/skeleton_mage_black.tres")
+	ok = economy.process_upgrade(GameConfig.Faction.BLACK_COVEN, fodder, mage_data, true)
+	assert(ok, "Skeleton Fodder -> Skeleton Mage upgrade must succeed")
+	assert(fodder.unit_data == mage_data, "Unit swapped to Skeleton Mage data")
+
+	var lich_data: UnitData = load("res://resources/units/lich_black.tres")
+	ok = economy.process_upgrade(GameConfig.Faction.BLACK_COVEN, fodder, lich_data, true)
+	assert(ok, "Skeleton Mage -> Lich upgrade must succeed")
+	assert(fodder.unit_data == lich_data, "Unit swapped to Lich data")
+	assert(lich_data.unit_class == "Undead", "Lich keeps unit_class Undead for the Holy-vs-Undead bonus")
+	print("✅ [Undead Track] Skeleton Fodder -> Skeleton Mage -> %s promotion chain works identically" % lich_data.unit_name)
+
+	print("🎉 Unit Upgrade Tree verified: promotion, Field Tax, funds-guard, tint flags, and the Undead track all correct!")
 	get_tree().quit(0)
