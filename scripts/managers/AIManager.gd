@@ -211,6 +211,5 @@ func _manhattan_distance(a: Vector2i, b: Vector2i) -> int:
 
 ## End AI turn and return control to the player
 func _end_ai_turn() -> void:
-	TurnManager.advance_phase()
-	if TurnManager.current_phase != GameConfig.Phase.UPKEEP:
-		TurnManager._end_current_turn()
+	TurnManager.end_turn()
+

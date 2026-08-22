@@ -90,6 +90,14 @@ func advance_phase() -> void:
 			_end_current_turn()
 
 
+## End the current faction's turn immediately and advance to the next faction.
+func end_turn() -> void:
+	if current_phase != GameConfig.Phase.END_TURN:
+		_enter_phase(GameConfig.Phase.END_TURN)
+	_end_current_turn()
+
+
+
 ## Execute logic for entering a specific phase.
 func _enter_phase(phase: GameConfig.Phase) -> void:
 	current_phase = phase

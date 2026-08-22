@@ -13,6 +13,7 @@ var selected_building: Building = null
 var reachable_cells: Array[Vector2i] = []
 var attackable_cells: Array[Vector2i] = []
 
+
 func _ready() -> void:
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
 	EventBus.combat_resolved.connect(_on_combat_resolved)
@@ -20,7 +21,7 @@ func _ready() -> void:
 	EventBus.building_captured.connect(_on_building_captured)
 	EventBus.dialogue_generated.connect(_on_dialogue_generated)
 	EventBus.story_event_narrated.connect(_on_story_event_narrated)
-	
+
 	if main_hud.has_signal("end_turn_requested"):
 		main_hud.end_turn_requested.connect(end_turn)
 	if main_hud.has_signal("recruit_unit_requested"):
@@ -35,20 +36,28 @@ func _ready() -> void:
 		ai_manager.setup(grid_manager, economy_manager)
 
 	# 3. Setup match dengan EconomyManager terinjeksi
-	TurnManager.setup_match([GameConfig.Faction.BLUE_KINGDOM, GameConfig.Faction.RED_LEGION], economy_manager)
-	
+	TurnManager.setup_match(
+		[GameConfig.Faction.BLUE_KINGDOM, GameConfig.Faction.RED_LEGION],
+		economy_manager,
+	)
+
 	# Init HUD
 	main_hud.initialize(economy_manager)
-	
+
 	TurnManager.start_turn()
 	queue_redraw()
+
 
 func _update_hud_text(text: String) -> void:
 	if main_hud and main_hud.has_method("_update_context_text"):
 		main_hud._update_context_text(text)
 
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
+	if (
+		event.is_action_pressed("ui_cancel")
+		or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE)
+	):
 		get_tree().quit()
 		return
 
@@ -68,11 +77,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		var clicked_cell = grid_manager.world_to_grid(mouse_pos)
 		_handle_cell_click(clicked_cell)
 
+
 func end_turn() -> void:
 	_deselect_all()
-	TurnManager.advance_phase()
-	if TurnManager.current_phase != GameConfig.Phase.UPKEEP:
-		TurnManager._end_current_turn()
+	TurnManager.end_turn()
+
 
 func _on_turn_started(faction_id: int) -> void:
 	if faction_id == GameConfig.Faction.RED_LEGION:
@@ -80,6 +89,7 @@ func _on_turn_started(faction_id: int) -> void:
 	else:
 		# Player turn logic setup handled via EventBus to HUD natively
 		pass
+
 
 func _handle_cell_click(cell: Vector2i) -> void:
 	if not grid_manager.is_within_bounds(cell):
@@ -115,6 +125,7 @@ func _handle_cell_click(cell: Vector2i) -> void:
 
 	_deselect_all()
 
+
 func _select_unit(unit: TacticalUnit) -> void:
 	_deselect_all()
 	selected_unit = unit
@@ -123,10 +134,11 @@ func _select_unit(unit: TacticalUnit) -> void:
 		attackable_cells = grid_manager.get_attackable_cells(
 			unit.grid_position,
 			unit.unit_data.attack_range_min,
-			unit.unit_data.attack_range_max
+			unit.unit_data.attack_range_max,
 		)
 	EventBus.unit_selected.emit(unit)
 	queue_redraw()
+
 
 func _select_building(bld: Building) -> void:
 	_deselect_all()
@@ -134,6 +146,7 @@ func _select_building(bld: Building) -> void:
 	if main_hud.has_method("show_building_info"):
 		main_hud.show_building_info(bld)
 	queue_redraw()
+
 
 func _try_recruit_at_selected_castle() -> void:
 	if not selected_building or selected_building.building_type != Building.BuildingType.CASTLE:
@@ -148,9 +161,10 @@ func _try_recruit_at_selected_castle() -> void:
 	if main_hud.has_method("show_recruit_popup"):
 		main_hud.show_recruit_popup(selected_building)
 
+
 func _do_recruit(building: Building, unit_data: Resource) -> void:
 	var active_units = TurnManager.get_faction_units(building.faction_id)
-	
+
 	var check = building.can_recruit(unit_data, economy_manager, active_units)
 	if not check["can_recruit"]:
 		_update_hud_text("❌ Recruitment failed: %s" % check["reason"])
@@ -172,6 +186,7 @@ func _do_recruit(building: Building, unit_data: Resource) -> void:
 	_update_hud_text("✨ Recruited %s at %s!" % [unit_data.unit_name, spawn_cell])
 	queue_redraw()
 
+
 func _deselect_all() -> void:
 	selected_unit = null
 	selected_building = null
@@ -180,19 +195,22 @@ func _deselect_all() -> void:
 	EventBus.unit_deselected.emit()
 	queue_redraw()
 
+
 func _on_unit_move_completed(unit: Node, _from: Vector2i, _to: Vector2i) -> void:
 	if unit == selected_unit:
 		_select_unit(selected_unit)
+
 
 func _on_building_captured(building: Node, faction_id: int) -> void:
 	var f_name = "BLUE KINGDOM" if faction_id == GameConfig.Faction.BLUE_KINGDOM else "RED LEGION"
 	_update_hud_text("🚩 %s captured by %s!" % [building.name, f_name])
 
+
 func _on_combat_resolved(result: Dictionary) -> void:
 	var att: TacticalUnit = result["attacker"]
 	var def: TacticalUnit = result["defender"]
 	var pri = result["primary_attack"]
-	var ctr = result.get("counter_attack", {})
+	var ctr = result.get("counter_attack", { })
 
 	var att_name = att.unit_data.unit_name if is_instance_valid(att.unit_data) else att.name
 	var def_name = def.unit_data.unit_name if is_instance_valid(def.unit_data) else def.name
@@ -207,11 +225,14 @@ func _on_combat_resolved(result: Dictionary) -> void:
 	_update_hud_text(log_str)
 	queue_redraw()
 
+
 func _on_dialogue_generated(speaker_name: String, text: String, _emotion: String) -> void:
 	_update_hud_text("💬 [%s]: %s" % [speaker_name, text])
 
+
 func _on_story_event_narrated(title: String, body: String) -> void:
 	_update_hud_text("📜 [%s]: %s" % [title, body])
+
 
 func _draw() -> void:
 	if not grid_manager:

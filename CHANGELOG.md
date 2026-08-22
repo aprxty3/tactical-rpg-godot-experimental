@@ -44,6 +44,11 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Recruitment Prefab Resolution**: Fixed castle recruitment in `Building.gd` so recruited Archers, Warriors, Rogues, Mages, etc., properly render their distinct spritesheets instead of defaulting to the generic Pawn sprite.
 - **Combat Symmetry & Resource Expansion**: Created `pawn_red.tres` and `warrior_blue.tres`, populated both Blue and Red castles with distinct recruitable rosters, and resolved the apparent "Pawn vs Pawn" damage imbalance (which occurred because enemy Red Warriors were previously displaying Pawn sprites while dealing Melee Advantage damage).
 
+### 7. 🔄 TurnManager API Clean-up & Private Access Fix
+- **Public `end_turn()` API**: Added a dedicated public `end_turn()` method to `TurnManager.gd` that cleanly handles transitioning to `END_TURN` and advancing to the next faction.
+- **Private Access Warning Resolution**: Replaced direct external calls to private `TurnManager._end_current_turn()` in `AIManager.gd` and `TestGridController.gd` with `TurnManager.end_turn()`, resolving the `[private-access]` GDScript warning.
+
+
 ---
 
 ## 📅 2026-08-22
