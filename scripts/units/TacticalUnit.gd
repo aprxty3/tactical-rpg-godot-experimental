@@ -7,6 +7,8 @@ class_name TacticalUnit
 @export var unit_data: UnitData
 @export var faction_id: int = 0
 
+const FACTION_TINT_SHADER: Shader = preload("res://assets/shaders/faction_tint.gdshader")
+
 # === Runtime State (not saved in Resource) ===
 var current_health: int = 0
 var current_movement: int = 0
@@ -306,6 +308,7 @@ func _handle_death(damage_type: String) -> void:
 func _update_visuals() -> void:
 	if not unit_data or not sprite:
 		return
+	_update_faction_tint()
 	if is_instance_valid(unit_data.spritesheet):
 		sprite.texture = unit_data.spritesheet
 		sprite.hframes = unit_data.hframes
@@ -313,3 +316,21 @@ func _update_visuals() -> void:
 		_setup_default_animations()
 	elif unit_data.sprite_frames and sprite:
 		pass
+
+
+## Apply (or clear) the runtime faction palette-tint shader. Only units
+## sharing a generic, non-recolored spritesheet opt in via
+## UnitData.needs_palette_tint — hand-painted per-faction art is left alone.
+func _update_faction_tint() -> void:
+	if not unit_data.needs_palette_tint:
+		sprite.material = null
+		return
+
+	var mat := sprite.material as ShaderMaterial
+	if not mat:
+		mat = ShaderMaterial.new()
+		mat.shader = FACTION_TINT_SHADER
+		sprite.material = mat
+
+	var tint: Color = GameConfig.FACTION_TINT_COLORS.get(faction_id, Color.WHITE)
+	mat.set_shader_parameter("tint_color", tint)

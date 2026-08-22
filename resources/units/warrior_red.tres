@@ -1,24 +1,25 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" format=3 uid="uid://dhkf4ocir0a84"]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/warrior/Red/Warrior_Red.png" id="2_tex"]
+[ext_resource type="Script" uid="uid://cln0qurq2ymjx" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" uid="uid://b1exnecdkjk3e" path="res://assets/characters/warrior/Red/Warrior_Red.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/knight_red.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/lancer_red.tres" id="4_up"]
 
 [resource]
 script = ExtResource("1_scr")
 unit_name = "Red Warrior"
 unit_class = "Melee"
-tier = 1
+tier = 2
 description = "Aggressive assault warrior slicing through defenses."
 max_health = 75
 attack_power = 30
 defense_power = 8
-movement_points = 3
-attack_range_min = 1
-attack_range_max = 1
 recruit_cost_gold = 80
 recruit_cost_iron = 2
 capacity_weight = 2
+upgrade_paths = {
+"Knight": ExtResource("3_up"),
+"Lancer": ExtResource("4_up")
+}
 spritesheet = ExtResource("2_tex")
-hframes = 6
 vframes = 8
-upgrade_paths = {}

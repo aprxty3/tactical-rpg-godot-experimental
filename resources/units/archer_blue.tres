@@ -1,7 +1,9 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" format=3 uid="uid://cgn3s4snposge"]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/archer/Blue/Archer_Blue.png" id="2_tex"]
+[ext_resource type="Script" uid="uid://cln0qurq2ymjx" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" uid="uid://beq3bqr6bxauo" path="res://assets/characters/archer/Blue/Archer_Blue.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/sniper_blue.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/crossbowman_blue.tres" id="4_up"]
 
 [resource]
 script = ExtResource("1_scr")
@@ -12,13 +14,14 @@ description = "Ranged marksman capable of attacking from distance."
 max_health = 45
 attack_power = 22
 defense_power = 3
-movement_points = 3
 attack_range_min = 2
 attack_range_max = 3
 recruit_cost_gold = 70
-recruit_cost_iron = 1
 capacity_weight = 2
+upgrade_paths = {
+"Crossbowman": ExtResource("4_up"),
+"Sniper": ExtResource("3_up")
+}
 spritesheet = ExtResource("2_tex")
 hframes = 8
 vframes = 7
-upgrade_paths = {}

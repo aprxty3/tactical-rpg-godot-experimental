@@ -21,4 +21,5 @@ capacity_weight = 3
 spritesheet = ExtResource("2_tex")
 hframes = 4
 vframes = 1
+needs_palette_tint = true
 upgrade_paths = {}

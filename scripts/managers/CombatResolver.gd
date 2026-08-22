@@ -153,8 +153,8 @@ func _get_advantage_multiplier(attacker_class: String, defender_class: String, a
 	var a = attacker_class.to_upper()
 	var d = defender_class.to_upper()
 
-	# 1. Matchup Khusus: Priest / Monk / Holy vs Undead (2.5x)
-	if (a == "SUPPORT" or "priest" in att_name or "monk" in att_name) and (d == "UNDEAD" or "skeleton" in def_name or "vampire" in def_name or "skull" in def_name):
+	# 1. Matchup Khusus: Priest / Monk / Paladin / Holy vs Undead (2.5x)
+	if (a == "SUPPORT" or "priest" in att_name or "monk" in att_name or "paladin" in att_name) and (d == "UNDEAD" or "skeleton" in def_name or "vampire" in def_name or "skull" in def_name):
 		return {"multiplier": GameConfig.HOLY_VS_UNDEAD_MULTIPLIER, "type": "HOLY_EFFECTIVE"}
 
 	# 2. Melee / Cavalry > Ranged & Support (1.5x)

@@ -1,7 +1,9 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
 [ext_resource type="Texture2D" path="res://assets/characters/rogue/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/assassin_purple.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/shadowblade_purple.tres" id="4_up"]
 
 [resource]
 script = ExtResource("1_scr")
@@ -21,4 +23,8 @@ capacity_weight = 2
 spritesheet = ExtResource("2_tex")
 hframes = 4
 vframes = 1
-upgrade_paths = {}
+needs_palette_tint = true
+upgrade_paths = {
+"Assassin": ExtResource("3_up"),
+"Shadowblade": ExtResource("4_up")
+}

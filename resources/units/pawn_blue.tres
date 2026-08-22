@@ -1,24 +1,25 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" format=3 uid="uid://ctkc3to4m8rix"]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/pawn/Blue/Pawn_Blue.png" id="2_tex"]
+[ext_resource type="Script" uid="uid://cln0qurq2ymjx" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" uid="uid://chvqtnp5s85c4" path="res://assets/characters/pawn/Blue/Pawn_Blue.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/warrior_blue.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/archer_blue.tres" id="4_up"]
+[ext_resource type="Resource" path="res://resources/units/wizzard_blue.tres" id="5_up"]
+[ext_resource type="Resource" path="res://resources/units/monk_blue.tres" id="6_up"]
+[ext_resource type="Resource" path="res://resources/units/rogue_blue.tres" id="7_up"]
 
 [resource]
 script = ExtResource("1_scr")
 unit_name = "Blue Pawn"
-unit_class = "Worker"
-tier = 1
 description = "Basic worker unit. High capture speed, cheap recruitment."
 max_health = 45
 attack_power = 18
 defense_power = 4
-movement_points = 3
-attack_range_min = 1
-attack_range_max = 1
-recruit_cost_gold = 50
-recruit_cost_iron = 1
-capacity_weight = 1
+upgrade_paths = {
+"Archer": ExtResource("4_up"),
+"Monk": ExtResource("6_up"),
+"Rogue": ExtResource("7_up"),
+"Warrior": ExtResource("3_up"),
+"Wizzard": ExtResource("5_up")
+}
 spritesheet = ExtResource("2_tex")
-hframes = 6
-vframes = 6
-upgrade_paths = {}

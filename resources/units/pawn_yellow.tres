@@ -1,7 +1,12 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
 [ext_resource type="Texture2D" path="res://assets/characters/pawn/Yellow/Pawn_Yellow.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/warrior_yellow.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/archer_yellow.tres" id="4_up"]
+[ext_resource type="Resource" path="res://resources/units/wizzard_yellow.tres" id="5_up"]
+[ext_resource type="Resource" path="res://resources/units/monk_yellow.tres" id="6_up"]
+[ext_resource type="Resource" path="res://resources/units/rogue_yellow.tres" id="7_up"]
 
 [resource]
 script = ExtResource("1_scr")
@@ -21,4 +26,10 @@ capacity_weight = 1
 spritesheet = ExtResource("2_tex")
 hframes = 6
 vframes = 6
-upgrade_paths = {}
+upgrade_paths = {
+"Warrior": ExtResource("3_up"),
+"Archer": ExtResource("4_up"),
+"Wizzard": ExtResource("5_up"),
+"Monk": ExtResource("6_up"),
+"Rogue": ExtResource("7_up")
+}

@@ -43,3 +43,7 @@ class_name UnitData
 @export var vframes: int = 6
 @export var sprite_frames: SpriteFrames
 @export var portrait: Texture2D
+## True for units sharing a generic, non-faction-colored spritesheet
+## (Knight, Rogue, Wizzard, and their Tier-3 offshoots) — TacticalUnit
+## applies a runtime faction palette-tint shader when this is set.
+@export var needs_palette_tint: bool = false

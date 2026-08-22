@@ -33,6 +33,8 @@ func _ready() -> void:
 		main_hud.end_turn_requested.connect(end_turn)
 	if main_hud.has_signal("recruit_unit_requested"):
 		main_hud.recruit_unit_requested.connect(_do_recruit)
+	if main_hud.has_signal("upgrade_unit_requested"):
+		main_hud.upgrade_unit_requested.connect(_do_upgrade)
 
 	# 1. Daftarkan Faksi ke EconomyManager
 	economy_manager.register_faction(GameConfig.Faction.BLUE_KINGDOM, 150, 4)
@@ -128,6 +130,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		_try_recruit_at_selected_castle()
 		return
 
+	if event is InputEventKey and event.pressed and event.keycode == KEY_U:
+		_try_upgrade_at_selected_unit()
+		return
+
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if main_hud and main_hud.has_method("is_end_turn_confirmation_active") and main_hud.is_end_turn_confirmation_active():
 			return
@@ -218,6 +224,46 @@ func _try_recruit_at_selected_castle() -> void:
 
 	if main_hud.has_method("show_recruit_popup"):
 		main_hud.show_recruit_popup(selected_building)
+
+
+func _try_upgrade_at_selected_unit() -> void:
+	if not selected_unit:
+		_update_hud_text("⚠️ Select a unit to upgrade!")
+		return
+	if selected_unit.faction_id != TurnManager.get_current_faction():
+		_update_hud_text("⚠️ You can only upgrade your own units!")
+		return
+	if not is_instance_valid(selected_unit.unit_data) or selected_unit.unit_data.upgrade_paths.is_empty():
+		_update_hud_text("⚠️ This unit has no available promotions.")
+		return
+
+	var castle_here := grid_manager.get_building_at(selected_unit.grid_position)
+	var is_at_castle := (
+		castle_here != null
+		and castle_here.building_type == Building.BuildingType.CASTLE
+		and castle_here.faction_id == selected_unit.faction_id
+	)
+
+	if main_hud.has_method("show_upgrade_popup"):
+		main_hud.show_upgrade_popup(selected_unit, is_at_castle)
+
+
+func _do_upgrade(unit: TacticalUnit, target_data: Resource) -> void:
+	var castle_here := grid_manager.get_building_at(unit.grid_position)
+	var is_at_castle := (
+		castle_here != null
+		and castle_here.building_type == Building.BuildingType.CASTLE
+		and castle_here.faction_id == unit.faction_id
+	)
+	var old_name: String = unit.unit_data.unit_name if is_instance_valid(unit.unit_data) else "Unit"
+	var success: bool = economy_manager.process_upgrade(unit.faction_id, unit, target_data, is_at_castle)
+	if success:
+		_update_hud_text("⬆️ %s promoted to %s!" % [old_name, target_data.unit_name])
+		if selected_unit == unit:
+			_select_unit(unit)
+	else:
+		_update_hud_text("❌ Not enough Gold/Iron to promote to %s." % target_data.unit_name)
+	queue_redraw()
 
 
 func _do_recruit(building: Building, unit_data: Resource) -> void:

@@ -99,6 +99,19 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Noted, not fixed**: `CombatResolver.gd:73`'s post-attack idle timer can log a benign `Lambda capture ... was freed` error if a unit is freed within the 0.6s window after combat; low priority, does not affect gameplay correctness.
 
 
+### 13. 🌳 Milestone 3 Foundation — Unit Upgrade Tree, Palette-Tint Shader & Roster Symmetry
+- **Tier Data Fix**: `Warrior` was incorrectly tagged `tier = 1` (same as Pawn) despite being a clear power step up; corrected to `tier = 2` across all 5 factions.
+- **Roster Symmetry**: Blue, Red, Purple, Yellow, and Black now all field the full Tier-2 roster (Warrior/Archer/Wizzard/Monk/Rogue) — previously only Purple had Rogue and only Yellow had Wizzard+Priest. Generated via a one-off script (`scripts_dev/generate_units.py`) per this project's own DRY principle rather than hand-authoring ~48 near-duplicate `.tres` files.
+- **8 New Tier-3 Promotions** (×5 factions = 40 new units): Sniper & Crossbowman (from Archer), Archmage & Elementalist (from Wizzard), High Priest & Paladin (from Monk), Assassin & Shadowblade (from Rogue). Existing Knight/Lancer (from Warrior) folded into the same tree as-is.
+- **`Priest` → `High Priest`**: The single existing `priest_yellow.tres` was retiered (2→3) and restatted into the Yellow High Priest, since `Monk` (already present on all 5 factions) became the tree's canonical Tier-2 Holy unit.
+- **Runtime Faction Palette-Tint Shader** (`assets/shaders/faction_tint.gdshader` + `UnitData.needs_palette_tint` + `GameConfig.FACTION_TINT_COLORS`): Knight, Rogue, Wizzard, and every new Tier-3 unit that reuses a shared generic spritesheet (no hand-painted per-faction art exists) now render in their faction's color at runtime via `TacticalUnit._update_faction_tint()`, instead of every faction sharing one identical uncolored sprite.
+- **Real Promotion Mechanic Wired Up**: `EconomyManager.get_upgrade_cost()`/`process_upgrade()` (Field Tax included) and `TacticalUnit.upgrade_to()` already existed but nothing called them. Added `[U]` key + `MainHUD.show_upgrade_popup()` (mirrors the existing `[R]` Recruit popup) so players can actually promote a selected unit through its `upgrade_paths`.
+- **Recruitment Model Change**: Tier-3 units removed from Castle `recruitable_units` (including Yellow's former direct-recruit `priest_yellow.tres`) — they are now reachable only via promotion, which is the actual point of an "Upgrade Tree."
+- **`CombatResolver.gd`**: Added `"paladin"` to the Holy-vs-Undead bonus name check so the new Holy Tier-3 melee unit gets its intended $2.5\times$ bonus.
+- **New Test**: `scenes/test_upgrade_flow.tscn` / `TestUpgradeFlow.gd` verifies promotion success, HP-ratio scaling, Field Tax pricing (2x off-Castle), the insufficient-funds guard, and palette-tint flags end-to-end.
+- **Deferred**: Black Coven's separate Undead lineage (Skeleton/Vampire → Lich/Vampire Lord/Nightstalker) has its own tier inconsistencies and was intentionally left out of this pass — see `Roadmap.md` Milestone 3.
+
+
 ---
 
 ## 📅 2026-08-22

@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" format=3 uid="uid://bukssff8mksbh"]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/knight/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Script" uid="uid://cln0qurq2ymjx" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" uid="uid://qensr1veowus" path="res://assets/characters/knight/Idle/Idle-Sheet.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
@@ -13,12 +13,10 @@ max_health = 95
 attack_power = 36
 defense_power = 12
 movement_points = 4
-attack_range_min = 1
-attack_range_max = 1
 recruit_cost_gold = 150
 recruit_cost_iron = 4
 capacity_weight = 3
 spritesheet = ExtResource("2_tex")
 hframes = 4
 vframes = 1
-upgrade_paths = {}
+needs_palette_tint = true

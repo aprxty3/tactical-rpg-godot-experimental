@@ -5,15 +5,15 @@
 [ext_resource type="Resource" path="res://resources/units/pawn_red.tres" id="3_u_pawn_red"]
 [ext_resource type="Resource" path="res://resources/units/warrior_red.tres" id="4_u_warrior_red"]
 [ext_resource type="Resource" path="res://resources/units/archer_red.tres" id="5_u_archer_red"]
-[ext_resource type="Resource" path="res://resources/units/lancer_red.tres" id="6_u_lancer_red"]
-[ext_resource type="Resource" path="res://resources/units/monk_red.tres" id="7_u_monk_red"]
-[ext_resource type="Resource" path="res://resources/units/knight_red.tres" id="8_u_knight_red"]
+[ext_resource type="Resource" path="res://resources/units/monk_red.tres" id="6_u_monk_red"]
+[ext_resource type="Resource" path="res://resources/units/wizzard_red.tres" id="7_u_wizzard_red"]
+[ext_resource type="Resource" path="res://resources/units/rogue_red.tres" id="8_u_rogue_red"]
 
 [node name="Castle_Red" type="Node2D"]
 script = ExtResource("1_bld")
 building_type = 0
 faction_id = 1
-recruitable_units = [ExtResource("3_u_pawn_red"), ExtResource("4_u_warrior_red"), ExtResource("5_u_archer_red"), ExtResource("6_u_lancer_red"), ExtResource("7_u_monk_red"), ExtResource("8_u_knight_red")]
+recruitable_units = [ExtResource("3_u_pawn_red"), ExtResource("4_u_warrior_red"), ExtResource("5_u_archer_red"), ExtResource("6_u_monk_red"), ExtResource("7_u_wizzard_red"), ExtResource("8_u_rogue_red")]
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_tex")

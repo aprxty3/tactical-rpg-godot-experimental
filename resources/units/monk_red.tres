@@ -1,7 +1,9 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" format=3 uid="uid://v6007lucdocv"]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/factions/red/Monk/Idle.png" id="2_tex"]
+[ext_resource type="Script" uid="uid://cln0qurq2ymjx" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" uid="uid://dxdaicqmg6iv2" path="res://assets/characters/factions/red/Monk/Idle.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/highpriest_red.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/paladin_red.tres" id="4_up"]
 
 [resource]
 script = ExtResource("1_scr")
@@ -12,13 +14,13 @@ description = "Zealot priest maintaining frontline battle fervor."
 max_health = 55
 attack_power = 16
 defense_power = 4
-movement_points = 3
-attack_range_min = 1
 attack_range_max = 2
 recruit_cost_gold = 100
 recruit_cost_iron = 0
 capacity_weight = 2
+upgrade_paths = {
+"High Priest": ExtResource("3_up"),
+"Paladin": ExtResource("4_up")
+}
 spritesheet = ExtResource("2_tex")
-hframes = 6
 vframes = 1
-upgrade_paths = {}

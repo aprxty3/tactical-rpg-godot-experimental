@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/knight/Idle/Idle-Sheet.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Black Knight"
+unit_class = "Melee"
+tier = 3
+description = "Black Coven heavy knight clad in cursed plate."
+max_health = 95
+attack_power = 36
+defense_power = 12
+movement_points = 4
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 150
+recruit_cost_iron = 4
+capacity_weight = 3
+spritesheet = ExtResource("2_tex")
+hframes = 4
+vframes = 1
+needs_palette_tint = true
+upgrade_paths = {}

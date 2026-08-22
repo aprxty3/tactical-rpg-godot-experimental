@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/rogue/Idle/Idle-Sheet.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Yellow Shadowblade"
+unit_class = "Infiltrator"
+tier = 3
+description = "Yellow shadowblade striking from ambush."
+max_health = 60
+attack_power = 34
+defense_power = 5
+movement_points = 5
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 140
+recruit_cost_iron = 1
+capacity_weight = 3
+spritesheet = ExtResource("2_tex")
+hframes = 4
+vframes = 1
+needs_palette_tint = true
+upgrade_paths = {}

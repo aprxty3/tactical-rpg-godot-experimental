@@ -1,13 +1,15 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
 [ext_resource type="Texture2D" path="res://assets/characters/warrior/Yellow/Warrior_Yellow.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/knight_yellow.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/lancer_yellow.tres" id="4_up"]
 
 [resource]
 script = ExtResource("1_scr")
 unit_name = "Yellow Warrior"
 unit_class = "Melee"
-tier = 1
+tier = 2
 description = "Golden vanguard defender guarding empire borders."
 max_health = 75
 attack_power = 30
@@ -21,4 +23,7 @@ capacity_weight = 2
 spritesheet = ExtResource("2_tex")
 hframes = 6
 vframes = 8
-upgrade_paths = {}
+upgrade_paths = {
+"Knight": ExtResource("3_up"),
+"Lancer": ExtResource("4_up")
+}

@@ -70,6 +70,10 @@ var recruit_popup: PopupPanel
 var recruit_vbox: VBoxContainer
 signal recruit_unit_requested(building: Node, unit_data: Resource)
 
+var upgrade_popup: PopupPanel
+var upgrade_vbox: VBoxContainer
+signal upgrade_unit_requested(unit: Node, target_data: Resource)
+
 func _setup_recruit_popup() -> void:
 	recruit_popup = PopupPanel.new()
 	recruit_vbox = VBoxContainer.new()
@@ -82,25 +86,60 @@ func _setup_recruit_popup() -> void:
 	recruit_popup.add_child(margin)
 	add_child(recruit_popup)
 
+	upgrade_popup = PopupPanel.new()
+	upgrade_vbox = VBoxContainer.new()
+	var upgrade_margin = MarginContainer.new()
+	upgrade_margin.add_theme_constant_override("margin_left", 10)
+	upgrade_margin.add_theme_constant_override("margin_right", 10)
+	upgrade_margin.add_theme_constant_override("margin_top", 10)
+	upgrade_margin.add_theme_constant_override("margin_bottom", 10)
+	upgrade_margin.add_child(upgrade_vbox)
+	upgrade_popup.add_child(upgrade_margin)
+	add_child(upgrade_popup)
+
 func show_recruit_popup(building: Node) -> void:
 	for child in recruit_vbox.get_children():
 		child.queue_free()
-		
+
 	var title = Label.new()
 	title.text = "Select Unit to Recruit:"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	recruit_vbox.add_child(title)
-	
+
 	for unit_data in building.get("recruitable_units"):
 		var btn = Button.new()
 		btn.text = "%s (💰%d | ⛏️%d)" % [unit_data.unit_name, unit_data.recruit_cost_gold, unit_data.recruit_cost_iron]
-		btn.pressed.connect(func(): 
+		btn.pressed.connect(func():
 			recruit_popup.hide()
 			recruit_unit_requested.emit(building, unit_data)
 		)
 		recruit_vbox.add_child(btn)
-		
+
 	recruit_popup.popup_centered(Vector2(250, 200))
+
+## Shows available promotions for `unit` (from its UnitData.upgrade_paths)
+## alongside the Field Tax surcharge if not currently at a friendly Castle.
+func show_upgrade_popup(unit: Node, is_at_castle: bool) -> void:
+	for child in upgrade_vbox.get_children():
+		child.queue_free()
+
+	var title = Label.new()
+	title.text = "Select Promotion:" if is_at_castle else "Select Promotion (⚠️ Field Tax 2x — not at Castle):"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	upgrade_vbox.add_child(title)
+
+	var paths: Dictionary = unit.unit_data.upgrade_paths if is_instance_valid(unit.unit_data) else {}
+	for label in paths:
+		var target_data = paths[label]
+		var btn = Button.new()
+		btn.text = "%s (💰%d | ⛏️%d)" % [target_data.unit_name, target_data.recruit_cost_gold, target_data.recruit_cost_iron]
+		btn.pressed.connect(func():
+			upgrade_popup.hide()
+			upgrade_unit_requested.emit(unit, target_data)
+		)
+		upgrade_vbox.add_child(btn)
+
+	upgrade_popup.popup_centered(Vector2(250, 200))
 
 func initialize(eco_mgr: Node) -> void:
 	economy_manager = eco_mgr
@@ -165,7 +204,11 @@ func _on_unit_selected(unit: Node) -> void:
 		atk, def,
 		"Yes" if unit.can_act() else "No"
 	]
-	_update_context_text("Click blue tile to move or enemy to attack.")
+	var has_upgrades: bool = is_instance_valid(unit.unit_data) and not unit.unit_data.upgrade_paths.is_empty()
+	if has_upgrades:
+		_update_context_text("Click blue tile to move or enemy to attack.\n[U] Upgrade unit.")
+	else:
+		_update_context_text("Click blue tile to move or enemy to attack.")
 
 func show_building_info(bld: Node) -> void:
 	inspector_panel.show()

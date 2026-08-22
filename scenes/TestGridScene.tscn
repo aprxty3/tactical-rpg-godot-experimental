@@ -11,8 +11,8 @@
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle.tscn" id="9_castle_scene"]
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Red.tscn" id="10_castle_red_scene"]
 [ext_resource type="PackedScene" uid="uid://c3qg0m0k0x8m1" path="res://scenes/buildings/GoldMine.tscn" id="11_mine_scene"]
-[ext_resource type="Resource" path="res://resources/units/pawn_blue.tres" id="12_pawn_data"]
-[ext_resource type="Resource" path="res://resources/units/warrior_red.tres" id="13_warrior_data"]
+[ext_resource type="Resource" uid="uid://ctkc3to4m8rix" path="res://resources/units/pawn_blue.tres" id="12_pawn_data"]
+[ext_resource type="Resource" uid="uid://dhkf4ocir0a84" path="res://resources/units/warrior_red.tres" id="13_warrior_data"]
 [ext_resource type="PackedScene" uid="uid://b7vkm8r7j2lax" path="res://scenes/ui/MainHUD.tscn" id="14_main_hud"]
 
 [node name="TestGridScene" type="Node2D" unique_id=384183050]

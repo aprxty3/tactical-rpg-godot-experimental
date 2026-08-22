@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/wizzard/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Resource" path="res://resources/units/archmage_purple.tres" id="3_up"]
+[ext_resource type="Resource" path="res://resources/units/elementalist_purple.tres" id="4_up"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Purple Wizzard"
+unit_class = "Mage"
+tier = 2
+description = "Purple battle mage hurling arcane bolts at range."
+max_health = 45
+attack_power = 32
+defense_power = 3
+movement_points = 2
+attack_range_min = 2
+attack_range_max = 2
+recruit_cost_gold = 120
+recruit_cost_iron = 0
+capacity_weight = 2
+spritesheet = ExtResource("2_tex")
+hframes = 4
+vframes = 1
+needs_palette_tint = true
+upgrade_paths = {
+"Archmage": ExtResource("3_up"),
+"Elementalist": ExtResource("4_up")
+}

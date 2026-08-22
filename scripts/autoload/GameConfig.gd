@@ -66,6 +66,15 @@ const HOUSE_GOLD_INCOME: int = 10
 const FIELD_TAX_MULTIPLIER: int = 2       # 200% cost for field upgrades
 const STARVATION_DAMAGE: int = 15         # True damage per overcap turn
 
+# === Faction Palette-Tint Colors (for generic, non-recolored spritesheets) ===
+const FACTION_TINT_COLORS: Dictionary = {
+	Faction.BLUE_KINGDOM: Color(0.25, 0.55, 1.0),
+	Faction.RED_LEGION: Color(0.95, 0.25, 0.2),
+	Faction.PURPLE_SYNDICATE: Color(0.6, 0.25, 0.85),
+	Faction.YELLOW_EMPIRE: Color(0.95, 0.8, 0.15),
+	Faction.BLACK_COVEN: Color(0.35, 0.32, 0.4),
+}
+
 # === Map Event Probabilities (Pandora's Box) ===
 const PANDORA_WAR_SPOILS_CHANCE: float = 0.50
 const PANDORA_MERCENARY_CHANCE: float = 0.20

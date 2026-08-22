@@ -5,20 +5,21 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Yellow Priest"
+unit_name = "Yellow High Priest"
 unit_class = "Support"
-tier = 2
-description = "Holy healer that cleanses ailments and purges undead."
-max_health = 45
-attack_power = 16
-defense_power = 3
+tier = 3
+description = "Yellow high priest channeling mass healing light."
+max_health = 70
+attack_power = 20
+defense_power = 6
 movement_points = 3
 attack_range_min = 1
 attack_range_max = 2
-recruit_cost_gold = 100
+recruit_cost_gold = 150
 recruit_cost_iron = 0
-capacity_weight = 2
+capacity_weight = 3
 spritesheet = ExtResource("2_tex")
 hframes = 1
 vframes = 1
+needs_palette_tint = true
 upgrade_paths = {}

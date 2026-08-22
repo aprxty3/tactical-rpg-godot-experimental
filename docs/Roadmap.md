@@ -52,14 +52,14 @@ Status: 🟢 Completed
 
 
 ## Milestone 3: Economy & Advanced Progression (Unit Upgrade Tree)
-Status: ⬜ Planned
+Status: 🟡 In Progress — core tree, promotion mechanic, and roster symmetry shipped; economy tasks below remain
 
 ### 1. Unit Upgrade Tree Architecture
-Units evolve from baseline recruits through branching specializations inspired by *Heroes of Might and Magic: Olden Era* and *Symphony of War*:
+All 5 factions (Blue Kingdom, Red Legion, Purple Syndicate, Yellow Empire, Black Coven) now share the same symmetric human tree. Tier-1 (Pawn) and Tier-2 units are directly recruitable at a Castle; **Tier-3 units are promotion-only** — reached exclusively via the `[U]` Upgrade action on an existing Tier-2 unit, never recruited directly:
 
 ```text
                                 ┌──► [ Melee ] ───► Warrior ────┬──► Knight (Heavy Armor)
-                                │                                └──► Cavalier (Mounted Charge)
+                                │                                └──► Lancer (Mounted Charge)
                                 │
                                 ├──► [ Ranged ] ──► Archer ─────┬──► Sniper (Extreme Range)
                                 │                                └──► Crossbowman (Armor Pierce)
@@ -67,25 +67,28 @@ Units evolve from baseline recruits through branching specializations inspired b
 [ Tier 1: Pawn ] ───────────────┼──► [ Magic ] ───► Wizzard ────┬──► Archmage (Huge AoE)
 (Worker / Light Infantry)       │                                └──► Elementalist (Status/Burn)
                                 │
-                                ├──► [ Holy ] ────► Priest ─────┬──► High Priest (Mass Heal)
+                                ├──► [ Holy ] ────► Monk ───────┬──► High Priest (Mass Heal)
                                 │                                └──► Paladin (Melee/Holy Hybrid)
                                 │
                                 └──► [ Stealth ] ─► Rogue ──────┬──► Assassin (Lethal Backstab)
                                                                  └──► Shadowblade (Stealth/Ambush)
 
-[ Undead Lineage (Black Coven) ]
+[ Undead Lineage (Black Coven) — separate from the tree above, not yet reconciled ]
 Skeleton (Fodder) ─────────────► Skeleton Warrior ──────────────► Lich (Necromancer)
 Vampire (Bruiser) ─────────────► Vampire Lord ──────────────────► Nightstalker (Flight/Lifesteal)
 ```
 
+Since Knight/Lancer (Melee) and Archer (Ranged) already had full art, and Monk/Wizzard/Rogue already existed on at least one faction, "shipping" this tree meant: fixing `Warrior`'s tier (was incorrectly `1`, same as Pawn), filling in the missing Tier-2 units per faction (Wizzard/Rogue), generating all 8 new Tier-3 branches (×5 factions), and building a runtime faction palette-tint shader (`assets/shaders/faction_tint.gdshader`) so the units without hand-painted per-faction art (Knight/Rogue/Wizzard and their Tier-3 offshoots) still render in the correct faction color instead of one shared generic sprite.
+
 ### 2. Progression & Economy Tasks
-- [ ] **UnitData Progression Blueprint**: Implement `upgrade_paths: Dictionary[String, Resource]` on `UnitData.gd` supporting multiple branching choices per unit.
-- [ ] **Dynamic Upgrade Action & UI**: Unit action menu displays available promotions when requirements are met.
-- [ ] **Field Tax Implementation**: Upgrades executed at a friendly Castle cost standard rate ($1\times$), while front-line field upgrades incur a $200\%$ ($2\times$) Field Tax surcharge.
-- [ ] **Troop Capacity System & Logistics Collapse**: Over-capacity armies trigger **Starvation** penalties during the Upkeep Phase.
+- [x] **UnitData Progression Blueprint**: `upgrade_paths: Dictionary[String, Resource]` on `UnitData.gd`, now populated on every Tier-1/Tier-2 unit across all 5 factions.
+- [x] **Dynamic Upgrade Action & UI**: `[U]` key opens an Upgrade popup (`MainHUD.show_upgrade_popup`) listing the selected unit's `upgrade_paths`; mirrors the existing `[R]` Recruit popup.
+- [x] **Field Tax Implementation**: `EconomyManager.get_upgrade_cost()` / `process_upgrade()` already existed and are now actually wired up; off-Castle promotions correctly cost $200\%$ of the tier-difference price.
+- [ ] **Troop Capacity System & Logistics Collapse**: Starvation logic exists in `EconomyManager`; still needs Village-capture integration.
 - [ ] **Village Economy Nodes**: Capturing villages grants $+2$ TC cap and $+10$ Gold passive revenue.
-- [ ] **Dual Upgrade Specializations**: Units choose between distinct passive traits at Tier 3 (e.g., Knight defense vs. Cavalier mobility).
+- [x] **Dual Upgrade Specializations**: Every Tier-2 unit offers exactly two Tier-3 choices (e.g. Warrior → Knight *or* Lancer).
 - [ ] **Recruitment Pool Refresh**: Replenishment timers for elite tier units at Castles every $N$ turns.
+- [ ] **Undead Lineage Reconciliation**: Black Coven's Skeleton/Vampire sub-tree (Lich, Vampire Lord, Nightstalker) still needs the same tier-fix + promotion-only treatment as the human tree above — deferred as a follow-up.
 
 
 ## Milestone 4: Advanced Tactical Systems & Morale
