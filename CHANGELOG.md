@@ -1,18 +1,37 @@
 ---
 type: Changelog
-title: "War Perang Tactics — Daily Changelog (2026-08-22)"
-description: "Comprehensive record of architectural restructuring, game systems implementation, and testing on 2026-08-22."
-tags: [changelog, 2026-08-22, architecture, godot4, gameplay]
-generated: { by: human:aprxty3, at: 2026-08-22T23:55:00Z }
+title: "War Perang Tactics — Daily Changelog"
+description: "Comprehensive record of architectural restructuring, game systems implementation, and testing."
+tags: [changelog, architecture, godot4, gameplay]
+generated: { by: human:aprxty3, at: 2026-08-23T00:00:00Z }
 ---
 
-# Changelog — 2026-08-22
+# Changelog
 
-All major changes to the **War Perang Tactics** project executed on **August 22, 2026**, are recorded in detail below.
+All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
-## 📅 Summary of Today's Changes (2026-08-22)
+## 📅 Summary of Today's Changes (2026-08-23)
+
+### 1. 🌐 Language & Localization Standardization
+- **English Translation**: Completely translated all documentation (`README.md`, `GUIDE.md`, `MEMORY.md`, `AGENTS.md`, `GEMINI.md`, `CHANGELOG.md`) and in-line code comments across all GDScript files from Indonesian to English.
+- **AI Coding Philosophy**: Added strict enforcement of ROBUST, DRY, KISS, and YAGNI principles to all AI reference documents.
+- **Roadmap Update**: Added the Unit Upgrade Tree and its branching logic to Milestone 3 in `Roadmap.md`.
+
+### 2. 🧠 In-Game AI Narrative Engine (Gemini 3.7 Flash)
+- **`GeminiClient.gd` Autoload**: Implemented a dynamic REST API client that interacts with Google's Gemini 3.7 Flash to generate dynamic, contextual dialogue for in-game combat and base captures.
+- **Event-Driven Narrative**: Hooked into `EventBus.combat_resolved` and `building_captured` to broadcast `dialogue_generated` signals to the HUD.
+- **Graceful Offline Fallback**: Safely defaults to offline hardcoded text if `GEMINI_API_KEY` is missing or rate-limited.
+
+### 3. 🎭 Core Unit Archetypes & Animation System (Milestone 2 Completed)
+- **Dynamic Animation Injector**: Upgraded `TacticalUnit.gd` to programmatically generate TinySwords-compliant animations (`idle`, `run`, `attack`) based on sprite dimensions, completely removing the need for manual track clicking and preventing out-of-bounds crashes.
+- **Combat & Movement Animations**: `GridManager` and `CombatResolver` now natively call `play_animation("run")` and `play_animation("attack")` while handling sprite direction facing via `face_direction()`.
+- **New Unit Data & Prefabs**: Generated accurate `UnitData.tres` and `TacticalUnit.tscn` prefabs for **Archer**, **Rogue**, **Wizzard**, **Priest**, **Skeleton**, and **Vampire**.
+
+---
+
+## 📅 2026-08-22
 
 ### 1. 🏗️ Architecture & System Foundation (Decoupled Data-Driven)
 - **4-Layer Architecture**: Changed the project architecture from a monolithic/tightly-coupled design to a separated 4-layer architecture:

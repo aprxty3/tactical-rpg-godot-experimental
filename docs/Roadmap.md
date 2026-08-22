@@ -41,10 +41,10 @@ Status: 🔴 In Progress
 - [x] Main scene setup (scene tree hierarchy)
 
 ## Milestone 2: Playable Prototype & Unit Expansion
-Status: ⬜ Planned
+Status: 🔴 In Progress
 
-- [ ] Implement additional Unit Classes (Archer, Rogue, Wizzard, Priest, Vampire, Skeleton).
-- [ ] Integrate Spritesheet Animations for movement, attacking, and death.
+- [x] Implement additional Unit Classes (Archer, Rogue, Wizzard, Priest, Vampire, Skeleton).
+- [x] Integrate Spritesheet Animations for movement, attacking, and death.
 - [ ] Implement robust Victory/Defeat condition checks based on Castle captures or Annihilation.
 - [ ] Build a comprehensive UI (Resource bar, Unit inspector panel, Action context menu).
 - [ ] Add sound effects (SFX) for combat impacts and movement.
