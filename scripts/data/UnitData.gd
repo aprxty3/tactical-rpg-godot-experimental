@@ -37,5 +37,9 @@ class_name UnitData
 @export var upgrade_paths: Dictionary = {}
 
 @export_group("Visuals")
+@export var unit_scene: PackedScene
+@export var spritesheet: Texture2D
+@export var hframes: int = 6
+@export var vframes: int = 6
 @export var sprite_frames: SpriteFrames
 @export var portrait: Texture2D

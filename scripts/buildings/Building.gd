@@ -109,14 +109,18 @@ func recruit_unit(unit_data: UnitData, spawn_cell: Vector2i, economy_mgr: Node, 
 	economy_mgr.spend_gold(faction_id, unit_data.recruit_cost_gold)
 	economy_mgr.spend_iron(faction_id, unit_data.recruit_cost_iron)
 
-	# Instansiasi unit baru
-	var new_unit: TacticalUnit = unit_scene_prefab.instantiate() as TacticalUnit
+	# Instansiasi unit baru (Gunakan prefab khusus dari UnitData jika ada, fallback ke default)
+	var prefab: PackedScene = unit_data.unit_scene if (unit_data and is_instance_valid(unit_data.unit_scene)) else unit_scene_prefab
+	var new_unit: TacticalUnit = prefab.instantiate() as TacticalUnit
 	new_unit.unit_data = unit_data
 	new_unit.faction_id = faction_id
 	new_unit.grid_position = spawn_cell
 	new_unit.scale = Vector2(0.45, 0.45)
 	
 	parent_node.add_child(new_unit)
+	if new_unit.has_method("_initialize_from_data"):
+		new_unit._initialize_from_data()
+	
 	EventBus.unit_recruited.emit(new_unit, faction_id)
 	EventBus.unit_spawned.emit(new_unit, faction_id)
 

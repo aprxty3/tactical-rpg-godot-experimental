@@ -1,6 +1,8 @@
-[gd_resource type="Resource" script_class="UnitData" format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_i53xh"]
+[ext_resource type="Texture2D" path="res://assets/Character_animation/priest1/v1/priest1_v1_1.png" id="2_priest_tex"]
+[ext_resource type="PackedScene" path="res://scenes/units/TacticalUnit_Priest.tscn" id="3_priest_scene"]
 
 [resource]
 script = ExtResource("1_i53xh")
@@ -11,7 +13,14 @@ description = "Holy healer that cleanses ailments and purges the undead."
 max_health = 45
 attack_power = 16
 defense_power = 3
+movement_points = 3
+attack_range_min = 1
 attack_range_max = 2
 recruit_cost_gold = 100
 recruit_cost_iron = 0
 capacity_weight = 2
+unit_scene = ExtResource("3_priest_scene")
+spritesheet = ExtResource("2_priest_tex")
+hframes = 1
+vframes = 1
+upgrade_paths = {}

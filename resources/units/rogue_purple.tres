@@ -1,6 +1,8 @@
-[gd_resource type="Resource" script_class="UnitData" format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_k788r"]
+[ext_resource type="Texture2D" path="res://assets/Character_animation/Rogue/Idle/Idle-Sheet.png" id="2_rogue_tex"]
+[ext_resource type="PackedScene" path="res://scenes/units/TacticalUnit_Rogue.tscn" id="3_rogue_scene"]
 
 [resource]
 script = ExtResource("1_k788r")
@@ -12,5 +14,13 @@ max_health = 50
 attack_power = 26
 defense_power = 4
 movement_points = 4
+attack_range_min = 1
+attack_range_max = 1
 recruit_cost_gold = 90
+recruit_cost_iron = 1
 capacity_weight = 2
+unit_scene = ExtResource("3_rogue_scene")
+spritesheet = ExtResource("2_rogue_tex")
+hframes = 4
+vframes = 1
+upgrade_paths = {}

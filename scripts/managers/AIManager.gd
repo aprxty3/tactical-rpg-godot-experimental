@@ -65,26 +65,33 @@ func _ai_try_recruit() -> void:
 	if not ai_castle or ai_castle.recruitable_units.is_empty():
 		return
 
-	var unit_data: UnitData = ai_castle.recruitable_units[0]
 	var active_units = TurnManager.get_faction_units(ai_faction_id)
+	var chosen_unit: UnitData = null
 
-	# Cek apakah syarat rekrutmen terpenuhi
-	var check = ai_castle.can_recruit(unit_data, economy_manager, active_units)
-	if check["can_recruit"]:
-		# Find an empty tile around the castle
-		var dirs = [Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP, Vector2i.RIGHT]
-		var spawn_cell := Vector2i(-1, -1)
-		for d in dirs:
-			var target = ai_castle.grid_position + d
-			if grid_manager.is_cell_walkable(target):
-				spawn_cell = target
-				break
+	# Loop in reverse (or pick highest tier/cost unit that is affordable)
+	for u_data in ai_castle.recruitable_units:
+		var check = ai_castle.can_recruit(u_data, economy_manager, active_units)
+		if check["can_recruit"]:
+			if chosen_unit == null or u_data.recruit_cost_gold > chosen_unit.recruit_cost_gold:
+				chosen_unit = u_data
 
-		if spawn_cell != Vector2i(-1, -1):
-			var unit_container = tree.root.find_child("Units", true, false)
-			if unit_container:
-				ai_castle.recruit_unit(unit_data, spawn_cell, economy_manager, unit_container)
-				await get_tree().create_timer(action_delay).timeout
+	if chosen_unit == null:
+		return
+
+	# Find an empty tile around the castle
+	var dirs = [Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP, Vector2i.RIGHT]
+	var spawn_cell := Vector2i(-1, -1)
+	for d in dirs:
+		var target = ai_castle.grid_position + d
+		if grid_manager.is_cell_walkable(target):
+			spawn_cell = target
+			break
+
+	if spawn_cell != Vector2i(-1, -1):
+		var unit_container = tree.root.find_child("Units", true, false)
+		if unit_container:
+			ai_castle.recruit_unit(chosen_unit, spawn_cell, economy_manager, unit_container)
+			await get_tree().create_timer(action_delay).timeout
 
 
 ## AI moves and orders each of its units to attack

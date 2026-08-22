@@ -39,6 +39,11 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Combat Rebalancing**: Rebalanced unit stats across all unit `.tres` resources. Scaled Worker Pawn from 100 HP down to 45 HP (DEF 4) and Warrior to 75 HP (DEF 8), transforming combat from a 7-10 turn sponge slog into snappy, decisive 2-3 engagement tactics.
 - **Bug Fixes**: Fixed `MainHUD.gd` property bindings (`attack_power` and `defense_power`), cleaned unused signal parameter warnings, and formatted recruit popup buttons with live cost displays.
 
+### 6. 🏹 Dynamic Recruitment Spritesheet Injection & Combat Symmetry Fix
+- **Dynamic Visual Binding**: Added `spritesheet`, `hframes`, and `vframes` exports to `UnitData.gd`. Upgraded `TacticalUnit.gd`'s `_update_visuals()` to dynamically hot-swap sprite textures and reconstruct TinySwords animation tracks on runtime instantiation.
+- **Recruitment Prefab Resolution**: Fixed castle recruitment in `Building.gd` so recruited Archers, Warriors, Rogues, Mages, etc., properly render their distinct spritesheets instead of defaulting to the generic Pawn sprite.
+- **Combat Symmetry & Resource Expansion**: Created `pawn_red.tres` and `warrior_blue.tres`, populated both Blue and Red castles with distinct recruitable rosters, and resolved the apparent "Pawn vs Pawn" damage imbalance (which occurred because enemy Red Warriors were previously displaying Pawn sprites while dealing Melee Advantage damage).
+
 ---
 
 ## 📅 2026-08-22

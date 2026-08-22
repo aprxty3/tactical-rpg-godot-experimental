@@ -32,12 +32,9 @@ func _ready() -> void:
 	_setup_health_bar()
 
 
-## Setup standard TinySwords animation frames (6x6 sprite sheet)
+## Setup standard TinySwords animation frames (6x6 or custom sprite sheet)
 func _setup_default_animations() -> void:
 	if not animation_player or not sprite:
-		return
-	if animation_player.has_animation("idle"):
-		animation_player.play("idle")
 		return
 		
 	var lib = AnimationLibrary.new()
@@ -53,20 +50,14 @@ func _setup_default_animations() -> void:
 			anim.track_insert_key(track_idx, i * speed, target_frame)
 		lib.add_animation(anim_name, anim)
 		
-	# Typical TinySwords Layout: Row 0=Idle, Row 1=Run, Row 2=Attack, Row 3/4=Attack2/Cast
-	# Only create if the sheet has enough rows for it (Fallback safely using min above)
-	create_anim.call("idle", 0, 6, true, 0.15)
-	create_anim.call("run", min(1, sprite.vframes - 1), 6, true, 0.1)
-	create_anim.call("attack", min(2, sprite.vframes - 1), 6, false, 0.1)
+	# Dynamic animation mapping based on sheet dimensions
+	create_anim.call("idle", 0, mini(sprite.hframes, 6), true, 0.15)
+	create_anim.call("run", mini(1, sprite.vframes - 1), mini(sprite.hframes, 6), true, 0.1)
+	create_anim.call("attack", mini(2, sprite.vframes - 1), mini(sprite.hframes, 6), false, 0.1)
 	
-	# Try to add the library, but check if one exists first
 	if animation_player.has_animation_library(""):
-		var existing_lib = animation_player.get_animation_library("")
-		for anim in lib.get_animation_list():
-			existing_lib.add_animation(anim, lib.get_animation(anim))
-	else:
-		animation_player.add_animation_library("", lib)
-		
+		animation_player.remove_animation_library("")
+	animation_player.add_animation_library("", lib)
 	animation_player.play("idle")
 
 
@@ -259,10 +250,12 @@ func _handle_death(damage_type: String) -> void:
 
 
 func _update_visuals() -> void:
-	if not unit_data:
+	if not unit_data or not sprite:
 		return
-	# Apply sprite frames from UnitData if available
-	if unit_data.sprite_frames and sprite:
-		# For animated sprites, assign texture from first frame
+	if is_instance_valid(unit_data.spritesheet):
+		sprite.texture = unit_data.spritesheet
+		sprite.hframes = unit_data.hframes
+		sprite.vframes = unit_data.vframes
+		_setup_default_animations()
+	elif unit_data.sprite_frames and sprite:
 		pass
-	# Additional visual updates (palette swap, shader) go here
