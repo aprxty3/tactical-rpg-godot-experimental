@@ -10,6 +10,7 @@ extends Node2D
 @onready var grid_manager: GridManager = $GridManager
 @onready var combat_resolver: CombatResolver = $CombatResolver
 @onready var economy_manager: Node = $EconomyManager
+@onready var ai_manager: AIManager = $AIManager
 @onready var unit_container: Node2D = $Units
 @onready var building_container: Node2D = $Buildings
 @onready var hud_label: Label = $CanvasLayer/InstructionPanel/MarginContainer/Label
@@ -32,7 +33,11 @@ func _ready() -> void:
 	economy_manager.register_faction(GameConfig.Faction.BLUE_KINGDOM, 150, 4)
 	economy_manager.register_faction(GameConfig.Faction.RED_LEGION, 150, 4)
 
-	# 2. Setup match dengan EconomyManager terinjeksi
+	# 2. Setup AI Manager
+	if ai_manager:
+		ai_manager.setup(grid_manager, economy_manager)
+
+	# 3. Setup match dengan EconomyManager terinjeksi
 	TurnManager.setup_match([GameConfig.Faction.BLUE_KINGDOM, GameConfig.Faction.RED_LEGION], economy_manager)
 	TurnManager.start_turn()
 
@@ -60,6 +65,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().quit()
 		return
 
+	# Jangan terima input kontrol jika sedang giliran AI Red Legion
+	if TurnManager.get_current_faction() == GameConfig.Faction.RED_LEGION:
+		return
+
 	# Shortcut SPACE untuk End Turn
 	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 		end_turn()
@@ -84,11 +93,13 @@ func end_turn() -> void:
 
 
 func _on_turn_started(faction_id: int) -> void:
-	var faction_name = "BLUE KINGDOM" if faction_id == GameConfig.Faction.BLUE_KINGDOM else "RED LEGION"
-	var color_emoji = "🔵" if faction_id == GameConfig.Faction.BLUE_KINGDOM else "🔴"
-	_update_hud_text("%s GILIRAN %s (Turn %d)\n👉 Pilih unit untuk gerak/serang, atau pilih Castle untuk rekrut unit [R]. Tekan [SPASI] untuk End Turn." % [
-		color_emoji, faction_name, TurnManager.turn_number
-	])
+	if faction_id == GameConfig.Faction.RED_LEGION:
+		_deselect_all()
+		_update_hud_text("🔴 GILIRAN AI (RED LEGION) SEDANG BERLANGSUNG...\n⏳ Musuh sedang merekrut & menggerakkan pasukannya...")
+	else:
+		_update_hud_text("🔵 GILIRAN KAMU (BLUE KINGDOM) - Turn %d\n👉 Pilih unit untuk gerak/serang, atau pilih Castle untuk rekrut unit [R]. Tekan [SPASI] untuk End Turn." % [
+			TurnManager.turn_number
+		])
 
 
 func _on_resource_changed(_faction_id: int, _amount: int) -> void:

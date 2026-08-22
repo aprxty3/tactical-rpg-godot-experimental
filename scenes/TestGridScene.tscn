@@ -4,14 +4,15 @@
 [ext_resource type="Script" path="res://scripts/managers/GridManager.gd" id="2_grid_mgr"]
 [ext_resource type="Script" path="res://scripts/managers/CombatResolver.gd" id="3_combat_mgr"]
 [ext_resource type="Script" path="res://scripts/managers/EconomyManager.gd" id="4_eco_mgr"]
-[ext_resource type="TileSet" uid="uid://cxhy51g182n7k" path="res://resources/tilesets/terrain_flat_tileset.tres" id="5_tileset"]
-[ext_resource type="PackedScene" uid="uid://bv8vqm8r7j2kx" path="res://scenes/units/TacticalUnit.tscn" id="6_unit_scene"]
-[ext_resource type="PackedScene" uid="uid://c0e6k08t4p8m2" path="res://scenes/units/TacticalUnit_Red.tscn" id="7_enemy_scene"]
-[ext_resource type="PackedScene" uid="uid://dmhpx8e30k2t7" path="res://scenes/buildings/Castle.tscn" id="8_castle_scene"]
-[ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Red.tscn" id="9_castle_red_scene"]
-[ext_resource type="PackedScene" uid="uid://c3qg0m0k0x8m1" path="res://scenes/buildings/GoldMine.tscn" id="10_mine_scene"]
-[ext_resource type="Resource" path="res://resources/units/pawn_blue.tres" id="11_pawn_data"]
-[ext_resource type="Resource" path="res://resources/units/warrior_red.tres" id="12_warrior_data"]
+[ext_resource type="Script" path="res://scripts/managers/AIManager.gd" id="5_ai_mgr"]
+[ext_resource type="TileSet" uid="uid://cxhy51g182n7k" path="res://resources/tilesets/terrain_flat_tileset.tres" id="6_tileset"]
+[ext_resource type="PackedScene" uid="uid://bv8vqm8r7j2kx" path="res://scenes/units/TacticalUnit.tscn" id="7_unit_scene"]
+[ext_resource type="PackedScene" uid="uid://c0e6k08t4p8m2" path="res://scenes/units/TacticalUnit_Red.tscn" id="8_enemy_scene"]
+[ext_resource type="PackedScene" uid="uid://dmhpx8e30k2t7" path="res://scenes/buildings/Castle.tscn" id="9_castle_scene"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Red.tscn" id="10_castle_red_scene"]
+[ext_resource type="PackedScene" uid="uid://c3qg0m0k0x8m1" path="res://scenes/buildings/GoldMine.tscn" id="11_mine_scene"]
+[ext_resource type="Resource" path="res://resources/units/pawn_blue.tres" id="12_pawn_data"]
+[ext_resource type="Resource" path="res://resources/units/warrior_red.tres" id="13_warrior_data"]
 
 [node name="TestGridScene" type="Node2D"]
 script = ExtResource("1_test_ctrl")
@@ -27,37 +28,40 @@ script = ExtResource("3_combat_mgr")
 [node name="EconomyManager" type="Node" parent="."]
 script = ExtResource("4_eco_mgr")
 
+[node name="AIManager" type="Node" parent="."]
+script = ExtResource("5_ai_mgr")
+
 [node name="TileMapLayer" type="TileMapLayer" parent="."]
-tile_set = ExtResource("5_tileset")
+tile_set = ExtResource("6_tileset")
 tile_map_data = PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
 [node name="Buildings" type="Node2D" parent="."]
 
-[node name="Castle_Blue" parent="Buildings" instance=ExtResource("8_castle_scene")]
+[node name="Castle_Blue" parent="Buildings" instance=ExtResource("9_castle_scene")]
 position = Vector2(96, 96)
 faction_id = 0
 grid_position = Vector2i(1, 1)
 
-[node name="Castle_Red" parent="Buildings" instance=ExtResource("9_castle_red_scene")]
+[node name="Castle_Red" parent="Buildings" instance=ExtResource("10_castle_red_scene")]
 position = Vector2(672, 416)
 faction_id = 1
 grid_position = Vector2i(10, 6)
 
-[node name="GoldMine_Neutral" parent="Buildings" instance=ExtResource("10_mine_scene")]
+[node name="GoldMine_Neutral" parent="Buildings" instance=ExtResource("11_mine_scene")]
 position = Vector2(352, 288)
 grid_position = Vector2i(5, 4)
 
 [node name="Units" type="Node2D" parent="."]
 
-[node name="Blue_Pawn" parent="Units" instance=ExtResource("6_unit_scene")]
+[node name="Blue_Pawn" parent="Units" instance=ExtResource("7_unit_scene")]
 position = Vector2(160, 96)
 scale = Vector2(0.45, 0.45)
-unit_data = ExtResource("11_pawn_data")
+unit_data = ExtResource("12_pawn_data")
 
-[node name="Red_Warrior" parent="Units" instance=ExtResource("7_enemy_scene")]
+[node name="Red_Warrior" parent="Units" instance=ExtResource("8_enemy_scene")]
 position = Vector2(608, 416)
 scale = Vector2(0.45, 0.45)
-unit_data = ExtResource("12_warrior_data")
+unit_data = ExtResource("13_warrior_data")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(512, 320)
