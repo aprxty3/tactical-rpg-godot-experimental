@@ -32,6 +32,9 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	EventBus.combat_started.emit(attacker, defender)
 
 	# Terapkan damage ke defender
+	attacker.face_direction(defender.global_position)
+	attacker.play_animation("attack")
+	
 	var defender_died = defender.take_damage(attack_result["damage"], attack_result["damage_type"])
 	
 	if attack_result["advantage_type"] != "NEUTRAL":
@@ -52,9 +55,21 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 
 		# Defender can only counter if attacker is within its attack range
 		if distance >= def_min_range and distance <= def_max_range:
+			defender.face_direction(attacker.global_position)
+			defender.play_animation("attack")
+			
 			counter_result = _calculate_damage(defender, attacker, counter_attack_multiplier)
 			var attacker_died = attacker.take_damage(counter_result["damage"], counter_result["damage_type"])
 			counter_result["killed_attacker"] = attacker_died
+
+	# Return units to idle shortly after attack (using deferred/tween approach inside TacticalUnit or simply trusting it finishes if looping is false)
+	# For simplicity (KISS), attack animation is NOT loop_mode, so it stops at last frame, but we want it to go back to idle.
+	# We can use a SceneTreeTimer
+	var timer = attacker.get_tree().create_timer(0.6)
+	timer.timeout.connect(func():
+		if is_instance_valid(attacker): attacker.play_animation("idle")
+		if is_instance_valid(defender) and not defender_died: defender.play_animation("idle")
+	)
 
 	var full_report = {
 		"attacker": attacker,

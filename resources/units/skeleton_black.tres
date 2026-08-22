@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_2kg3j"]
+
+[resource]
+script = ExtResource("1_2kg3j")
+unit_name = "Skeleton"
+unit_class = "Undead"
+description = "Inexpensive fodder unit reanimated from the fallen."
+max_health = 40
+attack_power = 12
+defense_power = 2
+recruit_cost_gold = 30
+recruit_cost_iron = 0

@@ -279,6 +279,9 @@ func _execute_unit_movement(unit: TacticalUnit, path: Array[Vector2i]) -> void:
 	unit.consume_movement(steps_cost)
 
 	# Animasi pergerakan halus (Tween)
+	unit.play_animation("run")
+	unit.face_direction(grid_to_world(to_cell))
+	
 	var tween = create_tween()
 	tween.set_trans(Tween.TRANS_LINEAR)
 	
@@ -288,6 +291,7 @@ func _execute_unit_movement(unit: TacticalUnit, path: Array[Vector2i]) -> void:
 
 	tween.finished.connect(func():
 		_moving_units.erase(unit)
+		unit.play_animation("idle")
 		
 		# Check if destination tile has a building to capture
 		var building = get_building_at(to_cell)

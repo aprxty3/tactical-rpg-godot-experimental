@@ -21,6 +21,59 @@ var grid_position: Vector2i = Vector2i.ZERO
 func _ready() -> void:
 	if unit_data:
 		_initialize_from_data()
+	
+	_setup_default_animations()
+
+
+## Setup standard TinySwords animation frames (6x6 sprite sheet)
+func _setup_default_animations() -> void:
+	if not animation_player or not sprite:
+		return
+	if animation_player.has_animation("idle"):
+		animation_player.play("idle")
+		return
+		
+	var lib = AnimationLibrary.new()
+	var create_anim = func(anim_name: String, row: int, frame_count: int, loop: bool, speed: float):
+		var anim = Animation.new()
+		anim.length = frame_count * speed
+		anim.loop_mode = Animation.LOOP_LINEAR if loop else Animation.LOOP_NONE
+		var track_idx = anim.add_track(Animation.TYPE_VALUE)
+		anim.track_set_path(track_idx, "Sprite2D:frame")
+		var max_frame = (sprite.hframes * sprite.vframes) - 1
+		for i in range(frame_count):
+			var target_frame = min((row * sprite.hframes) + i, max_frame)
+			anim.track_insert_key(track_idx, i * speed, target_frame)
+		lib.add_animation(anim_name, anim)
+		
+	# Typical TinySwords Layout: Row 0=Idle, Row 1=Run, Row 2=Attack, Row 3/4=Attack2/Cast
+	# Only create if the sheet has enough rows for it (Fallback safely using min above)
+	create_anim.call("idle", 0, 6, true, 0.15)
+	create_anim.call("run", min(1, sprite.vframes - 1), 6, true, 0.1)
+	create_anim.call("attack", min(2, sprite.vframes - 1), 6, false, 0.1)
+	
+	# Try to add the library, but check if one exists first
+	if animation_player.has_animation_library(""):
+		var existing_lib = animation_player.get_animation_library("")
+		for anim in lib.get_animation_list():
+			existing_lib.add_animation(anim, lib.get_animation(anim))
+	else:
+		animation_player.add_animation_library("", lib)
+		
+	animation_player.play("idle")
+
+
+## Play a specific animation if it exists
+func play_animation(anim_name: String) -> void:
+	if animation_player and animation_player.has_animation(anim_name):
+		animation_player.play(anim_name)
+
+
+## Make the unit face a specific global position (flips horizontal)
+func face_direction(target_global_pos: Vector2) -> void:
+	if sprite:
+		sprite.flip_h = target_global_pos.x < global_position.x
+
 
 
 ## Initialize runtime state from UnitData resource.

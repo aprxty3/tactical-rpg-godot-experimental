@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_tiy6i"]
+
+[resource]
+script = ExtResource("1_tiy6i")
+unit_name = "Blue Archer"
+unit_class = "Ranged"
+tier = 2
+description = "Ranged marksman capable of attacking from a distance without fear of counter-attack."
+max_health = 70
+attack_power = 22
+defense_power = 5
+attack_range_min = 2
+attack_range_max = 3
+recruit_cost_gold = 70
+capacity_weight = 2

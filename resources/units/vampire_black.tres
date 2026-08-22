@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_pu1ol"]
+
+[resource]
+script = ExtResource("1_pu1ol")
+unit_name = "Vampire"
+unit_class = "Undead"
+tier = 3
+description = "Hybrid bruiser that steals life from its victims."
+max_health = 110
+attack_power = 28
+defense_power = 8
+movement_points = 4
+recruit_cost_gold = 130
+recruit_cost_iron = 2
+capacity_weight = 3

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_mbvlc"]
+
+[resource]
+script = ExtResource("1_mbvlc")
+unit_name = "Yellow Wizzard"
+unit_class = "Mage"
+tier = 2
+description = "Area elemental mage that pierces heavy physical armor."
+max_health = 55
+attack_power = 30
+defense_power = 3
+movement_points = 2
+attack_range_min = 2
+attack_range_max = 2
+recruit_cost_gold = 120
+recruit_cost_iron = 0
+capacity_weight = 2

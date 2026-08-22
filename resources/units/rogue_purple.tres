@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_k788r"]
+
+[resource]
+script = ExtResource("1_k788r")
+unit_name = "Purple Rogue"
+unit_class = "Infiltrator"
+tier = 2
+description = "High mobility skirmisher that strikes from the shadows."
+max_health = 60
+defense_power = 4
+movement_points = 4
+recruit_cost_gold = 90
+capacity_weight = 2

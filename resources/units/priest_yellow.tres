@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitData" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_i53xh"]
+
+[resource]
+script = ExtResource("1_i53xh")
+unit_name = "Yellow Priest"
+unit_class = "Support"
+tier = 2
+description = "Holy healer that cleanses ailments and purges the undead."
+max_health = 65
+attack_power = 15
+defense_power = 5
+attack_range_max = 2
+recruit_cost_gold = 100
+recruit_cost_iron = 0
+capacity_weight = 2
