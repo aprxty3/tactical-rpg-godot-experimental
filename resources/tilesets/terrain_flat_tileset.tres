@@ -1,4 +1,4 @@
-[gd_resource type="TileSet" format=3 uid="uid://cxhy51g182n7k"]
+[gd_resource type="TileSet" load_steps=3 format=3 uid="uid://cxhy51g182n7k"]
 
 [ext_resource type="Texture2D" path="res://assets/terrain/Ground/Tilemap_Flat.png" id="1_tex"]
 
@@ -8,15 +8,43 @@ texture_region_size = Vector2i(64, 64)
 0:0/0 = 0
 1:0/0 = 0
 2:0/0 = 0
+3:0/0 = 0
+4:0/0 = 0
+5:0/0 = 0
+6:0/0 = 0
+7:0/0 = 0
+8:0/0 = 0
+9:0/0 = 0
 0:1/0 = 0
 1:1/0 = 0
 2:1/0 = 0
+3:1/0 = 0
+4:1/0 = 0
+5:1/0 = 0
+6:1/0 = 0
+7:1/0 = 0
+8:1/0 = 0
+9:1/0 = 0
 0:2/0 = 0
 1:2/0 = 0
 2:2/0 = 0
+3:2/0 = 0
+4:2/0 = 0
+5:2/0 = 0
+6:2/0 = 0
+7:2/0 = 0
+8:2/0 = 0
+9:2/0 = 0
 0:3/0 = 0
 1:3/0 = 0
 2:3/0 = 0
+3:3/0 = 0
+4:3/0 = 0
+5:3/0 = 0
+6:3/0 = 0
+7:3/0 = 0
+8:3/0 = 0
+9:3/0 = 0
 
 [resource]
 tile_size = Vector2i(64, 64)

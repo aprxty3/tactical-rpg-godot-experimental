@@ -60,6 +60,12 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Comprehensive Headless Verification**: Automated multi-unit assertion test (`TestAllUnits.gd`) validating spritesheet textures, frame dimensions, and animation libraries across all 32 unit resources with 100% pass rate.
 
 
+### 9. 🛑 End Turn Confirmation Modal & Lush 16x10 Battlefield Map Generation
+- **End Turn Confirmation Modal**: Built a responsive, centered confirmation modal in `MainHUD.tscn` with a darkened backdrop (`Color(0,0,0,0.6)`). Prompts the player with *"End Your Turn?"* and Yes/No buttons. Pressing `[SPACE]` opens the modal; pressing `[SPACE]` again or clicking *"Yes"* confirms and ends the turn; pressing `[ESC]` or clicking *"No"* closes the modal safely without passing the turn.
+- **Dynamic 16x10 Tactical Battlefield**: Added `_setup_tactical_tilemap()` in `TestGridController.gd` to completely fill the 16x10 grid with grass tiles, dirt pathways connecting Blue Castle, Neutral Gold Mine, and Red Castle, as well as natural flower/grass detail patches. Removed empty black void areas.
+- **Automated Test Validation**: Added `scenes/test_popup_and_map.tscn` confirming 100% grid cell population (160 tiles) and modal state transitions with Exit Code 0.
+
+
 ---
 
 ## 📅 2026-08-22

@@ -12,14 +12,18 @@ signal end_turn_requested
 @onready var victory_label: Label = %VictoryLabel
 @onready var end_turn_btn: Button = %EndTurnBtn
 @onready var inspector_panel: Control = %InspectorPanel
+@onready var end_turn_modal: Control = %EndTurnConfirmModal
+@onready var confirm_btn: Button = %ConfirmBtn
+@onready var cancel_btn: Button = %CancelBtn
 
 var current_faction_id: int = 0
 var economy_manager: Node = null
 
 func _ready() -> void:
-	# Hide inspector and victory at start
+	# Hide inspector, victory, and modal at start
 	inspector_panel.hide()
 	victory_label.hide()
+	end_turn_modal.hide()
 	
 	# Connect EventBus
 	EventBus.gold_changed.connect(_on_gold_changed)
@@ -35,10 +39,32 @@ func _ready() -> void:
 	EventBus.victory_condition_met.connect(_on_victory_condition_met)
 	EventBus.defeat_condition_met.connect(_on_defeat_condition_met)
 	
-	end_turn_btn.pressed.connect(func(): end_turn_requested.emit())
+	end_turn_btn.pressed.connect(show_end_turn_confirmation)
+	confirm_btn.pressed.connect(_on_confirm_end_turn)
+	cancel_btn.pressed.connect(hide_end_turn_confirmation)
 	
 	_setup_recruit_popup()
 	_update_context_text("Select unit to move/attack, or Castle to recruit.")
+
+
+func show_end_turn_confirmation() -> void:
+	if current_faction_id != 0: # Only allowed on player turn (Blue Kingdom)
+		return
+	end_turn_modal.show()
+	confirm_btn.grab_focus()
+
+
+func hide_end_turn_confirmation() -> void:
+	end_turn_modal.hide()
+
+
+func is_end_turn_confirmation_active() -> bool:
+	return end_turn_modal.visible
+
+
+func _on_confirm_end_turn() -> void:
+	hide_end_turn_confirmation()
+	end_turn_requested.emit()
 
 var recruit_popup: PopupPanel
 var recruit_vbox: VBoxContainer

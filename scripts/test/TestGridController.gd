@@ -41,11 +41,51 @@ func _ready() -> void:
 		economy_manager,
 	)
 
+	# 4. Generate tactical map layout on TileMapLayer
+	_setup_tactical_tilemap()
+
 	# Init HUD
 	main_hud.initialize(economy_manager)
 
 	TurnManager.start_turn()
 	queue_redraw()
+
+
+## Generates a complete, lush 16x10 tactical battlefield with roads and foliage
+func _setup_tactical_tilemap() -> void:
+	var tilemap: TileMapLayer = get_node_or_null("TileMapLayer")
+	if not tilemap:
+		return
+
+	var gs = grid_manager.grid_size # Vector2i(16, 10)
+
+	# 1. Fill entire grid with grass base
+	for x in range(gs.x):
+		for y in range(gs.y):
+			tilemap.set_cell(Vector2i(x, y), 0, Vector2i(1, 1))
+
+	# 2. Dirt pathways connecting Castles and Mine
+	var road_cells = [
+		Vector2i(2, 1), Vector2i(2, 2), Vector2i(3, 2), Vector2i(4, 3), Vector2i(4, 4),
+		Vector2i(5, 3), Vector2i(5, 4), Vector2i(5, 5), Vector2i(6, 4),
+		Vector2i(7, 4), Vector2i(8, 4), Vector2i(8, 5), Vector2i(9, 5), Vector2i(9, 6), Vector2i(10, 6)
+	]
+	for cell in road_cells:
+		tilemap.set_cell(cell, 0, Vector2i(6, 1)) # Dirt center tile
+
+	# 3. Subtle foliage / grass flower details
+	var detail_cells = {
+		Vector2i(0, 3): Vector2i(3, 0),
+		Vector2i(1, 7): Vector2i(3, 1),
+		Vector2i(7, 1): Vector2i(3, 0),
+		Vector2i(12, 2): Vector2i(3, 1),
+		Vector2i(14, 8): Vector2i(3, 0),
+		Vector2i(8, 8): Vector2i(3, 1),
+		Vector2i(11, 2): Vector2i(3, 0),
+		Vector2i(13, 5): Vector2i(3, 1),
+	}
+	for cell in detail_cells.keys():
+		tilemap.set_cell(cell, 0, detail_cells[cell])
 
 
 func _update_hud_text(text: String) -> void:
@@ -54,10 +94,13 @@ func _update_hud_text(text: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if (
-		event.is_action_pressed("ui_cancel")
-		or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE)
-	):
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if main_hud and main_hud.has_method("is_end_turn_confirmation_active") and main_hud.is_end_turn_confirmation_active():
+			main_hud.hide_end_turn_confirmation()
+			return
+		if selected_unit or selected_building:
+			_deselect_all()
+			return
 		get_tree().quit()
 		return
 
@@ -65,7 +108,13 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
-		end_turn()
+		if main_hud and main_hud.has_method("is_end_turn_confirmation_active"):
+			if main_hud.is_end_turn_confirmation_active():
+				main_hud._on_confirm_end_turn()
+			else:
+				main_hud.show_end_turn_confirmation()
+		else:
+			end_turn()
 		return
 
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
@@ -73,6 +122,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if main_hud and main_hud.has_method("is_end_turn_confirmation_active") and main_hud.is_end_turn_confirmation_active():
+			return
 		var mouse_pos = get_global_mouse_position()
 		var clicked_cell = grid_manager.world_to_grid(mouse_pos)
 		_handle_cell_click(clicked_cell)
