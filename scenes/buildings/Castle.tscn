@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dmhpx8e30k2t7"]
 
 [ext_resource type="Script" path="res://scripts/buildings/Building.gd" id="1_bld"]
-[ext_resource type="Texture2D" path="res://assets/Buildings/Castle/Castle_Blue.png" id="2_castle_tex"]
+[ext_resource type="Texture2D" path="res://assets/buildings/Castle/Castle_Blue.png" id="2_castle_tex"]
 [ext_resource type="Resource" path="res://resources/units/pawn_blue.tres" id="3_pawn_res"]
 [ext_resource type="Resource" path="res://resources/units/warrior_blue.tres" id="4_warrior_res"]
 [ext_resource type="Resource" path="res://resources/units/archer_blue.tres" id="5_archer_res"]

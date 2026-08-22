@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://c0e6k08t4p8m2"]
 
 [ext_resource type="Script" path="res://scripts/units/TacticalUnit.gd" id="1_unit"]
-[ext_resource type="Texture2D" path="res://assets/Character_animation/Warrior/Red/Warrior_Red.png" id="2_warrior_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/warrior/Red/Warrior_Red.png" id="2_warrior_tex"]
 
 [node name="TacticalUnit_Red" type="Node2D"]
 script = ExtResource("1_unit")

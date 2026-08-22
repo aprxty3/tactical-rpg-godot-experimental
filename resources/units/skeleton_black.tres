@@ -1,13 +1,13 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_2kg3j"]
-[ext_resource type="Texture2D" path="res://assets/Character_animation/Skeleton - Warrior/Idle/Idle-Sheet.png" id="2_skel_tex"]
-[ext_resource type="PackedScene" path="res://scenes/units/TacticalUnit_Skeleton.tscn" id="3_skel_scene"]
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/skeleton/warrior/Idle/Idle-Sheet.png" id="2_tex"]
 
 [resource]
-script = ExtResource("1_2kg3j")
+script = ExtResource("1_scr")
 unit_name = "Skeleton"
 unit_class = "Undead"
+tier = 1
 description = "Inexpensive fodder unit reanimated from the fallen."
 max_health = 35
 attack_power = 14
@@ -18,8 +18,7 @@ attack_range_max = 1
 recruit_cost_gold = 30
 recruit_cost_iron = 0
 capacity_weight = 1
-unit_scene = ExtResource("3_skel_scene")
-spritesheet = ExtResource("2_skel_tex")
+spritesheet = ExtResource("2_tex")
 hframes = 4
 vframes = 1
 upgrade_paths = {}

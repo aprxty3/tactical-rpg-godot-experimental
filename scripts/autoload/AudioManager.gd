@@ -13,21 +13,21 @@ func _ready() -> void:
 
 func _setup_audio_players() -> void:
 	move_sfx = AudioStreamPlayer.new()
-	move_sfx.stream = preload("res://assets/sfx/move.wav")
+	move_sfx.stream = preload("res://assets/audio/sfx/move.wav")
 	move_sfx.volume_db = -10.0
 	add_child(move_sfx)
 
 	hit_sfx = AudioStreamPlayer.new()
-	hit_sfx.stream = preload("res://assets/sfx/hit.wav")
+	hit_sfx.stream = preload("res://assets/audio/sfx/hit.wav")
 	hit_sfx.volume_db = -5.0
 	add_child(hit_sfx)
 
 	victory_sfx = AudioStreamPlayer.new()
-	victory_sfx.stream = preload("res://assets/sfx/victory.wav")
+	victory_sfx.stream = preload("res://assets/audio/sfx/victory.wav")
 	add_child(victory_sfx)
 
 	defeat_sfx = AudioStreamPlayer.new()
-	defeat_sfx.stream = preload("res://assets/sfx/defeat.wav")
+	defeat_sfx.stream = preload("res://assets/audio/sfx/defeat.wav")
 	add_child(defeat_sfx)
 
 func _connect_signals() -> void:

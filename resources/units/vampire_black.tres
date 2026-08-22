@@ -1,11 +1,10 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_pu1ol"]
-[ext_resource type="Texture2D" path="res://assets/Character_animation/vampire/v1/vampire_v1_1.png" id="2_vamp_tex"]
-[ext_resource type="PackedScene" path="res://scenes/units/TacticalUnit_Vampire.tscn" id="3_vamp_scene"]
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/vampire/v1/vampire_v1_1.png" id="2_tex"]
 
 [resource]
-script = ExtResource("1_pu1ol")
+script = ExtResource("1_scr")
 unit_name = "Vampire"
 unit_class = "Undead"
 tier = 3
@@ -19,8 +18,7 @@ attack_range_max = 1
 recruit_cost_gold = 130
 recruit_cost_iron = 2
 capacity_weight = 3
-unit_scene = ExtResource("3_vamp_scene")
-spritesheet = ExtResource("2_vamp_tex")
+spritesheet = ExtResource("2_tex")
 hframes = 1
 vframes = 1
 upgrade_paths = {}

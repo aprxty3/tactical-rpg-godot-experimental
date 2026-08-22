@@ -5,7 +5,7 @@ import os
 
 def generate_tone(filename, duration_ms, frequency, decay=True, noise=False):
     os.makedirs("assets/sfx", exist_ok=True)
-    filepath = f"assets/sfx/{filename}"
+    filepath = f"assets/audio/sfx/{filename}"
     
     sample_rate = 44100
     num_samples = int((duration_ms / 1000.0) * sample_rate)

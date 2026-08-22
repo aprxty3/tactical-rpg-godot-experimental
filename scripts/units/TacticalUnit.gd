@@ -32,7 +32,7 @@ func _ready() -> void:
 	_setup_health_bar()
 
 
-## Setup standard TinySwords animation frames (6x6 or custom sprite sheet)
+## Setup standard TinySwords animation frames dynamically based on unit archetype
 func _setup_default_animations() -> void:
 	if not animation_player or not sprite:
 		return
@@ -50,10 +50,22 @@ func _setup_default_animations() -> void:
 			anim.track_insert_key(track_idx, i * speed, target_frame)
 		lib.add_animation(anim_name, anim)
 		
-	# Dynamic animation mapping based on sheet dimensions
-	create_anim.call("idle", 0, mini(sprite.hframes, 6), true, 0.15)
-	create_anim.call("run", mini(1, sprite.vframes - 1), mini(sprite.hframes, 6), true, 0.1)
-	create_anim.call("attack", mini(2, sprite.vframes - 1), mini(sprite.hframes, 6), false, 0.1)
+	if sprite.vframes == 7 and sprite.hframes == 8:
+		# TinySwords Archer layout (8 columns x 7 rows)
+		create_anim.call("idle", 0, 6, true, 0.15)
+		create_anim.call("run", 1, 6, true, 0.1)
+		create_anim.call("attack", 3, 8, false, 0.08) # Row 3 is Shoot Front
+	elif sprite.vframes >= 6:
+		# Standard TinySwords Warrior (6x8) or Pawn (6x6)
+		create_anim.call("idle", 0, 6, true, 0.15)
+		create_anim.call("run", 1, 6, true, 0.1)
+		create_anim.call("attack", 2, 6, false, 0.1)
+	else:
+		# Strip sheets (e.g. Rogue, Wizzard, Skeleton, Priest)
+		var frames = maxi(1, sprite.hframes)
+		create_anim.call("idle", 0, frames, true, 0.15)
+		create_anim.call("run", 0, frames, true, 0.1)
+		create_anim.call("attack", 0, frames, false, 0.1)
 	
 	if animation_player.has_animation_library(""):
 		animation_player.remove_animation_library("")

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/pawn/Purple/Pawn_Purple.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Purple Pawn"
+unit_class = "Worker"
+tier = 1
+description = "Syndicate operative assigned to logistics and resource gathering."
+max_health = 45
+attack_power = 18
+defense_power = 4
+movement_points = 3
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 50
+recruit_cost_iron = 1
+capacity_weight = 1
+spritesheet = ExtResource("2_tex")
+hframes = 6
+vframes = 6
+upgrade_paths = {}

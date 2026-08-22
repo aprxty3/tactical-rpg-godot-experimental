@@ -1,10 +1,10 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_1w"]
-[ext_resource type="Texture2D" path="res://assets/Character_animation/Warrior/Red/Warrior_Red.png" id="2_warrior_tex"]
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/warrior/Red/Warrior_Red.png" id="2_tex"]
 
 [resource]
-script = ExtResource("1_1w")
+script = ExtResource("1_scr")
 unit_name = "Red Warrior"
 unit_class = "Melee"
 tier = 1
@@ -18,7 +18,7 @@ attack_range_max = 1
 recruit_cost_gold = 80
 recruit_cost_iron = 2
 capacity_weight = 2
-spritesheet = ExtResource("2_warrior_tex")
+spritesheet = ExtResource("2_tex")
 hframes = 6
 vframes = 8
 upgrade_paths = {}

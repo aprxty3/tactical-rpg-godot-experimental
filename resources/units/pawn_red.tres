@@ -1,10 +1,10 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_pawn_scr"]
-[ext_resource type="Texture2D" path="res://assets/Character_animation/Pawn/Red/Pawn_Red.png" id="2_pawn_red_tex"]
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/pawn/Red/Pawn_Red.png" id="2_tex"]
 
 [resource]
-script = ExtResource("1_pawn_scr")
+script = ExtResource("1_scr")
 unit_name = "Red Pawn"
 unit_class = "Worker"
 tier = 1
@@ -18,7 +18,7 @@ attack_range_max = 1
 recruit_cost_gold = 50
 recruit_cost_iron = 1
 capacity_weight = 1
-spritesheet = ExtResource("2_pawn_red_tex")
+spritesheet = ExtResource("2_tex")
 hframes = 6
 vframes = 6
 upgrade_paths = {}

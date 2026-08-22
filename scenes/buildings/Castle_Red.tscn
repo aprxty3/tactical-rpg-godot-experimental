@@ -1,15 +1,16 @@
 [gd_scene format=3 uid="uid://dmhpx8e30k2sa"]
 
 [ext_resource type="Script" path="res://scripts/buildings/Building.gd" id="1_bld"]
-[ext_resource type="Texture2D" path="res://assets/Buildings/Castle/Castle_Red.png" id="2_castle_red_tex"]
+[ext_resource type="Texture2D" path="res://assets/buildings/Castle/Castle_Red.png" id="2_castle_red_tex"]
 [ext_resource type="Resource" path="res://resources/units/pawn_red.tres" id="3_pawn_red_res"]
 [ext_resource type="Resource" path="res://resources/units/warrior_red.tres" id="4_warrior_red_res"]
+[ext_resource type="Resource" path="res://resources/units/archer_red.tres" id="5_archer_red_res"]
 
 [node name="Castle_Red" type="Node2D"]
 script = ExtResource("1_bld")
 building_type = 0
 faction_id = 1
-recruitable_units = [ExtResource("3_pawn_red_res"), ExtResource("4_warrior_red_res")]
+recruitable_units = [ExtResource("3_pawn_red_res"), ExtResource("4_warrior_red_res"), ExtResource("5_archer_red_res")]
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_castle_red_tex")

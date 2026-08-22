@@ -38,7 +38,7 @@ To create a new unit (e.g., **Archer** or **Knight**):
 
 ### Step B: Create the Unit Prefab Scene (`.tscn`)
 1. Create a scene inherited from `scenes/units/TacticalUnit.tscn` or create a new `Node2D` with the script `res://scripts/units/TacticalUnit.gd`.
-2. Change the `Sprite2D` texture with the relevant unit sprite (e.g., `assets/Character_animation/Archer/Blue/Archer_Blue.png`).
+2. Change the `Sprite2D` texture with the relevant unit sprite (e.g., `assets/characters/archer/Blue/Archer_Blue.png`).
 3. Set `hframes` and `vframes` according to the spritesheet.
 4. Attach the `archer_blue.tres` resource to the `@export var unit_data` slot.
 5. Save the scene as `scenes/units/TacticalUnit_Archer_Blue.tscn`.
@@ -53,7 +53,7 @@ To add a new building (e.g., **Iron Mine** or **Village**):
 2. In the Inspector, set:
    * `building_type`: Select the type (e.g., `IRON_MINE` or `HOUSE`).
    * `faction_id`: `99` (Neutral) or `0` (Blue).
-3. Add a `Sprite2D` child node and attach the building sprite from `assets/Buildings/`.
+3. Add a `Sprite2D` child node and attach the building sprite from `assets/buildings/`.
 4. If you want the building to be able to recruit (Castle only):
    * Insert the unit Resource list into the `recruitable_units` array.
 

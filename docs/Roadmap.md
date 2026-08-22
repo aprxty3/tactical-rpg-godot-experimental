@@ -18,8 +18,8 @@ sources:
 
 # Development Roadmap
 
-## Milestone 1: Core Foundation (Current)
-Status: 🔴 In Progress
+## Milestone 1: Core Foundation
+Status: 🟢 Completed
 
 ### Completed
 - [x] Project setup (Godot 4.7, GL Compatibility)
