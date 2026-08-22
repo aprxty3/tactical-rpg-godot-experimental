@@ -16,8 +16,11 @@ var hovered_cell: Vector2i = Vector2i(-1, -1)
 
 
 func _ready() -> void:
-	# Ensure grid highlights render ON TOP of the TileMapLayer
-	z_index = 2
+	# TileMapLayer.z_index is set to -1 (in the scene file) so it draws below
+	# this node's own _draw() highlights. z_index here alone would NOT work:
+	# TileMapLayer is our own child, so z_as_relative would tie its effective
+	# z_index to ours, and ties resolve by tree order (children paint over
+	# their parent's _draw()).
 
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
 	EventBus.combat_resolved.connect(_on_combat_resolved)
@@ -251,7 +254,7 @@ func _deselect_all() -> void:
 	queue_redraw()
 
 
-func _on_unit_move_completed(unit: TacticalUnit) -> void:
+func _on_unit_move_completed(unit: TacticalUnit, _from_cell: Vector2i, _to_cell: Vector2i) -> void:
 	if unit.faction_id == 0:
 		_select_unit(unit)
 	queue_redraw()

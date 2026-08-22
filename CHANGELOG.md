@@ -83,13 +83,20 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 
 ### 11. 🎯 High-Visibility Tactical Grid Highlights & Z-Index Elevation
-- **Z-Index Layer Elevation**: Set `z_index = 2` for the grid drawing layer in `TestGridController.gd`. Completely resolved the issue where highlights were occluded and buried underneath the opaque `TileMapLayer` terrain tiles.
+- **Z-Index Layer Elevation**: Set `z_index = 2` for the grid drawing layer in `TestGridController.gd`. ~~Completely resolved~~ *(Correction: this alone did NOT fix it — see entry #12 below.)*
 - **Vibrant Tactical Highlights**:
   - 🔵 **Reachable Move Cells**: High-contrast vibrant cyan-blue fill (`Color(0.12, 0.58, 1.0, 0.42)`) with glowing cyan borders and center pathing dot markers.
   - 🔴 **Attackable Cells**: High-contrast hazard crimson fill (`Color(1.0, 0.15, 0.15, 0.48)`) with bold red borders and precision crosshair reticle markers.
   - 🟡 **Selected Unit**: Golden pulse fill with bold double golden border (`Color(1.0, 0.92, 0.2, 1.0)`).
   - 🟢 **Selected Building**: Emerald green fill with glowing borders.
   - ◽ **Dynamic Cursor Hover**: Crisp white corner bracket highlights tracking the player's mouse over grid cells.
+
+
+### 12. 🩹 Grid Highlight Occlusion — Actual Root-Cause Fix & Move-Completed Signal Crash
+- **Root Cause Found**: The `z_index = 2` from entry #11 did nothing, because `TileMapLayer` is a **child** of the same node (`TestGridScene`) whose `_draw()` paints the highlights. With `z_as_relative` defaulting to `true`, the child's effective z-index rises together with its parent's, keeping them tied — and tied `CanvasItem`s paint in scene-tree order, so the child (`TileMapLayer`) always painted after (i.e. visually on top of) the parent's own `_draw()` output, regardless of the parent's `z_index` value.
+- **Actual Fix**: Set `TileMapLayer.z_index = -1` (in `TestGridScene.tscn`) so terrain now has a strictly lower effective z-index than the root's highlight draw and its sibling `Units`/`Buildings`. Removed the now-inert `z_index = 2` line and replaced the misleading comment in `TestGridController.gd`.
+- **Signal Signature Crash Fixed**: `EventBus.unit_move_completed(unit, from_cell, to_cell)` (3 args, emitted from `GridManager.gd:301`) was connected to `TestGridController._on_unit_move_completed(unit)` (1 arg) — every unit move threw `Method expected 1 argument(s), but called with 3` and silently skipped the handler body, which meant the player unit was never auto-reselected (and its highlights never redrawn) after finishing a move. Fixed the handler signature to accept all 3 arguments.
+- **Noted, not fixed**: `CombatResolver.gd:73`'s post-attack idle timer can log a benign `Lambda capture ... was freed` error if a unit is freed within the 0.6s window after combat; low priority, does not affect gameplay correctness.
 
 
 ---
