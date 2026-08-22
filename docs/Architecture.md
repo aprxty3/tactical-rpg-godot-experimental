@@ -1,3 +1,11 @@
+---
+type: Architecture Document
+title: "System Architecture & Godot 4 Design"
+description: "Scene tree hierarchy, decoupled data-driven architecture, manager responsibilities, and signal flow for War Perang Tactics."
+tags: [architecture, godot, scene-tree, managers, signals]
+generated: { by: human:aprxty3, at: 2026-08-22T00:00:00Z }
+---
+
 # Technical Architecture & Godot 4 System Design
 
 This document specifies the scene tree architecture, GDScript components, event flow, and pathfinding design for **War Perang Tactics** in Godot 4.x.
@@ -8,11 +16,11 @@ This document specifies the scene tree architecture, GDScript components, event 
 
 ```text
 Main.tscn (Node2D)
-├── CameraController2D (Camera2D) -> Pan, Zoom, Screen Shake
+├── CameraController2D (Camera2D)
 ├── Map (Node2D)
-│   ├── TerrainTileMapLayer (TileMapLayer) -> Visual & Ground data
-│   ├── FogOfWarTileMapLayer (TileMapLayer) -> Faction visibility
-│   ├── GridOverlay (Node2D) -> Movement & Attack Range Highlights
+│   ├── TerrainTileMapLayer (TileMapLayer)
+│   ├── FogOfWarTileMapLayer (TileMapLayer)
+│   ├── GridOverlay (Node2D)
 │   ├── Objects (Node2D)
 │   │   ├── Buildings/ (Castle, GoldMine, Tower, House)
 │   │   └── Interactables/ (TNT, Barrels, Torches)
@@ -20,20 +28,56 @@ Main.tscn (Node2D)
 │       ├── PlayerUnits/
 │       └── EnemyUnits/
 ├── Managers (Node)
-│   ├── TurnManager (Node) -> Phase state machine & AI turn execution
-│   ├── GridManager (Node) -> Grid coordinate translation & AStarGrid2D
-│   ├── EconomyManager (Node) -> Faction gold treasury & upkeep
-│   └── CombatResolver (Node) -> Damage calculation & status triggers
+│   ├── GridManager (Node)
+│   ├── EconomyManager (Node)
+│   └── CombatResolver (Node)
 └── CanvasLayer (UI_HUD)
     ├── TurnIndicator (Control)
-    ├── ResourceBar (Control: Gold, Unit Cap)
-    ├── UnitInspectorPanel (Control: Selected unit stats & portrait)
-    └── ActionMenu (Control: Move, Attack, Skill, End Turn)
+    ├── ResourceBar (Control: Gold, Iron, Unit Cap)
+    ├── UnitInspectorPanel (Control)
+    └── ActionMenu (Control)
 ```
 
 ---
 
-## 2. Core Managers & System Responsibilities
+## 2. Decoupled Data-Driven Architecture
+
+The game utilizes a 4-layer architecture pattern to cleanly separate data, logic, communication, and visual representation:
+
+- **Data Layer** — `UnitData` Resource files (.tres) — pure data, no logic
+- **Event Layer** — `EventBus.gd` autoload — central typed signal hub for decoupled communication
+- **Logic Layer** — Manager nodes (EconomyManager, TurnManager, CombatResolver, GridManager) — react to and emit signals
+- **Actor Layer** — `TacticalUnit` Node2D — visual representation + interaction, delegates to data
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    DATA LAYER                           │
+│   UnitData.tres  TerrainData.tres  FactionData.tres     │
+│   (Resources — pure data containers, no logic)          │
+└──────────────────────┬──────────────────────────────────┘
+                       │ read by
+┌──────────────────────▼──────────────────────────────────┐
+│                    ACTOR LAYER                          │
+│   TacticalUnit.gd  Building.gd  MapObject.gd           │
+│   (Node2D — visuals, input, animation)                  │
+└──────────┬────────────────────────────┬─────────────────┘
+           │ emit signals               │ emit signals
+┌──────────▼────────────────────────────▼─────────────────┐
+│                    EVENT LAYER                          │
+│                   EventBus.gd                           │
+│   (Autoload — typed signal hub, no logic)               │
+└──────────┬────────────────────────────┬─────────────────┘
+           │ listened by                │ listened by
+┌──────────▼────────────────────────────▼─────────────────┐
+│                    LOGIC LAYER                          │
+│   TurnManager  EconomyManager  CombatResolver  GridMgr  │
+│   (Managers — game rules, state machines, calculations)  │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Core Managers & System Responsibilities
 
 ### A. `GridManager.gd` & `AStarGrid2D`
 - Handles world position $\leftrightarrow$ grid coordinate transformations.
@@ -42,26 +86,38 @@ Main.tscn (Node2D)
 
 ### B. `TurnManager.gd` (Phase State Machine)
 - Coordinates player, enemy AI, and neutral phases (`PLAYER_TURN` $\rightarrow$ `ENEMY_AI_TURN` $\rightarrow$ `NEUTRAL_TURN`).
-- Emits gameplay signals:
-  - `signal turn_started(faction_id)`
-  - `signal phase_changed(new_phase)`
-  - `signal victory_condition_met(winner_faction)`
+- Emits gameplay signals via EventBus.
 
-### C. `Unit.gd` & `UnitData.tres` (Data-Driven Architecture)
-- Employs **Custom Resource** (`UnitData`) to decouple unit parameters from node scene logic:
+### C. `UnitData.tres` (Data Layer Blueprint)
+Employs custom resources to decouple unit parameters from node scene logic:
 ```gdscript
-# UnitData.gd
 class_name UnitData extends Resource
 
-@export var unit_name: String = "Warrior"
-@export var faction: String = "Blue"
+@export_group("Identity")
+@export var unit_name: String = "Pawn"
+@export var unit_class: String = "Worker"
+@export var tier: int = 1
+@export var description: String = ""
+
+@export_group("Combat Stats")
 @export var max_health: int = 100
 @export var attack_power: int = 25
 @export var defense_power: int = 10
 @export var movement_points: int = 3
-@export var attack_range: Vector2i = Vector2i(1, 1) # min, max
-@export var recruit_cost: int = 100
+@export var attack_range_min: int = 1
+@export var attack_range_max: int = 1
+
+@export_group("Economy & Logistics")
+@export var recruit_cost_gold: int = 50
+@export var recruit_cost_iron: int = 1
+@export var capacity_weight: int = 1
+
+@export_group("Progression")
+@export var upgrade_paths: Dictionary = {}
+
+@export_group("Visuals")
 @export var sprite_frames: SpriteFrames
+@export var portrait: Texture2D
 ```
 
 ### D. `CombatResolver.gd`
@@ -71,25 +127,23 @@ $$\text{Final Damage} = \max\Big(1, \, (\text{Attacker ATK} \times \text{Advanta
 
 ---
 
-## 3. Node Communication (Signal & Event-Driven)
+## 4. Node Communication (Signal & Event-Driven)
 
 ```
-[ Unit / Player Input ] ──(request_move)──► [ GridManager ]
-                                                  │
-                                          (validate_path)
-                                                  │
-                                                  ▼
-[ CombatResolver ] ◄──(trigger_attack)─── [ Unit Action ]
+[ TacticalUnit ] ──(EventBus.unit_action_requested)──► [ GridManager ]
+                                                           │
+                                                   (validate & execute)
+                                                           │
+                                                           ▼
+[ CombatResolver ] ◄──(EventBus.combat_started)─── [ GridManager ]
         │
- (emit damage_applied)
+  (EventBus.combat_resolved)
         │
         ▼
-[ UI_HUD / FloatingNumbers ] & [ Unit AnimationPlayer ]
+[ UI_HUD ] & [ TacticalUnit.AnimationPlayer ]
 ```
 
 ---
 
-## 4. Related Documentation Links
-- **Core Loop & Win Conditions**: See [[GDD_Overview]] for phase flow.
-- **Unit Stats & Archetypes**: See [[Factions_and_Units]] for parameters configured via `UnitData.tres`.
-- **Terrain Multipliers**: See [[Terrain_and_Buildings]] for defense and movement modifiers.
+## 5. Related Documentation Links
+- **Economy, Upgrades & Map Systems**: See [[Technical_Specs]] for field tax and node details.

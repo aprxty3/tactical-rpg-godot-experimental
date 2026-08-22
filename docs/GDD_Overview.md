@@ -1,3 +1,11 @@
+---
+type: Game Design Document
+title: "War Perang Tactics — Core Game Design"
+description: "High concept, core gameplay loop, victory conditions, and design pillars for War Perang Tactics."
+tags: [gdd, design, core-loop, victory-conditions]
+generated: { by: human:aprxty3, at: 2026-08-22T00:00:00Z }
+---
+
 # Game Design Document: War Perang Tactics
 
 ## 1. High Concept & Vision
@@ -70,6 +78,7 @@ The game operates in distinct phase-based turns:
 ---
 
 ## 5. Related Documentation Links
+- **Macro-Economy**: See [[Macro_Economy]] for resource management, logistics, and field tax mechanics.
 - **Units & Factions**: See [[Factions_and_Units]] for class definitions, combat triangle, and faction traits.
 - **Terrain & Structures**: See [[Terrain_and_Buildings]] for building functions and terrain modifiers.
 - **Technical Architecture**: See [[Architecture]] for Godot 4 scene trees, node systems, and GDScript patterns.

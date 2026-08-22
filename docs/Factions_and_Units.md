@@ -1,3 +1,11 @@
+---
+type: Game Design Document
+title: "Factions & Unit Archetypes"
+description: "Warring factions, unit classes, stat blueprints, combat advantage triangle, and progression paths."
+tags: [gdd, factions, units, combat-triangle, progression]
+generated: { by: human:aprxty3, at: 2026-08-22T00:00:00Z }
+---
+
 # Factions & Units Guide
 
 This document defines the warring factions, unit archetypes, stat blueprints, and combat advantage systems in **War Perang Tactics**.
@@ -38,6 +46,19 @@ This document defines the warring factions, unit archetypes, stat blueprints, an
 | **Vampire** | Hybrid Bruiser | 4 Tiles | 1 Tile (Melee) | Recovers health proportional to damage dealt (*Lifesteal*). |
 | **Skeleton Army** | Undead Swarm | 3 Tiles | 1-2 Tiles | Inexpensive fodder unit that can be reanimated on death by necromantic spells. |
 
+### Resource Cost Matrix
+| Unit | Gold Cost | Iron Cost | TC Weight | Notes |
+|------|-----------|-----------|-----------|-------|
+| Pawn | 50 | 1 | 1 | Cheapest, captures 2x fast |
+| Warrior | 80 | 2 | 2 | Balanced frontliner |
+| Knight | 150 | 4 | 3 | Heavy armor, charge bonus |
+| Archer | 70 | 1 | 2 | Ranged, no counter-attack |
+| Rogue | 90 | 1 | 2 | High mobility, backstab |
+| Wizzard | 120 | 0 | 2 | AoE magic, armor piercing |
+| Priest | 100 | 0 | 2 | Healer, +150% vs Undead |
+| Vampire | 130 | 2 | 3 | Lifesteal bruiser |
+| Skeleton | 30 | 0 | 1 | Cheap fodder, reanimatable |
+
 ---
 
 ## 3. Combat Advantage System (Tactical Triangle)
@@ -68,17 +89,15 @@ Combat damage resolution incorporates class matchups and elemental strengths:
 
 ## 4. Unit Stat Blueprint (Godot Resource)
 Each unit is instantiated using a `UnitData.gd` custom resource:
-- `max_health`: Hit Points (HP)
-- `attack_power`: Base Physical/Magical Attack
-- `defense_power`: Damage Reduction
-- `movement_points`: Base Move Distance per turn
-- `attack_range_min` & `attack_range_max`: Reach distance
-- `recruit_cost`: Gold cost to deploy
-- `faction`: Faction alignment identifier
+- `unit_name`, `unit_class`, `tier`, `description`
+- `max_health`, `attack_power`, `defense_power`, `movement_points`, `attack_range_min`, `attack_range_max`
+- `recruit_cost_gold`, `recruit_cost_iron`, `capacity_weight`
+- `upgrade_paths`
+- `sprite_frames`, `portrait`
 
 ---
 
 ## 5. Related Documentation Links
-- **Core Loop & Phases**: See [[GDD_Overview]] for turn progression and game rules.
-- **Production & Capture**: See [[Terrain_and_Buildings]] for recruitment at Castles and healing in Houses.
-- **Godot Implementation**: See [[Architecture]] for node hierarchy and `CombatResolver.gd`.
+- **Core Loop & Phases**: See [GDD_Overview.md](GDD_Overview.md) for turn progression and game rules.
+- **Production & Capture**: See [Terrain_and_Buildings.md](Terrain_and_Buildings.md) for recruitment at Castles and healing in Houses.
+- **Godot Implementation**: See [Architecture.md](Architecture.md) for node hierarchy and `CombatResolver.gd`.

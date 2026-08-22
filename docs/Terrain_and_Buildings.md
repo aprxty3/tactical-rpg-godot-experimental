@@ -1,3 +1,11 @@
+---
+type: Game Design Document
+title: "Terrain & Battlefield Structures"
+description: "Capturable buildings, battlefield hazards, terrain biomes, and movement/defense modifiers."
+tags: [gdd, terrain, buildings, hazards, movement]
+generated: { by: human:aprxty3, at: 2026-08-22T00:00:00Z }
+---
+
 # Terrain & Buildings Guide
 
 This document details interactive battlefield structures, environmental hazards, and terrain modifiers in **War Perang Tactics**.
@@ -48,7 +56,19 @@ Each grid cell has distinct properties modifying *Movement Cost* and *Defense Mu
 
 ---
 
-## 4. Related Documentation Links
-- **Economy Integration**: See [[GDD_Overview]] for gold revenue phases and upkeep mechanics.
-- **Unit Production**: See [[Factions_and_Units]] for units deployable from Castles.
-- **Godot Scene Setup**: See [[Architecture]] for `TileMapLayer` and pathfinding configuration.
+## 4. Ambush Mechanics (Forest Terrain)
+
+Units positioned in Forest tiles gain a concealment advantage. When an enemy unit moves adjacent to a concealed unit, an **Ambush** may trigger:
+
+- **First Strike**: The concealed unit attacks first before the enemy can react.
+- **Morale Shock**: The ambushed unit suffers a temporary morale penalty (-1 morale level).
+- **Conditions**: Only Light Infantry (Rogue, Archer) and certain faction-specific units can trigger ambushes. Heavy units (Knight, Warrior) are too conspicuous.
+
+> *Inspired by Symphony of War's stealth and ambush system.*
+
+---
+
+## 5. Related Documentation Links
+- **Economy Integration**: See [GDD_Overview.md](GDD_Overview.md) for gold revenue phases and upkeep mechanics.
+- **Unit Production**: See [Factions_and_Units.md](Factions_and_Units.md) for units deployable from Castles.
+- **Godot Scene Setup**: See [Architecture.md](Architecture.md) for `TileMapLayer` and pathfinding configuration.
