@@ -4,7 +4,7 @@ extends Node
 ## unit banter, and emergent campaign storytelling.
 
 @export var model_name: String = "gemini-3.7-flash"
-@export var request_timeout_seconds: float = 10.0
+@export var request_timeout_seconds: float = 2.0
 @export var enable_dynamic_dialogue: bool = true
 
 var _api_key: String = ""
@@ -55,6 +55,8 @@ func set_api_key(key: String) -> void:
 
 ## Check if Gemini client is active and ready
 func is_ready_for_requests() -> bool:
+	if DisplayServer.get_name() == "headless":
+		return false
 	return _api_key != "" and enable_dynamic_dialogue
 
 ## Core Async Request: Send prompt to Gemini 3.7 Flash API

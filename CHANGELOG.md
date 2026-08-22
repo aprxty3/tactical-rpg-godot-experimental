@@ -66,6 +66,22 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Automated Test Validation**: Added `scenes/test_popup_and_map.tscn` confirming 100% grid cell population (160 tiles) and modal state transitions with Exit Code 0.
 
 
+### 10. ⚔️ In-Depth Combat Mechanics, Class Fighting Styles & Combat VFX
+- **Class Fighting Styles & Special Traits**:
+  - 🩸 **Vampire Lifesteal**: Recovers health ($+40\%$ of damage dealt) upon attacking.
+  - ✨ **Mage Armor-Piercing**: Magical damage ignores $75\%$ of physical defense (`DEF * 0.12`), effectively countering heavily armored units.
+  - 🛡️ **Knight Heavy Armor**: Endures physical damage with $-25\%$ flat physical damage reduction.
+  - 🐎 **Cavalry Momentum Charge**: Devastating $+25\%$ damage bonus when initiating attacks against enemies.
+  - 🗡️ **Infiltrator Backstab**: $+50\%$ critical backstab damage against targets.
+  - ✝️ **Holy Smite**: Support/Monk/Priest units inflict $2.5\times$ Holy damage against Undead targets.
+  - 🏹 **Ranged Advantage**: Attacks from $2\text{--}3$ tiles away prevent defender from executing melee counter-attacks.
+- **Combat Visuals & Animation Polish**:
+  - Dynamic floating damage text (`-X` in red, `+X` in green) with pop and float tween animations in `TacticalUnit.gd`.
+  - Sprite flash effect (`_flash_damage()`) on taking damage.
+  - Smooth death dissolve and fade-out animation before removal.
+- **Automated Test Validation**: Added `scenes/test_combat_mechanics.tscn` verifying all 6 combat traits and calculations with 100% pass rate.
+
+
 ---
 
 ## 📅 2026-08-22

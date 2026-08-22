@@ -37,6 +37,12 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	
 	var defender_died = defender.take_damage(attack_result["damage"], attack_result["damage_type"])
 	
+	# Special Trait: Vampire Lifesteal (recovers 40% of damage dealt)
+	var att_name = attacker.unit_data.unit_name.to_lower() if is_instance_valid(attacker.unit_data) else ""
+	if "vampire" in att_name and attack_result["damage"] > 0:
+		var lifesteal_amount = maxi(1, int(round(attack_result["damage"] * 0.4)))
+		attacker.heal(lifesteal_amount)
+
 	if attack_result["advantage_type"] != "NEUTRAL":
 		EventBus.combat_advantage_applied.emit(
 			attack_result["advantage_type"],
@@ -62,9 +68,7 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 			var attacker_died = attacker.take_damage(counter_result["damage"], counter_result["damage_type"])
 			counter_result["killed_attacker"] = attacker_died
 
-	# Return units to idle shortly after attack (using deferred/tween approach inside TacticalUnit or simply trusting it finishes if looping is false)
-	# For simplicity (KISS), attack animation is NOT loop_mode, so it stops at last frame, but we want it to go back to idle.
-	# We can use a SceneTreeTimer
+	# Return units to idle shortly after attack
 	var timer = attacker.get_tree().create_timer(0.6)
 	timer.timeout.connect(func():
 		if is_instance_valid(attacker): attacker.play_animation("idle")
@@ -83,7 +87,7 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	return full_report
 
 
-## Kalkulasi damage mendalam dengan formula taktis
+## Kalkulasi damage mendalam dengan formula taktis & class specializations
 func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: float = 1.0) -> Dictionary:
 	var att_data: UnitData = att.unit_data
 	var def_data: UnitData = def.unit_data
@@ -92,39 +96,65 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 	var def_power: int = def_data.defense_power if is_instance_valid(def_data) else 10
 	var att_class: String = att_data.unit_class if is_instance_valid(att_data) else "Worker"
 	var def_class: String = def_data.unit_class if is_instance_valid(def_data) else "Worker"
+	var att_name: String = att_data.unit_name.to_lower() if is_instance_valid(att_data) else ""
+	var def_name: String = def_data.unit_name.to_lower() if is_instance_valid(def_data) else ""
 
-	# Formula Base Damage: ATK - (DEF * 0.5)
-	var base_damage: float = float(atk_power) - (float(def_power) * 0.5)
+	# 1. Base Damage Calculation based on Damage Type (Physical vs Magic)
+	var base_damage: float
+	var damage_type: String = "physical"
+
+	if att_class == "Mage" or "wizard" in att_name or "wizzard" in att_name or "mage" in att_name:
+		damage_type = "magic"
+		# Mage: Armor-Piercing (bypasses 75% of physical defense)
+		base_damage = float(atk_power) - (float(def_power) * 0.12)
+	else:
+		base_damage = float(atk_power) - (float(def_power) * 0.5)
+
+	# Heavy Armor Trait (Knight): Takes 25% less physical damage
+	if ("knight" in def_name or (def_class == "Melee" and def_data.tier >= 3)) and damage_type == "physical":
+		base_damage *= 0.75
+
 	base_damage = maxf(1.0, base_damage)
 
-	# Multiplier Keunggulan Taktis (Combat Advantage Triangle)
-	var advantage_info = _get_advantage_multiplier(att_class, def_class)
+	# 2. Multiplier Keunggulan Taktis (Combat Advantage Triangle)
+	var advantage_info = _get_advantage_multiplier(att_class, def_class, att_name, def_name)
 	var advantage_mult: float = advantage_info["multiplier"]
 	var advantage_type: String = advantage_info["type"]
 
-	# Terrain defense modifier (Default 1.0, can be increased if unit is in Forest/Mountain)
-	var terrain_def_mult: float = 1.0 # 1.0 = normal, 0.8 = hutan (+20% def), 0.6 = gunung (+40% def)
+	# 3. Class Fighting Style Modifiers
+	var trait_mult: float = 1.0
+	
+	# Cavalry (Lancer) Momentum Charge (+25% damage when initiating attack)
+	if att_class == "Cavalry" or "lancer" in att_name:
+		trait_mult *= 1.25
+
+	# Infiltrator (Rogue) Backstab Critical (+50% damage)
+	if att_class == "Infiltrator" or "rogue" in att_name:
+		trait_mult *= 1.50
+
+	# 4. Terrain defense modifier
+	var terrain_def_mult: float = 1.0
 
 	# Hitung total damage
-	var final_damage = int(round(base_damage * advantage_mult * terrain_def_mult * additional_mult))
+	var final_damage = int(round(base_damage * advantage_mult * trait_mult * terrain_def_mult * additional_mult))
 	final_damage = maxi(1, final_damage)
 
 	return {
 		"damage": final_damage,
 		"base_damage": int(base_damage),
-		"multiplier": advantage_mult * additional_mult,
+		"multiplier": advantage_mult * trait_mult * additional_mult,
 		"advantage_type": advantage_type,
-		"damage_type": "physical"
+		"damage_type": damage_type
 	}
 
 
 ## Menentukan multiplier keunggulan taktis (Combat Advantage Triangle)
-func _get_advantage_multiplier(attacker_class: String, defender_class: String) -> Dictionary:
+func _get_advantage_multiplier(attacker_class: String, defender_class: String, att_name: String = "", def_name: String = "") -> Dictionary:
 	var a = attacker_class.to_upper()
 	var d = defender_class.to_upper()
 
-	# 1. Matchup Khusus: Priest / Holy vs Undead (2.5x)
-	if a == "SUPPORT" and (d == "UNDEAD" or d == "SKELETON" or d == "VAMPIRE"):
+	# 1. Matchup Khusus: Priest / Monk / Holy vs Undead (2.5x)
+	if (a == "SUPPORT" or "priest" in att_name or "monk" in att_name) and (d == "UNDEAD" or "skeleton" in def_name or "vampire" in def_name or "skull" in def_name):
 		return {"multiplier": GameConfig.HOLY_VS_UNDEAD_MULTIPLIER, "type": "HOLY_EFFECTIVE"}
 
 	# 2. Melee / Cavalry > Ranged & Support (1.5x)

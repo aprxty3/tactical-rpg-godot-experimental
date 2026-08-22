@@ -107,6 +107,8 @@ func reset_for_new_turn() -> void:
 func take_damage(amount: int, damage_type: String = "normal") -> bool:
 	current_health -= amount
 	_update_health_bar(true)
+	_flash_damage()
+	_show_floating_indicator("-%d" % amount, Color(1.0, 0.25, 0.25))
 	EventBus.unit_damaged.emit(self, amount, damage_type)
 
 	if current_health <= 0:
@@ -125,7 +127,36 @@ func heal(amount: int) -> void:
 	var actual_healed := current_health - old_health
 	if actual_healed > 0:
 		_update_health_bar(true)
+		_show_floating_indicator("+%d" % actual_healed, Color(0.25, 1.0, 0.35))
 		EventBus.unit_healed.emit(self, actual_healed)
+
+
+func _flash_damage() -> void:
+	if not sprite:
+		return
+	var t = create_tween()
+	t.tween_property(sprite, "modulate", Color(2.0, 0.4, 0.4), 0.08)
+	t.tween_property(sprite, "modulate", Color.WHITE, 0.12)
+
+
+func _show_floating_indicator(text: String, color: Color) -> void:
+	var label = Label.new()
+	label.text = text
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 12)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_constant_override("outline_size", 3)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.position = Vector2(-20, -70)
+	add_child(label)
+
+	var tween = create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "position:y", label.position.y - 24.0, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(label, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN).set_delay(0.2)
+	tween.chain().tween_callback(label.queue_free)
 
 
 ## Swap UnitData resource for an upgraded version.
@@ -258,7 +289,18 @@ func _handle_death(damage_type: String) -> void:
 			EventBus.unit_deserted.emit(self)
 		_:
 			EventBus.unit_died.emit(self, damage_type)
-	queue_free()
+
+	# Smooth death effect: fade out and dissolve
+	if sprite:
+		var death_tween = create_tween()
+		death_tween.set_parallel(true)
+		death_tween.tween_property(sprite, "modulate:a", 0.0, 0.35)
+		death_tween.tween_property(sprite, "scale", sprite.scale * 0.8, 0.35)
+		if hp_bar:
+			death_tween.tween_property(hp_bar, "modulate:a", 0.0, 0.2)
+		death_tween.chain().tween_callback(queue_free)
+	else:
+		queue_free()
 
 
 func _update_visuals() -> void:
