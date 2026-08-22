@@ -5,10 +5,10 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Blue Knight"
+unit_name = "Red Knight"
 unit_class = "Melee"
 tier = 3
-description = "Heavy armored vanguard with formidable defense."
+description = "Fierce legion juggernaut clad in blood-forged plate."
 max_health = 95
 attack_power = 36
 defense_power = 12
