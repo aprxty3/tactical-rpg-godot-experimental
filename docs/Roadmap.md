@@ -48,16 +48,45 @@ Status: ⬜ Planned
 - [ ] Implement robust Victory/Defeat condition checks based on Castle captures or Annihilation.
 - [ ] Build a comprehensive UI (Resource bar, Unit inspector panel, Action context menu).
 - [ ] Add sound effects (SFX) for combat impacts and movement.
+- [x] In-Game AI Narrative Engine: `GeminiClient.gd` autoload powered by **Gemini 3.7 Flash** for dynamic combat banter and territory capture declarations.
 
-## Milestone 3: Economy & Advanced Progression
+
+## Milestone 3: Economy & Advanced Progression (Unit Upgrade Tree)
 Status: ⬜ Planned
 
-- [ ] Finalize Troop Capacity system + Logistics Collapse / Starvation mechanics.
-- [ ] Implement Unit Upgrade paths (e.g., Pawn → Knight → Cavalier).
-- [ ] Implement Field Tax mechanic (Upgrades cost 200% when away from a friendly Castle).
-- [ ] Village capture mechanic for expanding Troop Capacity (+2 TC per village).
-- [ ] Dual upgrade paths per unit *(inspired by HoMM: Olden Era)*.
-- [ ] Recruitment pool refresh every N turns *(inspired by HoMM creature growth)*.
+### 1. Unit Upgrade Tree Architecture
+Units evolve from baseline recruits through branching specializations inspired by *Heroes of Might and Magic: Olden Era* and *Symphony of War*:
+
+```text
+                                ┌──► [ Melee ] ───► Warrior ────┬──► Knight (Heavy Armor)
+                                │                                └──► Cavalier (Mounted Charge)
+                                │
+                                ├──► [ Ranged ] ──► Archer ─────┬──► Sniper (Extreme Range)
+                                │                                └──► Crossbowman (Armor Pierce)
+                                │
+[ Tier 1: Pawn ] ───────────────┼──► [ Magic ] ───► Wizzard ────┬──► Archmage (Huge AoE)
+(Worker / Light Infantry)       │                                └──► Elementalist (Status/Burn)
+                                │
+                                ├──► [ Holy ] ────► Priest ─────┬──► High Priest (Mass Heal)
+                                │                                └──► Paladin (Melee/Holy Hybrid)
+                                │
+                                └──► [ Stealth ] ─► Rogue ──────┬──► Assassin (Lethal Backstab)
+                                                                 └──► Shadowblade (Stealth/Ambush)
+
+[ Undead Lineage (Black Coven) ]
+Skeleton (Fodder) ─────────────► Skeleton Warrior ──────────────► Lich (Necromancer)
+Vampire (Bruiser) ─────────────► Vampire Lord ──────────────────► Nightstalker (Flight/Lifesteal)
+```
+
+### 2. Progression & Economy Tasks
+- [ ] **UnitData Progression Blueprint**: Implement `upgrade_paths: Dictionary[String, Resource]` on `UnitData.gd` supporting multiple branching choices per unit.
+- [ ] **Dynamic Upgrade Action & UI**: Unit action menu displays available promotions when requirements are met.
+- [ ] **Field Tax Implementation**: Upgrades executed at a friendly Castle cost standard rate ($1\times$), while front-line field upgrades incur a $200\%$ ($2\times$) Field Tax surcharge.
+- [ ] **Troop Capacity System & Logistics Collapse**: Over-capacity armies trigger **Starvation** penalties during the Upkeep Phase.
+- [ ] **Village Economy Nodes**: Capturing villages grants $+2$ TC cap and $+10$ Gold passive revenue.
+- [ ] **Dual Upgrade Specializations**: Units choose between distinct passive traits at Tier 3 (e.g., Knight defense vs. Cavalier mobility).
+- [ ] **Recruitment Pool Refresh**: Replenishment timers for elite tier units at Castles every $N$ turns.
+
 
 ## Milestone 4: Advanced Tactical Systems & Morale
 Status: ⬜ Planned

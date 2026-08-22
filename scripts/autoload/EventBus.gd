@@ -54,3 +54,9 @@ signal defeat_condition_met(faction_id: int, condition: String)
 # === Starvation / Logistics Signals ===
 signal logistics_collapse_started(faction_id: int)
 signal logistics_collapse_ended(faction_id: int)
+
+# === AI Story & Dynamic Narrative Signals (Gemini 3.7 Flash) ===
+signal dialogue_generated(speaker_name: String, text: String, emotion: String)
+signal story_event_narrated(title: String, body: String)
+signal ai_generation_failed(error_message: String)
+

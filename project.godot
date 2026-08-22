@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 EventBus="*res://scripts/autoload/EventBus.gd"
 GameConfig="*res://scripts/autoload/GameConfig.gd"
 TurnManager="*res://scripts/autoload/TurnManager.gd"
+GeminiClient="*res://scripts/autoload/GeminiClient.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]

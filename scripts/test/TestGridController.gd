@@ -28,6 +28,8 @@ func _ready() -> void:
 	EventBus.building_captured.connect(_on_building_captured)
 	EventBus.gold_changed.connect(_on_resource_changed)
 	EventBus.iron_changed.connect(_on_resource_changed)
+	EventBus.dialogue_generated.connect(_on_dialogue_generated)
+	EventBus.story_event_narrated.connect(_on_story_event_narrated)
 
 	# 1. Daftarkan Faksi ke EconomyManager
 	economy_manager.register_faction(GameConfig.Faction.BLUE_KINGDOM, 150, 4)
@@ -268,6 +270,20 @@ func _on_combat_resolved(result: Dictionary) -> void:
 
 	_update_hud_text(log_str)
 	queue_redraw()
+
+
+func _on_dialogue_generated(speaker_name: String, text: String, _emotion: String) -> void:
+	print("[Dialogue] %s: \"%s\"" % [speaker_name, text])
+	# Append to HUD if HUD is available
+	if hud_label:
+		hud_label.text += "\n💬 [%s]: \"%s\"" % [speaker_name, text]
+
+
+func _on_story_event_narrated(title: String, body: String) -> void:
+	print("[Story Event] %s: %s" % [title, body])
+	if hud_label:
+		hud_label.text += "\n📜 [%s]: %s" % [title, body]
+
 
 
 func _draw() -> void:

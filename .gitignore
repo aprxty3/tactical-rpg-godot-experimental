@@ -24,6 +24,10 @@ graphify-out/
 *.sqlite
 *.sqlite3
 sqlite_mcp_server.db
+.env
+*.env
+*secret*.cfg
+gemini_api_key.txt
 
 # ==========================================
 # Operating System & Editor Metadata

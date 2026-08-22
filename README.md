@@ -74,11 +74,11 @@ A turn-based tactical strategy game built in Godot 4.7. Features a Decoupled Dat
 ## 🗺️ Detailed Roadmap & Milestones
 
 - [x] **Milestone 1**: Core Foundation (Decoupled Data-Driven Architecture, EventBus, TurnManager, GridManager, CombatResolver, EconomyManager, Building & Basic AI).
-- [ ] **Milestone 2**: Unit Class Expansion (Archer, Rogue, Wizzard, Priest, Vampire, Skeleton) & Spritesheet Animation integration.
-- [ ] **Milestone 3**: Fog of War, Battlefield Hazards (TNT detonation, Fire spread), & Ambush from Forests.
-- [ ] **Milestone 4**: Morale & Surrender System *(inspired by Symphony of War)*.
-- [ ] **Milestone 5**: Full Campaign, UI Theme/HUD overhaul, and SFX/BGM pipeline.
-*(For a more detailed breakdown, see [`docs/Roadmap.md`](docs/Roadmap.md))*
+- [ ] **Milestone 2**: Playable Prototype & Unit Expansion (Archer, Rogue, Wizzard, Priest, Vampire, Skeleton + Spritesheet Animations + In-Game Gemini 3.7 Flash AI).
+- [ ] **Milestone 3**: Economy & Unit Upgrade Tree (Branching promotions, Field Tax 2x, Troop Capacity / Starvation, Village nodes).
+- [ ] **Milestone 4**: Advanced Tactical Systems (Morale & Surrender, Forest Ambush, Fog of War, TNT Chain Explosions).
+- [ ] **Milestone 5**: Full Campaign, Advanced AI, UI Theme/HUD overhaul, SFX/BGM pipeline.
+*(For the complete design specifications and full ASCII trees, see [`docs/Roadmap.md`](docs/Roadmap.md))*
 
 ---
 
