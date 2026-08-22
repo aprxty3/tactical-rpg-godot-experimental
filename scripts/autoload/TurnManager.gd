@@ -113,10 +113,22 @@ func _execute_upkeep() -> void:
 
 	# 1. Collect income from controlled resource nodes
 	if economy_manager:
-		# TODO: Replace with actual mine/house counts from GridManager
-		var gold_mines := 1   # placeholder
-		var iron_mines := 0   # placeholder
-		var houses := 0       # placeholder
+		var gold_mines := 0
+		var iron_mines := 0
+		var houses := 0
+		
+		var tree = get_tree()
+		if tree:
+			for bld in tree.get_nodes_in_group("buildings"):
+				if bld is Building and bld.faction_id == faction_id:
+					match bld.building_type:
+						Building.BuildingType.GOLD_MINE:
+							gold_mines += 1
+						Building.BuildingType.IRON_MINE:
+							iron_mines += 1
+						Building.BuildingType.HOUSE:
+							houses += 1
+
 		economy_manager.collect_income(faction_id, gold_mines, iron_mines, houses)
 
 		# 2. Check logistics collapse (starvation)

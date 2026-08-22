@@ -1,4 +1,5 @@
 extends Node
+class_name EconomyManager
 ## EconomyManager — Logic layer manager for multi-faction resource tracking.
 ## Listens to EventBus signals. Does NOT reference actor nodes directly.
 ## Register as a child of Managers node (NOT autoload — instantiated per-game).

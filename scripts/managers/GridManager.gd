@@ -288,8 +288,25 @@ func _execute_unit_movement(unit: TacticalUnit, path: Array[Vector2i]) -> void:
 
 	tween.finished.connect(func():
 		_moving_units.erase(unit)
+		
+		# Cek apakah petak tujuan memiliki bangunan untuk direbut
+		var building = get_building_at(to_cell)
+		if building and building.faction_id != unit.faction_id:
+			building.capture(unit.faction_id)
+		
 		EventBus.unit_move_completed.emit(unit, from_cell, to_cell)
 	)
+
+
+## Mendapatkan bangunan di petak tertentu (jika ada)
+func get_building_at(cell: Vector2i) -> Building:
+	var tree = get_tree()
+	if not tree:
+		return null
+	for bld in tree.get_nodes_in_group("buildings"):
+		if bld is Building and bld.grid_position == cell:
+			return bld
+	return null
 
 
 # === EventBus General Signal Listeners ===

@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://c3qg0m0k0x8m1"]
+
+[ext_resource type="Script" path="res://scripts/buildings/Building.gd" id="1_bld"]
+[ext_resource type="Texture2D" path="res://assets/Gold Mine/GoldMine_Active.png" id="2_mine_tex"]
+
+[node name="GoldMine" type="Node2D"]
+script = ExtResource("1_bld")
+building_type = 1
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_mine_tex")
+scale = Vector2(0.45, 0.45)
