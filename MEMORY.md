@@ -8,64 +8,64 @@ generated: { by: human:aprxty3, at: 2026-08-22T23:55:00Z }
 
 # 🧠 Project Memory — War Perang Tactics
 
-Dokumen ini berfungsi sebagai **Persistent Context (Memori Abadi)** untuk developer dan AI Agent yang bekerja di repositori ini. Semua aturan, keputusan arsitektur, dan konvensi utama didokumentasikan di sini.
+This document serves as the **Persistent Context (Eternal Memory)** for developers and AI Agents working in this repository. All core rules, architectural decisions, and conventions are documented here.
 
 ---
 
-## 🏛️ Invariabel Arsitektur (Architectural Invariants)
+## 🏛️ Architectural Invariants
 
 1. **Decoupled Data-Driven Pattern**:
-   * **Resource Murni (Data Layer)**: Script di `scripts/data/` (seperti `UnitData.gd`) HANYA berisi data `@export`. Dilarang menaruh logika runtime, signal emission, atau manipulasi node di Resource.
-   * **EventBus sebagai Single Source of Truth untuk Komunikasi**: Node tidak boleh memanggil `get_node("/root/...")` atau hardcoded path antar sesama manager. Semua komunikasi antar-sistem dilakukan melalui sinyal di [`scripts/autoload/EventBus.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/EventBus.gd).
-   * **Node Aktor Pasif (Actor Layer)**: `TacticalUnit.gd` dan `Building.gd` hanya memanipulasi representasi visualnya sendiri, membaca Resource datanya, dan melempar event ke `EventBus`.
-   * **Manajer Logika (Logic Layer)**: Manajer (`GridManager`, `CombatResolver`, `EconomyManager`, `AIManager`) mengolah state dan kalkulasi, lalu memancarkan hasilnya melalui `EventBus`.
+   * **Pure Resources (Data Layer)**: Scripts in `scripts/data/` (e.g., `UnitData.gd`) MUST ONLY contain `@export` data variables. It is strictly forbidden to place runtime logic, signal emission, or node manipulation in Resources.
+   * **EventBus as Single Source of Truth**: Nodes must not call `get_node("/root/...")` or hardcode paths to communicate with other managers. All cross-system communication is handled via signals in [`scripts/autoload/EventBus.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/EventBus.gd).
+   * **Passive Actor Nodes (Actor Layer)**: `TacticalUnit.gd` and `Building.gd` only manipulate their own visual representation, read their data Resources, and emit events to the `EventBus`.
+   * **Logic Managers (Logic Layer)**: Managers (`GridManager`, `CombatResolver`, `EconomyManager`, `AIManager`) process state and calculations, then broadcast the results via the `EventBus`.
 
-2. **Standar Autoload (`project.godot`)**:
+2. **Autoload Standards (`project.godot`)**:
    * `EventBus` ➔ `*res://scripts/autoload/EventBus.gd`
    * `GameConfig` ➔ `*res://scripts/autoload/GameConfig.gd`
    * `TurnManager` ➔ `*res://scripts/autoload/TurnManager.gd`
    * `_mcp_game_helper` ➔ Autoload plugin godot_ai.
 
-3. **Standar Koordinat & Grid**:
-   * Ukuran Grid standar: Orthogonal 4-arah (`AStarGrid2D.DIAGONAL_MODE_NEVER`).
-   * Heuristic standar: `AStarGrid2D.HEURISTIC_MANHATTAN`.
-   * Cell Size standar: `Vector2i(64, 64)` pixel untuk gameplay 2D táctics.
+3. **Coordinate & Grid Standards**:
+   * Standard Grid Size: 4-directional Orthogonal (`AStarGrid2D.DIAGONAL_MODE_NEVER`).
+   * Standard Heuristic: `AStarGrid2D.HEURISTIC_MANHATTAN`.
+   * Standard Cell Size: `Vector2i(64, 64)` pixels for 2D tactical gameplay.
 
 4. **Multi-Faction Invariant**:
-   * Semua sistem ekonomi dan unit wajib mendukung `faction_id` dinamis:
-     * `0`: `BLUE_KINGDOM` (Player faksi default)
-     * `1`: `RED_LEGION` (AI/Enemy faksi default)
+   * All economic and unit systems must support dynamic `faction_id`:
+     * `0`: `BLUE_KINGDOM` (Default Player faction)
+     * `1`: `RED_LEGION` (Default AI/Enemy faction)
      * `2`: `PURPLE_SYNDICATE`
      * `3`: `YELLOW_EMPIRE`
      * `4`: `BLACK_COVEN`
-     * `99`: `NEUTRAL` (Bangunan / Creature netral)
+     * `99`: `NEUTRAL` (Neutral Buildings / Creatures)
 
 ---
 
-## ⚖️ Rumus & Formula Kunci Permainan
+## ⚖️ Key Formulas & Calculations
 
-1. **Formula Kerusakan Tempur (Combat Damage)**:
+1. **Combat Damage Formula**:
    $$\text{Base Damage} = \max(1, \text{Attacker.ATK} - (\text{Defender.DEF} \times 0.5))$$
    $$\text{Final Damage} = \text{round}(\text{Base Damage} \times \text{Advantage Mult} \times \text{Terrain Mod} \times \text{Counter Mod})$$
 
-2. **Matriks Keunggulan Tempur (Advantage Multipliers)**:
+2. **Combat Advantage Multipliers**:
    * **Advantage (1.5x)**: Melee > Ranged, Ranged > Mage, Mage > Melee, Infiltrator > Mage/Ranged.
    * **Disadvantage (0.7x)**: Ranged < Melee, Melee < Mage.
    * **Holy vs Undead (2.5x)**: Support/Priest > Undead/Skeleton/Vampire.
 
-3. **Ekonomi & Field Tax**:
-   * Upgrade di Kastil: $100\%$ biaya selisih tier.
-   * Upgrade di Luar Kastil (Field Tax): $200\%$ biaya selisih tier (`GameConfig.FIELD_TAX_MULTIPLIER = 2`).
-   * Kapasitas Pasukan Dasar: $8$ TC + ($2$ TC per Village yang dikuasai).
-   * Starvation Damage: $15$ True Damage per unit jika faksi mengalami kelebihan kapasitas pasukan.
+3. **Economy & Field Tax**:
+   * Upgrading at a Castle: $100\%$ of the tier difference cost.
+   * Upgrading outside a Castle (Field Tax): $200\%$ of the tier difference cost (`GameConfig.FIELD_TAX_MULTIPLIER = 2`).
+   * Base Troop Capacity: $8$ TC + ($2$ TC per controlled Village).
+   * Starvation Damage: $15$ True Damage per unit if the faction exceeds its troop capacity.
 
 ---
 
-## 📌 Riwayat Keputusan Desain (Design Decisions)
+## 📌 Design Decisions History
 
-| Tanggal | Keputusan | Rasional |
+| Date | Decision | Rationale |
 |---|---|---|
-| **2026-08-22** | Migrasi ke Decoupled 4-Layer | Menghindari *spaghetti code* dan keterikatan path node antar manager. |
-| **2026-08-22** | Penggunaan `AStarGrid2D` bawaan | Kinerja pathfinding C++ di level engine jauh lebih cepat daripada AStar buatan manual di GDScript. |
-| **2026-08-22** | Standarisasi Dokumen ke OKF v0.2 | Memastikan seluruh dokumen arsitektur dan GDD mudah dipahami, di-query, dan diproses oleh LLM/Graphify. |
-| **2026-08-22** | Pacing Asinkron pada `AIManager` | AI diberi jeda `0.4s` via `create_timer` agar aksi pergerakan dan serangan dapat diamati pemain secara natural. |
+| **2026-08-22** | Migration to Decoupled 4-Layer | Prevent spaghetti code and node path entanglement across managers. |
+| **2026-08-22** | Use native `AStarGrid2D` | C++ level pathfinding performance in the engine is vastly superior to manual AStar in GDScript. |
+| **2026-08-22** | Document Standardization to OKF v0.2 | Ensure all architecture and GDD documents are easily readable, queryable, and processed by LLMs/Graphify. |
+| **2026-08-22** | Asynchronous Pacing for `AIManager` | AI is given a `0.4s` delay via `create_timer` so movement and attack actions can be naturally observed by the player. |

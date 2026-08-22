@@ -1,9 +1,9 @@
 extends Node2D
-## TestGridController — Controller interaktif untuk testing Grid, Combat, Economy & Recruitment.
+## TestGridController — Interactive controller for testing Grid, Combat, Economy & Recruitment.
 ## Fitur:
-## - [ESC]: Keluar dari game seketika.
+## - [ESC]: Quit the game immediately.
 ## - [SPASI]: End Turn / Ganti Giliran Faction (Memicu Upkeep & Income).
-## - [R]: Rekrut Unit Baru jika sedang memilih Castle faksi aktif.
+## - [R]: Recruit New Unit if active faction's Castle is selected.
 ## - Klik Unit: Bergerak & Serang.
 ## - Klik Bangunan: Menampilkan info bangunan & opsi rekrutmen.
 
@@ -60,21 +60,21 @@ func _update_hud_text(text: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Shortcut ESC untuk keluar
+	# ESC shortcut to quit
 	if event.is_action_pressed("ui_cancel") or (event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE):
 		get_tree().quit()
 		return
 
-	# Jangan terima input kontrol jika sedang giliran AI Red Legion
+	# Ignore control input if it is Red Legion AI's turn
 	if TurnManager.get_current_faction() == GameConfig.Faction.RED_LEGION:
 		return
 
-	# Shortcut SPACE untuk End Turn
+	# SPACE shortcut to End Turn
 	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
 		end_turn()
 		return
 
-	# Shortcut R untuk Rekrut Unit jika Castle terpilih
+	# R shortcut to Recruit Unit if Castle is selected
 	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
 		_try_recruit_at_selected_castle()
 		return
@@ -97,7 +97,7 @@ func _on_turn_started(faction_id: int) -> void:
 		_deselect_all()
 		_update_hud_text("🔴 GILIRAN AI (RED LEGION) SEDANG BERLANGSUNG...\n⏳ Musuh sedang merekrut & menggerakkan pasukannya...")
 	else:
-		_update_hud_text("🔵 GILIRAN KAMU (BLUE KINGDOM) - Turn %d\n👉 Pilih unit untuk gerak/serang, atau pilih Castle untuk rekrut unit [R]. Tekan [SPASI] untuk End Turn." % [
+		_update_hud_text("🔵 YOUR TURN (BLUE KINGDOM) - Turn %d\n👉 Select unit to move/attack, or select Castle to recruit [R]. Press [SPACE] to End Turn." % [
 			TurnManager.turn_number
 		])
 
@@ -114,7 +114,7 @@ func _handle_cell_click(cell: Vector2i) -> void:
 	var unit_at_cell = grid_manager.get_unit_at(cell)
 	var building_at_cell = grid_manager.get_building_at(cell)
 
-	# 1. Menyerang unit musuh dalam jangkauan merah
+	# 1. Attack enemy unit in red range
 	if selected_unit != null and unit_at_cell != null and unit_at_cell != selected_unit:
 		if unit_at_cell.faction_id != selected_unit.faction_id and attackable_cells.has(cell):
 			EventBus.unit_attack_requested.emit(selected_unit, unit_at_cell)
@@ -126,10 +126,10 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		if unit_at_cell.faction_id == TurnManager.get_current_faction():
 			_select_unit(unit_at_cell)
 		else:
-			_update_hud_text("⚠️ Ini unit musuh / bukan giliran faction ini! Pilih unitmu sendiri.")
+			_update_hud_text("⚠️ Enemy unit / not this faction's turn! Select your own unit.")
 		return
 
-	# 3. Bergerak ke petak biru
+	# 3. Move to blue cell
 	if selected_unit != null and reachable_cells.has(cell):
 		EventBus.unit_move_requested.emit(selected_unit, cell)
 		reachable_cells.clear()
@@ -142,7 +142,7 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		_select_building(building_at_cell)
 		return
 
-	# 5. Klik petak kosong
+	# 5. Click empty cell
 	_deselect_all()
 
 
@@ -159,7 +159,7 @@ func _select_unit(unit: TacticalUnit) -> void:
 	EventBus.unit_selected.emit(unit)
 	var u_name: String = unit.unit_data.unit_name if is_instance_valid(unit.unit_data) else unit.name
 	var hp_max: int = unit.unit_data.max_health if is_instance_valid(unit.unit_data) else 100
-	_update_hud_text("⚔️ Dipilih: %s | HP: %d/%d | Move: %d | Act: %s\n👉 Klik petak biru untuk gerak atau klik musuh di jangkauan merah untuk serang!" % [
+	_update_hud_text("⚔️ Selected: %s | HP: %d/%d | Move: %d | Act: %s\n👉 Click blue tile to move or click enemy in red range to attack!" % [
 		u_name, unit.current_health, hp_max, unit.current_movement, str(unit.can_act())
 	])
 	queue_redraw()
@@ -176,11 +176,11 @@ func _select_building(bld: Building) -> void:
 
 	if bld.building_type == Building.BuildingType.CASTLE:
 		if bld.faction_id == TurnManager.get_current_faction():
-			_update_hud_text("🏰 CASTLE KAMU (%s) | Tekan tombol [R] untuk Rekrut Blue Pawn (50 Gold, 1 Iron)!" % f_name)
+			_update_hud_text("🏰 YOUR CASTLE (%s) | Press [R] to Recruit Blue Pawn (50 Gold, 1 Iron)!" % f_name)
 		else:
-			_update_hud_text("🏰 Castle Musuh (%s) | Masuki petak ini untuk merebutnya!" % f_name)
+			_update_hud_text("🏰 Enemy Castle (%s) | Enter this tile to capture it!" % f_name)
 	elif bld.building_type == Building.BuildingType.GOLD_MINE:
-		_update_hud_text("⛏️ GOLD MINE (%s) | Menghasilkan +50 Gold per turn saat Upkeep." % f_name)
+		_update_hud_text("⛏️ GOLD MINE (%s) | Generates +50 Gold per turn during Upkeep." % f_name)
 	else:
 		_update_hud_text("🏠 BANGUNAN (%s)" % f_name)
 
@@ -192,7 +192,7 @@ func _try_recruit_at_selected_castle() -> void:
 		_update_hud_text("⚠️ Pilih Castle milikmu terlebih dahulu sebelum menekan [R]!")
 		return
 	if selected_building.faction_id != TurnManager.get_current_faction():
-		_update_hud_text("⚠️ Castle ini bukan milik faksi yang sedang aktif!")
+		_update_hud_text("⚠️ This castle does not belong to the active faction!")
 		return
 	if selected_building.recruitable_units.is_empty():
 		return
@@ -206,7 +206,7 @@ func _try_recruit_at_selected_castle() -> void:
 		_update_hud_text("❌ Gagal Rekrut: %s" % check["reason"])
 		return
 
-	# Cari petak kosong di sekitar Castle (orthogonal 4 arah)
+	# Find an empty cell around the Castle (orthogonal 4 directions)
 	var spawn_cell := Vector2i(-1, -1)
 	var dirs = [Vector2i.DOWN, Vector2i.RIGHT, Vector2i.UP, Vector2i.LEFT]
 	for d in dirs:
@@ -216,7 +216,7 @@ func _try_recruit_at_selected_castle() -> void:
 			break
 
 	if spawn_cell == Vector2i(-1, -1):
-		_update_hud_text("❌ Gagal Rekrut: Semua petak di sekitar Castle penuh!")
+		_update_hud_text("❌ Recruitment Failed: All cells around the Castle are full!")
 		return
 
 	# Rekrut unit!
@@ -233,7 +233,7 @@ func _deselect_all() -> void:
 	reachable_cells.clear()
 	attackable_cells.clear()
 	EventBus.unit_deselected.emit()
-	_update_hud_text("🎮 Klik unit untuk bertindak, klik Castle untuk rekrut [R]. Tekan [SPASI] untuk End Turn.")
+	_update_hud_text("🎮 Click unit to act, click Castle to recruit [R]. Press [SPACE] to End Turn.")
 	queue_redraw()
 
 
@@ -245,7 +245,7 @@ func _on_unit_move_completed(unit: Node, _from: Vector2i, _to: Vector2i) -> void
 func _on_building_captured(building: Node, faction_id: int) -> void:
 	if building is Building:
 		var f_name = "BLUE KINGDOM" if faction_id == GameConfig.Faction.BLUE_KINGDOM else "RED LEGION"
-		_update_hud_text("🚩 BANGUNAN DIREBUT! %s kini dikuasai oleh %s!" % [building.name, f_name])
+		_update_hud_text("🚩 BUILDING CAPTURED! %s is now controlled by %s!" % [building.name, f_name])
 
 
 func _on_combat_resolved(result: Dictionary) -> void:

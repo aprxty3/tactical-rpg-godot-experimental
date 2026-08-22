@@ -5,7 +5,7 @@ class_name CombatResolver
 ## and counter-attack rules. Fully decoupled via EventBus.
 
 @export_group("Combat Tuning")
-## Multiplier untuk serangan balik (Counter-attack)
+## Multiplier for counter-attack
 @export var counter_attack_multiplier: float = 0.75
 ## Apakah serangan balik diaktifkan?
 @export var enable_counter_attack: bool = true
@@ -43,14 +43,14 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	# 3. Konsumsi aksi attacker
 	attacker.consume_action()
 
-	# 4. Serangan Balik (Counter-Attack) jika defender selamat dan dalam jangkauan
+	# 4. Counter-Attack if defender survives and is in range
 	var counter_result: Dictionary = {}
 	if not defender_died and enable_counter_attack:
 		var distance = _get_manhattan_distance(attacker.grid_position, defender.grid_position)
 		var def_min_range: int = defender.unit_data.attack_range_min if is_instance_valid(defender.unit_data) else 1
 		var def_max_range: int = defender.unit_data.attack_range_max if is_instance_valid(defender.unit_data) else 1
 
-		# Defender hanya bisa counter jika penyerang ada dalam jangkauan serangnya
+		# Defender can only counter if attacker is within its attack range
 		if distance >= def_min_range and distance <= def_max_range:
 			counter_result = _calculate_damage(defender, attacker, counter_attack_multiplier)
 			var attacker_died = attacker.take_damage(counter_result["damage"], counter_result["damage_type"])
@@ -87,7 +87,7 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 	var advantage_mult: float = advantage_info["multiplier"]
 	var advantage_type: String = advantage_info["type"]
 
-	# Terrain defense modifier (Default 1.0, bisa ditingkatkan jika unit di Forest/Mountain)
+	# Terrain defense modifier (Default 1.0, can be increased if unit is in Forest/Mountain)
 	var terrain_def_mult: float = 1.0 # 1.0 = normal, 0.8 = hutan (+20% def), 0.6 = gunung (+40% def)
 
 	# Hitung total damage

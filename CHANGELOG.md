@@ -8,67 +8,67 @@ generated: { by: human:aprxty3, at: 2026-08-22T23:55:00Z }
 
 # Changelog — 2026-08-22
 
-Semua perubahan besar pada proyek **War Perang Tactics** yang dieksekusi pada tanggal **22 Agustus 2026** tercatat secara rinci di bawah ini.
+All major changes to the **War Perang Tactics** project executed on **August 22, 2026**, are recorded in detail below.
 
 ---
 
-## 📅 Rangkuman Perubahan Hari Ini (2026-08-22)
+## 📅 Summary of Today's Changes (2026-08-22)
 
-### 1. 🏗️ Arsitektur & Fondasi Sistem (Decoupled Data-Driven)
-- **4-Layer Architecture**: Mengubah arsitektur proyek dari monolitik/tightly-coupled menjadi arsitektur 4 lapis yang terpisah:
-  1. **Data Layer**: Resources `.tres` murni tanpa logika (`UnitData.gd`).
-  2. **Event Layer**: Autoload Hub sinyal terpusat (`EventBus.gd`).
-  3. **Logic Layer**: Manajer aturan permainan (`TurnManager`, `EconomyManager`, `GridManager`, `CombatResolver`, `AIManager`).
-  4. **Actor Layer**: Node visual di peta (`TacticalUnit`, `Building`).
-- **Autoload Global**:
-  - [`scripts/autoload/EventBus.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/EventBus.gd) — Central typed signal hub dengan anotasi bebas warning.
-  - [`scripts/autoload/GameConfig.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/GameConfig.gd) — Enums global (`Faction`, `Phase`, `UnitClass`, `DamageType`, `MoraleLevel`) dan konstanta kalkulasi.
-  - [`scripts/autoload/TurnManager.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/TurnManager.gd) — State machine giliran 4 fase (`UPKEEP` ➔ `PRODUCTION` ➔ `ACTION` ➔ `END_TURN`).
-- **Refactor Model Data & Aktor**:
-  - [`scripts/data/UnitData.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/data/UnitData.gd) — Custom Resource untuk stats, biaya rekrutmen Gold/Iron, dan bobot Troop Capacity.
-  - [`scripts/units/TacticalUnit.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/units/TacticalUnit.gd) — Node aktor dengan sistem konsumsi movement & aksi, damage handling, dan upgrade.
+### 1. 🏗️ Architecture & System Foundation (Decoupled Data-Driven)
+- **4-Layer Architecture**: Changed the project architecture from a monolithic/tightly-coupled design to a separated 4-layer architecture:
+  1. **Data Layer**: Pure `.tres` Resources without logic (`UnitData.gd`).
+  2. **Event Layer**: Centralized signal hub Autoload (`EventBus.gd`).
+  3. **Logic Layer**: Game rule managers (`TurnManager`, `EconomyManager`, `GridManager`, `CombatResolver`, `AIManager`).
+  4. **Actor Layer**: Visual nodes on the map (`TacticalUnit`, `Building`).
+- **Global Autoloads**:
+  - [`scripts/autoload/EventBus.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/EventBus.gd) — Central typed signal hub with warning-free annotations.
+  - [`scripts/autoload/GameConfig.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/GameConfig.gd) — Global Enums (`Faction`, `Phase`, `UnitClass`, `DamageType`, `MoraleLevel`) and calculation constants.
+  - [`scripts/autoload/TurnManager.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/TurnManager.gd) — 4-phase turn state machine (`UPKEEP` ➔ `PRODUCTION` ➔ `ACTION` ➔ `END_TURN`).
+- **Data Model & Actor Refactor**:
+  - [`scripts/data/UnitData.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/data/UnitData.gd) — Custom Resource for stats, Gold/Iron recruitment costs, and Troop Capacity weights.
+  - [`scripts/units/TacticalUnit.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/units/TacticalUnit.gd) — Actor node with movement & action consumption system, damage handling, and upgrades.
 
-### 2. 🗺️ Sistem Grid, Pathfinding & Pergerakan
+### 2. 🗺️ Grid System, Pathfinding & Movement
 - **GridManager ([`scripts/managers/GridManager.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/managers/GridManager.gd))**:
-  - Konfigurasi `AStarGrid2D` bawaan Godot 4.7 dengan mode orthogonal (4 arah).
-  - Konversi koordinat dua arah: `world_to_grid()` dan `grid_to_world()`.
-  - Kalkulasi jangkauan gerak menggunakan algoritma **BFS (Flood Fill)** dengan batasan `movement_points`.
-  - Kalkulasi jangkauan serang menggunakan **Manhattan Distance** (`attack_range_min` hingga `attack_range_max`).
-  - Animasi pergerakan unit halus menggunakan `Tween` berurutan antar petak.
-  - Deteksi dan auto-capture bangunan saat unit mencapai petak tujuan.
+  - Configured Godot 4.7's native `AStarGrid2D` with orthogonal mode (4 directions).
+  - Two-way coordinate conversion: `world_to_grid()` and `grid_to_world()`.
+  - Movement range calculation using the **BFS (Flood Fill)** algorithm capped by `movement_points`.
+  - Attack range calculation using **Manhattan Distance** (`attack_range_min` to `attack_range_max`).
+  - Smooth unit movement animation using sequential `Tween` between tiles.
+  - Detection and auto-capture of buildings when a unit reaches its destination tile.
 
-### 3. ⚔️ Sistem Pertarungan & Taktis (Combat Advantage)
+### 3. ⚔️ Combat & Tactical System (Combat Advantage)
 - **CombatResolver ([`scripts/managers/CombatResolver.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/managers/CombatResolver.gd))**:
-  - Formula Base Damage: `max(1, ATK - (DEF * 0.5))`.
-  - **Combat Advantage Triangle**: Multiplier 1.5x (Advantage), 0.7x (Disadvantage), 2.5x (Holy vs Undead).
-  - **Counter-Attack**: Musuh yang bertahan otomatis membalas jika selamat dan berada dalam jangkauan serangnya.
+  - Base Damage Formula: `max(1, ATK - (DEF * 0.5))`.
+  - **Combat Advantage Triangle**: Multipliers 1.5x (Advantage), 0.7x (Disadvantage), 2.5x (Holy vs Undead).
+  - **Counter-Attack**: Defending enemies automatically retaliate if they survive and the attacker is within their attack range.
 
-### 4. 💰 Sistem Ekonomi, Bangunan & Rekrutmen
+### 4. 💰 Economy, Buildings & Recruitment System
 - **EconomyManager ([`scripts/managers/EconomyManager.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/managers/EconomyManager.gd))**:
-  - Manajemen kas multi-faksi (Gold, Iron, Troop Capacity).
-  - Perhitungan Field Tax saat upgrade di luar kastil (200% cost).
-  - Sistem Starvation / Logistics Collapse jika jumlah unit melebihi kapasitas pasukan.
+  - Multi-faction treasury management (Gold, Iron, Troop Capacity).
+  - Field Tax calculation when upgrading outside a castle (200% cost).
+  - Starvation / Logistics Collapse system if unit count exceeds troop capacity.
 - **Building System ([`scripts/buildings/Building.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/buildings/Building.gd))**:
-  - 5 Tipe Bangunan: Castle, Gold Mine, Iron Mine, House/Village, Tower.
-  - Penghasil pasif: Gold Mine (+50 Gold/turn), Iron Mine (+30 Iron/turn), House (+10 Gold & +2 TC).
-  - Rekrutmen di Castle (`[R]`): Validasi Gold, Iron, TC, lalu instansiasi unit di petak kosong di sekitar kastil.
+  - 5 Building Types: Castle, Gold Mine, Iron Mine, House/Village, Tower.
+  - Passive income generators: Gold Mine (+50 Gold/turn), Iron Mine (+30 Iron/turn), House (+10 Gold & +2 TC).
+  - Recruitment at Castle (`[R]`): Validates Gold, Iron, and TC, then instantiates units on empty tiles around the castle.
 
 ### 5. 🤖 NPC / Enemy Tactical AI
 - **AIManager ([`scripts/managers/AIManager.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/managers/AIManager.gd))**:
-  - Otomasi penuh untuk giliran Red Legion (`Faction.RED_LEGION`).
-  - Merekrut pasukan baru di Red Castle jika kas faksi mencukupi.
-  - Memilih target strategis: merebut tambang emas terdekat atau memburu unit pemain.
-  - Logika finisher: memprioritaskan menyerang unit dengan sisa HP terendah.
-  - Pacing animasi natural (0.4s delay per aksi) dan otomatis mengakhiri giliran AI.
+  - Full automation for the Red Legion's turn (`Faction.RED_LEGION`).
+  - Recruits new troops at the Red Castle if the faction treasury allows.
+  - Selects strategic targets: capturing the nearest gold mine or hunting player units.
+  - Finisher logic: prioritizes attacking the unit with the lowest remaining HP.
+  - Natural animation pacing (0.4s delay per action) and automatically ends the AI turn.
 
 ### 6. 🎮 Playable Interactive Testbed
 - [`scenes/TestGridScene.tscn`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scenes/TestGridScene.tscn) & [`scripts/test/TestGridController.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/test/TestGridController.gd):
-  - Visual Grid Overlay: Biru (Area Jalan), Merah (Area Serang), Kuning (Unit Aktif), Hijau (Kastil Aktif).
-  - Live HUD Header: Menampilkan Gold, Iron, Troop Capacity, dan laporan Combat realtime.
-  - Hotkeys: `[ESC]` keluar, `[SPASI]` ganti giliran / End Turn, `[R]` rekrut unit di Castle.
+  - Visual Grid Overlay: Blue (Walkable Area), Red (Attackable Area), Yellow (Active Unit), Green (Active Castle).
+  - Live HUD Header: Displays Gold, Iron, Troop Capacity, and realtime Combat reports.
+  - Hotkeys: `[ESC]` quit, `[SPACE]` switch turn / End Turn, `[R]` recruit unit at Castle.
 
-### 7. 📚 Standarisasi Dokumentasi OKF (Open Knowledge Format)
-- Seluruh dokumen di `docs/` telah ditata ulang dan dilengkapi frontmatter OKF v0.2:
-  - `GDD_Overview.md`, `Macro_Economy.md`, `Technical_Specs.md`, `Architecture.md`, `Factions_and_Units.md`, `Terrain_and_Buildings.md`, `Roadmap.md`, dan `index.md`.
-- Integrasi **Git Hooks** otomatis (`graphify hook install`).
-- Sinkronisasi `/graphify update` menghasilkan **25 nodes, 16 edges, 11 communities**.
+### 7. 📚 OKF (Open Knowledge Format) Documentation Standardization
+- All documents in `docs/` have been reorganized and equipped with OKF v0.2 frontmatter:
+  - `GDD_Overview.md`, `Macro_Economy.md`, `Technical_Specs.md`, `Architecture.md`, `Factions_and_Units.md`, `Terrain_and_Buildings.md`, `Roadmap.md`, and `index.md`.
+- Automated **Git Hooks** integration (`graphify hook install`).
+- `/graphify update` synchronization generated **25 nodes, 16 edges, 11 communities**.

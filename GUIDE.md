@@ -8,18 +8,18 @@ generated: { by: human:aprxty3, at: 2026-08-22T23:55:00Z }
 
 # 📖 Developer & Extension Guide
 
-Panduan praktis untuk developer yang ingin menambahkan unit baru, bangunan baru, atau memperluas mekanik game di **War Perang Tactics**.
+A practical guide for developers who want to add new units, new buildings, or expand game mechanics in **War Perang Tactics**.
 
 ---
 
-## 🗡️ 1. Cara Menambahkan Unit Baru
+## 🗡️ 1. How to Add a New Unit
 
-Untuk membuat unit baru (misal: **Archer** atau **Knight**):
+To create a new unit (e.g., **Archer** or **Knight**):
 
-### Langkah A: Buat Resource `UnitData` (`.tres`)
-1. Di Godot Editor (FileSystem), buat file Resource baru di folder `resources/units/` (misal `archer_blue.tres`).
-2. Pilih Resource type `UnitData`.
-3. Isi parameter di Inspector:
+### Step A: Create the `UnitData` Resource (`.tres`)
+1. In the Godot Editor (FileSystem), create a new Resource file in the `resources/units/` folder (e.g., `archer_blue.tres`).
+2. Select the Resource type `UnitData`.
+3. Fill in the parameters in the Inspector:
    * **Identity**:
      * `unit_name`: "Blue Archer"
      * `unit_class`: "Ranged"
@@ -29,64 +29,64 @@ Untuk membuat unit baru (misal: **Archer** atau **Knight**):
      * `attack_power`: 28
      * `defense_power`: 6
      * `movement_points`: 3
-     * `attack_range_min`: 2 *(Bisa serang dari jarak jauh)*
+     * `attack_range_min`: 2 *(Can attack from a distance)*
      * `attack_range_max`: 3
    * **Economy & Logistics**:
      * `recruit_cost_gold`: 70
      * `recruit_cost_iron`: 1
      * `capacity_weight`: 2
 
-### Langkah B: Buat Scene Prefab Unit (`.tscn`)
-1. Buat scene turunan dari `scenes/units/TacticalUnit.tscn` atau buat `Node2D` baru dengan script `res://scripts/units/TacticalUnit.gd`.
-2. Ganti texture `Sprite2D` dengan sprite unit terkait (misal `assets/Character_animation/Archer/Blue/Archer_Blue.png`).
-3. Set `hframes` dan `vframes` sesuai spritesheet.
-4. Pasang resource `archer_blue.tres` pada slot `@export var unit_data`.
-5. Simpan scene di `scenes/units/TacticalUnit_Archer_Blue.tscn`.
+### Step B: Create the Unit Prefab Scene (`.tscn`)
+1. Create a scene inherited from `scenes/units/TacticalUnit.tscn` or create a new `Node2D` with the script `res://scripts/units/TacticalUnit.gd`.
+2. Change the `Sprite2D` texture with the relevant unit sprite (e.g., `assets/Character_animation/Archer/Blue/Archer_Blue.png`).
+3. Set `hframes` and `vframes` according to the spritesheet.
+4. Attach the `archer_blue.tres` resource to the `@export var unit_data` slot.
+5. Save the scene as `scenes/units/TacticalUnit_Archer_Blue.tscn`.
 
 ---
 
-## 🏰 2. Cara Menambahkan Bangunan Baru
+## 🏰 2. How to Add a New Building
 
-Untuk menambahkan bangunan baru (misal: **Iron Mine** atau **Village**):
+To add a new building (e.g., **Iron Mine** or **Village**):
 
-1. Buat scene baru di `scenes/buildings/` dengan root `Node2D` menggunakan script [`scripts/buildings/Building.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/buildings/Building.gd).
-2. Di Inspector, atur:
-   * `building_type`: Pilih tipe (misal `IRON_MINE` atau `HOUSE`).
-   * `faction_id`: `99` (Neutral) atau `0` (Blue).
-3. Tambahkan node anak `Sprite2D` dan pasang sprite bangunan dari `assets/Buildings/`.
-4. Jika ingin bangunan bisa merekrut (khusus Castle):
-   * Masukkan daftar Resource unit ke dalam array `recruitable_units`.
+1. Create a new scene in `scenes/buildings/` with a `Node2D` root using the script [`scripts/buildings/Building.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/buildings/Building.gd).
+2. In the Inspector, set:
+   * `building_type`: Select the type (e.g., `IRON_MINE` or `HOUSE`).
+   * `faction_id`: `99` (Neutral) or `0` (Blue).
+3. Add a `Sprite2D` child node and attach the building sprite from `assets/Buildings/`.
+4. If you want the building to be able to recruit (Castle only):
+   * Insert the unit Resource list into the `recruitable_units` array.
 
 ---
 
-## 🧪 3. Cara Menjalankan & Menguji Scene
+## 🧪 3. How to Run & Test Scenes
 
-### Via Editor Godot:
-1. Buka scene yang ingin diuji (misal: [`scenes/TestGridScene.tscn`](scenes/TestGridScene.tscn)).
-2. Tekan **`F6`** (Play Current Scene).
+### Via Godot Editor:
+1. Open the scene you want to test (e.g., [`scenes/TestGridScene.tscn`](scenes/TestGridScene.tscn)).
+2. Press **`F6`** (Play Current Scene).
 
 ### Via Terminal (Headless Mode):
-Jika ingin menguji script secara otomatis tanpa membuka window grafis:
+If you want to test scripts automatically without opening the graphical window:
 ```bash
 godot --headless --path . scenes/TestGridScene.tscn --quit-after 50
 ```
-Jika return code `0` dan tidak ada error merah, berarti scene terkompilasi dan berjalan normal.
+If the return code is `0` and there are no red errors, it means the scene compiled and ran normally.
 
 ---
 
-## 🔄 4. Cara Menambahkan Sinyal Baru ke EventBus
+## 🔄 4. How to Add New Signals to EventBus
 
-Jika Anda membuat sistem baru yang membutuhkan pertukaran data:
-1. Buka [`scripts/autoload/EventBus.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/EventBus.gd).
-2. Tambahkan deklarasi sinyal baru dengan tipe data yang jelas:
+If you create a new system that requires data exchange:
+1. Open [`scripts/autoload/EventBus.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/EventBus.gd).
+2. Add a new signal declaration with explicit data types:
    ```gdscript
    signal weather_changed(new_weather: String, penalty_multiplier: float)
    ```
-3. Emit dari Logic Layer/Manager:
+3. Emit from the Logic Layer/Manager:
    ```gdscript
    EventBus.weather_changed.emit("rain", 0.8)
    ```
-4. Dengarkan di sistem yang relevan (`GridManager`, `UI`, dll):
+4. Listen in the relevant system (`GridManager`, `UI`, etc.):
    ```gdscript
    EventBus.weather_changed.connect(_on_weather_changed)
    ```

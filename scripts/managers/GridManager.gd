@@ -5,20 +5,20 @@ class_name GridManager
 ## Decoupled: communicates state changes via EventBus.
 
 @export_group("Grid Settings")
-## Ukuran satu petak grid dalam pixel (misal: 16x16 atau 32x32)
+## Size of a single grid cell in pixels (e.g., 16x16 or 32x32)
 @export var cell_size: Vector2i = Vector2i(16, 16)
-## Ukuran area grid dalam jumlah petak (lebar x tinggi)
+## Grid area size in number of cells (width x height)
 @export var grid_size: Vector2i = Vector2i(30, 20)
-## Offset posisi grid dari titik origin (0,0) map
+## Grid position offset from map origin (0,0)
 @export var grid_offset: Vector2 = Vector2.ZERO
-## Kecepatan animasi gerak unit per petak (detik)
+## Unit movement animation speed per cell (seconds)
 @export var move_duration_per_tile: float = 0.15
 
 # === Core Pathfinding & Tracking ===
 var astar: AStarGrid2D
-## Mapping posisi petak ke unit: Dictionary[Vector2i, TacticalUnit]
+## Mapping of cell positions to units: Dictionary[Vector2i, TacticalUnit]
 var _occupied_cells: Dictionary = {}
-## Mapping posisi petak ke obstacle/bangunan: Dictionary[Vector2i, Node]
+## Mapping of cell positions to obstacles/buildings: Dictionary[Vector2i, Node]
 var _obstacle_cells: Dictionary = {}
 ## Set status unit yang sedang dalam proses animasi bergerak
 var _moving_units: Dictionary = {}
@@ -27,7 +27,7 @@ var _moving_units: Dictionary = {}
 func _ready() -> void:
 	_initialize_astar_grid()
 	_connect_event_bus()
-	# Daftarkan unit yang sudah ada di scene tree saat load
+	# Register units already in the scene tree on load
 	call_deferred("_auto_register_existing_units")
 
 
@@ -58,7 +58,7 @@ func _initialize_astar_grid() -> void:
 	astar.update()
 
 
-## Konversi koordinat dunia (pixel) ke koordinat petak grid (Vector2i)
+## Convert world coordinates (pixels) to grid cell coordinates (Vector2i)
 func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var local_pos = world_pos - grid_offset
 	return Vector2i(
@@ -67,7 +67,7 @@ func world_to_grid(world_pos: Vector2) -> Vector2i:
 	)
 
 
-## Konversi koordinat petak grid (Vector2i) ke titik tengah koordinat dunia (pixel)
+## Convert grid cell coordinates (Vector2i) to world coordinate center (pixels)
 func grid_to_world(grid_pos: Vector2i) -> Vector2:
 	return grid_offset + Vector2(
 		grid_pos.x * cell_size.x + (cell_size.x / 2.0),
@@ -75,7 +75,7 @@ func grid_to_world(grid_pos: Vector2i) -> Vector2:
 	)
 
 
-## Mengecek apakah koordinat petak berada di dalam batas map
+## Check if cell coordinates are within the map bounds
 func is_within_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.x < grid_size.x and cell.y >= 0 and cell.y < grid_size.y
 
@@ -91,12 +91,12 @@ func _connect_event_bus() -> void:
 	EventBus.unit_move_requested.connect(_on_unit_move_requested)
 
 
-## Cek apakah petak bisa dilalui (tidak ada obstacle/unit lain)
+## Check if cell is walkable (no other obstacles/units)
 func is_cell_walkable(cell: Vector2i, ignore_unit: TacticalUnit = null) -> bool:
 	if not is_within_bounds(cell):
 		return false
 	if astar.is_point_solid(cell):
-		# Jika solid karena unit yang diabaikan (misal diri sendiri saat hitung rute)
+		# If solid due to an ignored unit (e.g., self when calculating route)
 		if _occupied_cells.get(cell) == ignore_unit:
 			return true
 		return false
@@ -123,7 +123,7 @@ func register_unit(unit: TacticalUnit, cell: Vector2i) -> void:
 	astar.set_point_solid(cell, true)
 
 
-## Hapus pendaftaran unit dari grid
+## Remove unit registration from grid
 func unregister_unit(unit: TacticalUnit) -> void:
 	var existing_cell := Vector2i(-1, -1)
 	for cell in _occupied_cells:
@@ -137,7 +137,7 @@ func unregister_unit(unit: TacticalUnit) -> void:
 			astar.set_point_solid(existing_cell, false)
 
 
-## Mengambil unit di petak tertentu (jika ada)
+## Get unit at a specific tile (if any)
 func get_unit_at(cell: Vector2i) -> TacticalUnit:
 	return _occupied_cells.get(cell, null)
 
@@ -146,7 +146,7 @@ func get_unit_at(cell: Vector2i) -> TacticalUnit:
 # STEP 3: KALKULASI JANGKAUAN (MOVEMENT & ATTACK RANGE)
 # ==============================================================================
 
-## Mendapatkan daftar semua petak yang bisa dijangkau unit dengan sisa movement-nya (BFS / Flood Fill)
+## Get a list of all cells the unit can reach with its remaining movement (BFS / Flood Fill)
 func get_reachable_cells(unit: TacticalUnit) -> Array[Vector2i]:
 	var reachable: Array[Vector2i] = []
 	if not is_instance_valid(unit) or not unit.can_move():
@@ -167,7 +167,7 @@ func get_reachable_cells(unit: TacticalUnit) -> Array[Vector2i]:
 		var curr_cost: int = current["cost"]
 
 		if curr_cost > 0 and curr_cell != start_cell:
-			# Petak tujuan tidak boleh ditempati unit lain
+			# Destination cell must not be occupied by another unit
 			if not _occupied_cells.has(curr_cell):
 				reachable.append(curr_cell)
 
@@ -183,7 +183,7 @@ func get_reachable_cells(unit: TacticalUnit) -> Array[Vector2i]:
 			if _obstacle_cells.has(next_cell):
 				continue
 			
-			# Cek rintangan unit: unit musuh menghalangi jalan
+			# Check unit obstacles: enemy units block the path
 			if _occupied_cells.has(next_cell):
 				var other_unit: TacticalUnit = _occupied_cells[next_cell]
 				if other_unit != unit and other_unit.faction_id != unit.faction_id:
@@ -196,7 +196,7 @@ func get_reachable_cells(unit: TacticalUnit) -> Array[Vector2i]:
 	return reachable
 
 
-## Mendapatkan daftar petak yang bisa diserang dari posisi tertentu
+## Get list of attackable tiles from a specific position
 func get_attackable_cells(origin_cell: Vector2i, min_range: int, max_range: int) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
 	for x in range(-max_range, max_range + 1):
@@ -209,7 +209,7 @@ func get_attackable_cells(origin_cell: Vector2i, min_range: int, max_range: int)
 	return cells
 
 
-## Mendapatkan rute petak dari titik awal ke titik tujuan menggunakan AStar
+## Get tile route from start to destination using AStar
 func get_path_cells(from_cell: Vector2i, to_cell: Vector2i, _unit: TacticalUnit = null) -> Array[Vector2i]:
 	var path_array: Array[Vector2i] = []
 	if not is_within_bounds(from_cell) or not is_within_bounds(to_cell):
@@ -289,7 +289,7 @@ func _execute_unit_movement(unit: TacticalUnit, path: Array[Vector2i]) -> void:
 	tween.finished.connect(func():
 		_moving_units.erase(unit)
 		
-		# Cek apakah petak tujuan memiliki bangunan untuk direbut
+		# Check if destination tile has a building to capture
 		var building = get_building_at(to_cell)
 		if building and building.faction_id != unit.faction_id:
 			building.capture(unit.faction_id)
@@ -298,7 +298,7 @@ func _execute_unit_movement(unit: TacticalUnit, path: Array[Vector2i]) -> void:
 	)
 
 
-## Mendapatkan bangunan di petak tertentu (jika ada)
+## Get building at a specific tile (if any)
 func get_building_at(cell: Vector2i) -> Building:
 	var tree = get_tree()
 	if not tree:

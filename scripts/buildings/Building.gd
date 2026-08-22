@@ -19,9 +19,9 @@ enum BuildingType {
 @export var grid_position: Vector2i = Vector2i.ZERO
 
 @export_group("Recruitment (Castle Only)")
-## Daftar UnitData yang bisa direkrut di bangunan ini
+## List of UnitData that can be recruited at this building
 @export var recruitable_units: Array[UnitData] = []
-## Prefab scene unit untuk spawning
+## Unit scene prefab for spawning
 @export var unit_scene_prefab: PackedScene = preload("res://scenes/units/TacticalUnit.tscn")
 
 # Node References
@@ -33,7 +33,7 @@ func _ready() -> void:
 	_update_visuals()
 
 
-## Mengambil pendapatan sumber daya per giliran (Gold & Iron)
+## Get resource income per turn (Gold & Iron)
 func get_income() -> Dictionary:
 	var gold = 0
 	var iron = 0
@@ -50,7 +50,7 @@ func get_income() -> Dictionary:
 	return {"gold": gold, "iron": iron}
 
 
-## Mengambil tipe string bangunan untuk event & tracking
+## Get the building type string for event & tracking
 func get_type_string() -> String:
 	match building_type:
 		BuildingType.CASTLE:
@@ -66,7 +66,7 @@ func get_type_string() -> String:
 	return "unknown"
 
 
-## Rebut bangunan untuk faksi baru
+## Capture the building for a new faction
 func capture(new_faction_id: int) -> void:
 	if faction_id == new_faction_id:
 		return
@@ -79,7 +79,7 @@ func capture(new_faction_id: int) -> void:
 	EventBus.resource_node_captured.emit(get_type_string(), new_faction_id)
 
 
-## Cek apakah kastil ini bisa merekrut unit tertentu (biaya & kapasitas)
+## Check if this castle can recruit a specific unit (cost & capacity)
 func can_recruit(unit_data: UnitData, economy_mgr: Node, active_units: Array) -> Dictionary:
 	if building_type != BuildingType.CASTLE:
 		return {"can_recruit": false, "reason": "Hanya Castle yang bisa merekrut!"}
@@ -126,8 +126,8 @@ func recruit_unit(unit_data: UnitData, spawn_cell: Vector2i, economy_mgr: Node, 
 func _update_visuals() -> void:
 	if not sprite:
 		return
-	# Visual update berdasarkan faksi
-	# Misal jika ada texture khusus per faksi
+	# Visual update based on faction
+	# For example, if there is a specific texture per faction
 	match faction_id:
 		GameConfig.Faction.BLUE_KINGDOM:
 			modulate = Color(1.0, 1.0, 1.0, 1.0)

@@ -8,41 +8,41 @@ generated: { by: human:aprxty3, at: 2026-08-22T23:55:00Z }
 
 # 🤖 AI Agent & LLM Guidelines (`AGENTS.md` / `GEMINI.md`)
 
-Petunjuk operasional untuk AI Assistant (Gemini, Claude, Antigravity, dll.) yang bertugas melakukan coding, refactoring, atau penambahan fitur di repository **War Perang Tactics**.
+Operational instructions for AI Assistants (Gemini, Claude, Antigravity, etc.) tasked with coding, refactoring, or adding features in the **War Perang Tactics** repository.
 
 ---
 
-## 📜 Aturan Utama & Standar Kode
+## 📜 Core Rules & Code Standards
 
-### 1. Standar Bahasa & Engine
-* **Engine Target**: **Godot Engine 4.7+ (GL Compatibility)**.
-* Gunakan sintaks **GDScript 2.0** modern dengan **Static Typing** ketat.
-* Hindari sintaks usang Godot 3 (misal: gunakan `TileMapLayer` alih-alih `TileMap`, gunakan `create_tween()` alih-alih node `Tween`, gunakan `@export` alih-alih `export`).
+### 1. Language & Engine Standards
+* **Target Engine**: **Godot Engine 4.7+ (GL Compatibility)**.
+* Use modern **GDScript 2.0** syntax with strict **Static Typing**.
+* Avoid deprecated Godot 3 syntax (e.g., use `TileMapLayer` instead of `TileMap`, use `create_tween()` instead of the `Tween` node, use `@export` instead of `export`).
 
-### 2. Standar Static Typing
-* Selalu gunakan pengetikan tipe eksplisit pada variabel dan return value fungsi:
+### 2. Static Typing Standards
+* Always use explicit type hinting on variables and function return values:
   ```gdscript
   func get_path_cells(from_cell: Vector2i, to_cell: Vector2i) -> Array[Vector2i]:
   var distance: int = abs(a.x - b.x) + abs(a.y - b.y)
   ```
-* Hindari warning ternary operator dengan memastikan kedua cabang ternary menghasilkan tipe yang persis sama atau gunakan `is_instance_valid()`:
+* Avoid ternary operator warnings by ensuring both branches of the ternary yield the exact same type, or use `is_instance_valid()`:
   ```gdscript
   var u_name: String = unit.unit_data.unit_name if is_instance_valid(unit.unit_data) else unit.name
   ```
 
-### 3. Integritas Arsitektur (Decoupled Data-Driven)
-* **DILARANG** melakukan hardcoded `get_node("/root/...")` antar manager.
-* Semua komunikasi antar-sistem wajib melalui sinyal di [`scripts/autoload/EventBus.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/EventBus.gd).
-* Data statis ditaruh di Resource (`UnitData.gd`), konstanta global di `GameConfig.gd`.
-* Sinyal di `EventBus.gd` harus selalu diawali dengan anotasi `@warning_ignore("unused_signal")`.
+### 3. Architectural Integrity (Decoupled Data-Driven)
+* **FORBIDDEN** to use hardcoded `get_node("/root/...")` paths between managers.
+* All cross-system communication MUST go through signals in [`scripts/autoload/EventBus.gd`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scripts/autoload/EventBus.gd).
+* Static data belongs in Resources (`UnitData.gd`), global constants in `GameConfig.gd`.
+* Signals in `EventBus.gd` must always be prefixed with the `@warning_ignore("unused_signal")` annotation.
 
-### 4. Standar Dokumentasi OKF v0.2
-* Setiap file dokumen baru di folder `docs/` atau root WAJIB menyertakan **YAML frontmatter** sesuai Open Knowledge Format (OKF v0.2):
+### 4. OKF v0.2 Documentation Standard
+* Every new documentation file in the `docs/` folder or root MUST include a **YAML frontmatter** adhering to the Open Knowledge Format (OKF v0.2):
   ```yaml
   ---
-  type: <Tipe Dokumen>
-  title: "<Judul Dokumen>"
-  description: "<Deskripsi singkat>"
+  type: <Document Type>
+  title: "<Document Title>"
+  description: "<Brief description>"
   tags: [<tag1>, <tag2>]
   generated: { by: human:aprxty3, at: 2026-08-22T00:00:00Z }
   ---
@@ -50,9 +50,9 @@ Petunjuk operasional untuk AI Assistant (Gemini, Claude, Antigravity, dll.) yang
 
 ---
 
-## 🛠️ Alur Kerja Validasi
-Sebelum menyelesaikan giliran atau melaporkan tugas selesai, AI Agent wajib memverifikasi script menggunakan headless engine check:
+## 🛠️ Validation Workflow
+Before ending your turn or reporting a task as complete, the AI Agent MUST verify the scripts using the headless engine check:
 ```bash
 godot --headless --path . scenes/TestGridScene.tscn --quit-after 50
 ```
-Pastikan output menghasilkan **Exit Code 0** tanpa pesan `SCRIPT ERROR` atau `Compile Error`.
+Ensure the output yields **Exit Code 0** with no `SCRIPT ERROR` or `Compile Error` messages.

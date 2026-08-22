@@ -31,79 +31,68 @@ Status: 🔴 In Progress
 - [x] Basic EconomyManager (single-faction)
 - [x] Basic TurnManager (upkeep phase)
 - [x] Basic TacticalUnit script
+- [x] Decoupled Data-Driven architecture refactor
+- [x] EventBus autoload (signal hub)
+- [x] Multi-faction EconomyManager
+- [x] TurnManager state machine (4 phases)
+- [x] GridManager + AStarGrid2D pathfinding
+- [x] CombatResolver + damage formula
+- [x] Unit .tres resource files for all unit types
+- [x] Main scene setup (scene tree hierarchy)
 
-### In Progress
-- [ ] Decoupled Data-Driven architecture refactor
-- [ ] EventBus autoload (signal hub)
-- [ ] Multi-faction EconomyManager
-- [ ] TurnManager state machine (4 phases)
-- [ ] GridManager + AStarGrid2D pathfinding
-- [ ] CombatResolver + damage formula
-- [ ] Unit .tres resource files for all unit types
-- [ ] Main scene setup (scene tree hierarchy)
-
-## Milestone 2: Playable Prototype
+## Milestone 2: Playable Prototype & Unit Expansion
 Status: ⬜ Planned
 
-- [ ] Grid-based unit movement (click to move)
-- [ ] Attack action with combat triangle
-- [ ] Building capture mechanic
-- [ ] Gold/Iron income from mines per turn
-- [ ] Basic recruitment at Castle
-- [ ] End turn / faction switching
-- [ ] Victory/Defeat condition checks
-- [ ] Basic UI (Resource bar, Unit inspector, Action menu)
+- [ ] Implement additional Unit Classes (Archer, Rogue, Wizzard, Priest, Vampire, Skeleton).
+- [ ] Integrate Spritesheet Animations for movement, attacking, and death.
+- [ ] Implement robust Victory/Defeat condition checks based on Castle captures or Annihilation.
+- [ ] Build a comprehensive UI (Resource bar, Unit inspector panel, Action context menu).
+- [ ] Add sound effects (SFX) for combat impacts and movement.
 
-## Milestone 3: Economy & Progression
+## Milestone 3: Economy & Advanced Progression
 Status: ⬜ Planned
 
-- [ ] Troop Capacity system + Logistics Collapse / Starvation
-- [ ] Unit upgrade paths (Pawn → Knight → Cavalier)
-- [ ] Field Tax mechanic (2x cost away from Castle)
-- [ ] Village capture → TC bonus
-- [ ] Iron Mine integration
-- [ ] Dual upgrade paths per unit *(inspired by HoMM: Olden Era)*
-- [ ] Recruitment pool refresh every N turns *(inspired by HoMM creature growth)*
+- [ ] Finalize Troop Capacity system + Logistics Collapse / Starvation mechanics.
+- [ ] Implement Unit Upgrade paths (e.g., Pawn → Knight → Cavalier).
+- [ ] Implement Field Tax mechanic (Upgrades cost 200% when away from a friendly Castle).
+- [ ] Village capture mechanic for expanding Troop Capacity (+2 TC per village).
+- [ ] Dual upgrade paths per unit *(inspired by HoMM: Olden Era)*.
+- [ ] Recruitment pool refresh every N turns *(inspired by HoMM creature growth)*.
 
-## Milestone 4: Advanced Tactical Systems
+## Milestone 4: Advanced Tactical Systems & Morale
 Status: ⬜ Planned
 
-- [ ] Morale system (Fearless → Eager → Fair → Shaken → Fearful) *(inspired by Symphony of War)*
-- [ ] Surrender mechanic — force surrender on low-morale enemies *(inspired by Symphony of War)*
-- [ ] Ambush from Forest terrain — first strike + morale shock *(inspired by Symphony of War)*
-- [ ] Fog of War (FogOfWarTileMapLayer)
-- [ ] Environmental hazards: TNT Barrel chain detonation
-- [ ] Environmental hazards: Torch fire spread
-- [ ] Pandora's Box / Treasure Chest random events
+- [ ] **Morale System**: Units shift between 5 states (Fearless → Eager → Fair → Shaken → Fearful) based on nearby deaths or being flanked *(inspired by Symphony of War)*.
+- [ ] **Surrender Mechanic**: Force surrender on low-morale enemies to capture them or gain resources *(inspired by Symphony of War)*.
+- [ ] **Terrain Ambush**: First strike and morale shock bonuses when attacking from Forest terrain *(inspired by Symphony of War)*.
+- [ ] **Fog of War**: Implement `FogOfWarTileMapLayer` to obscure enemy movements.
+- [ ] **Environmental Hazards**: Chain detonations via TNT Barrels and dynamic fire spread mechanics.
+- [ ] **Pandora's Box / Treasure Chests**: Random events and loot drops scattered across the map.
 
-## Milestone 5: AI & Polish
+## Milestone 5: AI Enhancements, Campaign & Polish
 Status: ⬜ Planned
 
-- [ ] Enemy AI: basic unit movement and attack priority
-- [ ] Enemy AI: strategic target prioritization (Gold Mines, Villages)
-- [ ] Camera system (pan, zoom, screen shake)
-- [ ] Combat animations + VFX
-- [ ] Sound effects + background music
-- [ ] Unit death / desertion animations
-- [ ] Palette swap shaders for factions
-- [ ] Sprite mounting system for cavalry
+- [ ] **Advanced Enemy AI**: Strategic target prioritization (Gold Mines, Villages) and defensive maneuvering when at a disadvantage.
+- [ ] **Dynamic Camera System**: Edge panning, scroll-wheel zoom, and screen shake on heavy impacts.
+- [ ] **Visual Polish**: Advanced combat VFX (particles), unit death / desertion animations, and palette swap shaders for faction coloring.
+- [ ] **Mount System**: Sprite mounting mechanics for cavalry units.
+- [ ] **Full Campaign**: Design a multi-chapter narrative campaign with escalating difficulty and persistent army progression.
+- [ ] **Audio Overhaul**: Full background music (BGM) pipeline and dynamic mixing.
 
-## Future Considerations (Post-MVP)
+## Future Considerations (Post-MVP Backlog)
 Status: 🔮 Backlog
-
-These are features considered for future expansion, inspired by reference games:
 
 | Feature | Inspiration | Notes |
 |---------|------------|-------|
-| Hero/Leader units with Leadership stat | Symphony of War | Squad leaders with passive buffs |
-| Focus / Active Ability system | HoMM: Olden Era | Units generate Focus in combat to trigger abilities |
-| Dynamic Weather (Rain, Snow, Fog) | Symphony of War | Affects ranged accuracy, movement, elemental magic |
-| Town/Castle building upgrades | HoMM: Olden Era | Fort → Citadel → Castle progression |
+| Hero/Leader units with Leadership stat | Symphony of War | Squad leaders with passive buffs in a radius |
+| Focus / Active Ability system | HoMM: Olden Era | Units generate Focus in combat to trigger unique active abilities |
+| Dynamic Weather (Rain, Snow, Fog) | Symphony of War | Affects ranged accuracy, movement penalties, and elemental magic effectiveness |
+| Town/Castle building upgrades | HoMM: Olden Era | Progress from Fort → Citadel → Castle, increasing defense and recruitment yield |
 | Faction Tech Tree / Laws | HoMM: Olden Era (Seals) | Persistent faction-wide policy bonuses |
-| Magic Fatigue system | Symphony of War | Prevents mage spam across consecutive combats |
-| Day/Night cycle | General | Affects visibility, ambush chances |
-| Multiplayer (local hotseat) | Ancient Empire 2 | Two-player same-device |
-| Map editor | General | Community content creation |
+| Magic Fatigue system | Symphony of War | Prevents mage spam across consecutive combats by increasing cost or reducing effectiveness |
+| Day/Night cycle | General | Affects visibility range, stealth detection, and ambush chances |
+| Multiplayer (local hotseat) | Ancient Empire 2 | Pass-and-play two-player same-device capability |
+| Map editor | General | Community content creation tool with exportable layouts |
 
 ## Related Documentation
 - Core Design: See [GDD_Overview.md](GDD_Overview.md)

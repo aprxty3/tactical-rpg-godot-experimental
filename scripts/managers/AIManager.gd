@@ -26,14 +26,14 @@ func setup(grid_mgr: GridManager, eco_mgr: Node) -> void:
 
 
 func _on_turn_started(faction_id: int) -> void:
-	# Hanya bertindak jika giliran adalah milik AI
+	# Only act if it is the AI's turn
 	if faction_id == ai_faction_id:
-		# Beri jeda sedikit saat awal giliran
+		# Add a slight delay at the start of the turn
 		await get_tree().create_timer(action_delay).timeout
 		_execute_ai_turn()
 
 
-## Eksekusi seluruh alur giliran AI
+## Execute the entire AI turn flow
 func _execute_ai_turn() -> void:
 	# 1. Fase Rekrutmen di Kastil AI
 	await _ai_try_recruit()
@@ -41,12 +41,12 @@ func _execute_ai_turn() -> void:
 	# 2. Fase Pergerakan & Serangan Unit AI
 	await _ai_move_and_attack_units()
 
-	# 3. Selesai giliran AI -> Otomatis Ganti Giliran ke Player
+	# 3. Finish AI turn -> Automatically Switch Turn to Player
 	await get_tree().create_timer(action_delay).timeout
 	_end_ai_turn()
 
 
-## AI mencoba merekrut unit baru jika uang cukup
+## AI attempts to recruit new units if funds are sufficient
 func _ai_try_recruit() -> void:
 	if not economy_manager or not grid_manager:
 		return
@@ -71,7 +71,7 @@ func _ai_try_recruit() -> void:
 	# Cek apakah syarat rekrutmen terpenuhi
 	var check = ai_castle.can_recruit(unit_data, economy_manager, active_units)
 	if check["can_recruit"]:
-		# Cari petak kosong di sekitar kastil
+		# Find an empty tile around the castle
 		var dirs = [Vector2i.DOWN, Vector2i.LEFT, Vector2i.UP, Vector2i.RIGHT]
 		var spawn_cell := Vector2i(-1, -1)
 		for d in dirs:
@@ -87,7 +87,7 @@ func _ai_try_recruit() -> void:
 				await get_tree().create_timer(action_delay).timeout
 
 
-## AI menggerakkan dan memerintahkan setiap unitnya untuk menyerang
+## AI moves and orders each of its units to attack
 func _ai_move_and_attack_units() -> void:
 	if not grid_manager:
 		return
@@ -99,7 +99,7 @@ func _ai_move_and_attack_units() -> void:
 			continue
 		var tactical_unit: TacticalUnit = unit as TacticalUnit
 
-		# 1. Cek apakah musuh (pemain) sudah ada di jangkauan serang SEBELUM bergerak
+		# 1. Check if the enemy (player) is already in attack range BEFORE moving
 		var target_before_move = _find_best_attack_target(tactical_unit)
 		if target_before_move != null:
 			# Serang langsung!
@@ -112,20 +112,20 @@ func _ai_move_and_attack_units() -> void:
 		if strategic_target_cell != Vector2i(-1, -1):
 			var best_move_cell = _find_best_step_towards(tactical_unit, strategic_target_cell)
 			if best_move_cell != Vector2i(-1, -1) and best_move_cell != tactical_unit.grid_position:
-				# Minta jalan ke petak tersebut
+				# Request a path to that tile
 				EventBus.unit_move_requested.emit(tactical_unit, best_move_cell)
 				# Tunggu hingga animasi jalan selesai
 				await EventBus.unit_move_completed
 				await get_tree().create_timer(action_delay * 0.5).timeout
 
-		# 3. Cek apakah setelah bergerak sekarang ada musuh dalam jangkauan serang
+		# 3. Check if there is an enemy in attack range after moving
 		var target_after_move = _find_best_attack_target(tactical_unit)
 		if target_after_move != null and tactical_unit.can_act():
 			EventBus.unit_attack_requested.emit(tactical_unit, target_after_move)
 			await get_tree().create_timer(action_delay).timeout
 
 
-## Mencari target musuh dalam jangkauan serang unit
+## Find an enemy target within the unit's attack range
 func _find_best_attack_target(unit: TacticalUnit) -> TacticalUnit:
 	if not unit.can_act() or not unit.unit_data:
 		return null
@@ -142,7 +142,7 @@ func _find_best_attack_target(unit: TacticalUnit) -> TacticalUnit:
 	for cell in attack_cells:
 		var target_unit = grid_manager.get_unit_at(cell)
 		if target_unit != null and target_unit.faction_id != ai_faction_id:
-			# Prioritaskan musuh yang darahnya paling sedikit (Finisher logic)
+			# Prioritize enemies with the lowest health (Finisher logic)
 			if target_unit.current_health < lowest_hp:
 				lowest_hp = target_unit.current_health
 				best_target = target_unit
@@ -150,7 +150,7 @@ func _find_best_attack_target(unit: TacticalUnit) -> TacticalUnit:
 	return best_target
 
 
-## Mencari tujuan strategis terpenting (Unit Player terdekat atau Tambang Emas yang belum dikuasai)
+## Find the most important strategic goal (Nearest Player Unit or uncontrolled Gold Mine)
 func _find_strategic_destination(unit: TacticalUnit) -> Vector2i:
 	var tree = get_tree()
 	if not tree:
@@ -180,7 +180,7 @@ func _find_strategic_destination(unit: TacticalUnit) -> Vector2i:
 	return closest_pos
 
 
-## Memilih petak terdekat dari jangkauan jalan unit menuju tujuan strategis
+## Select the closest tile within movement range towards the strategic goal
 func _find_best_step_towards(unit: TacticalUnit, target_cell: Vector2i) -> Vector2i:
 	var reachable = grid_manager.get_reachable_cells(unit)
 	if reachable.is_empty():
@@ -202,7 +202,7 @@ func _manhattan_distance(a: Vector2i, b: Vector2i) -> int:
 	return abs(a.x - b.x) + abs(a.y - b.y)
 
 
-## Mengakhiri giliran AI dan mengembalikan kendali ke pemain
+## End AI turn and return control to the player
 func _end_ai_turn() -> void:
 	TurnManager.advance_phase()
 	if TurnManager.current_phase != GameConfig.Phase.UPKEEP:
