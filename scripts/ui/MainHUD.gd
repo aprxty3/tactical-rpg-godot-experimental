@@ -37,7 +37,45 @@ func _ready() -> void:
 	
 	end_turn_btn.pressed.connect(func(): end_turn_requested.emit())
 	
-	_update_context_text("Select unit to move/attack, or Castle to recruit [R].")
+	_setup_recruit_popup()
+	_update_context_text("Select unit to move/attack, or Castle to recruit.")
+
+var recruit_popup: PopupPanel
+var recruit_vbox: VBoxContainer
+signal recruit_unit_requested(building: Node, unit_data: Resource)
+
+func _setup_recruit_popup() -> void:
+	recruit_popup = PopupPanel.new()
+	recruit_vbox = VBoxContainer.new()
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.add_child(recruit_vbox)
+	recruit_popup.add_child(margin)
+	add_child(recruit_popup)
+
+func show_recruit_popup(building: Node) -> void:
+	for child in recruit_vbox.get_children():
+		child.queue_free()
+		
+	var title = Label.new()
+	title.text = "Select Unit to Recruit:"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	recruit_vbox.add_child(title)
+	
+	for unit_data in building.get("recruitable_units"):
+		var btn = Button.new()
+		# Assuming standard cost for now, or we can fetch if UnitData had cost.
+		btn.text = "%s" % [unit_data.unit_name]
+		btn.pressed.connect(func(): 
+			recruit_popup.hide()
+			recruit_unit_requested.emit(building, unit_data)
+		)
+		recruit_vbox.add_child(btn)
+		
+	recruit_popup.popup_centered(Vector2(250, 200))
 
 func initialize(eco_mgr: Node) -> void:
 	economy_manager = eco_mgr
@@ -117,7 +155,7 @@ func show_building_info(bld: Node) -> void:
 	
 	if bld.get("building_type") == 0: # CASTLE
 		if bld.faction_id == current_faction_id:
-			_update_context_text("Press [R] to recruit Unit.")
+			_update_context_text("Castle Selected. Press [R] to recruit.")
 		else:
 			_update_context_text("Enemy Castle. Capture it!")
 	elif bld.get("building_type") == 1: # GOLD_MINE

@@ -206,13 +206,10 @@ func _check_victory_conditions(_faction_id: int) -> void:
 				if bld.building_type == Building.BuildingType.CASTLE:
 					alive_castle_count += 1
 				
-		# Robust Victory/Defeat Rules:
-		# 1. Defeat by Annihilation: 0 units and 0 castles.
-		# 2. Defeat by Castle Capture: 0 castles (even if you have units).
-		if alive_castle_count == 0:
-			# Lost castle (or never had one, but we assume factions start with a castle in this game mode)
-			EventBus.defeat_condition_met.emit(fac, "castle_captured")
-		elif alive_unit_count == 0 and alive_castle_count == 0:
+		# Updated Victory/Defeat Rules:
+		# A faction only loses if they have NO units AND NO castles (Annihilation).
+		# If they lose their castle but still have units, they survive as a rogue army!
+		if alive_unit_count == 0 and alive_castle_count == 0:
 			EventBus.defeat_condition_met.emit(fac, "annihilation")
 		else:
 			alive_factions.append(fac)

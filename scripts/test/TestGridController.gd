@@ -23,6 +23,8 @@ func _ready() -> void:
 	
 	if main_hud.has_signal("end_turn_requested"):
 		main_hud.end_turn_requested.connect(end_turn)
+	if main_hud.has_signal("recruit_unit_requested"):
+		main_hud.recruit_unit_requested.connect(_do_recruit)
 
 	# 1. Daftarkan Faksi ke EconomyManager
 	economy_manager.register_faction(GameConfig.Faction.BLUE_KINGDOM, 150, 4)
@@ -143,10 +145,13 @@ func _try_recruit_at_selected_castle() -> void:
 	if selected_building.recruitable_units.is_empty():
 		return
 
-	var unit_data = selected_building.recruitable_units[0]
-	var active_units = TurnManager.get_faction_units(selected_building.faction_id)
+	if main_hud.has_method("show_recruit_popup"):
+		main_hud.show_recruit_popup(selected_building)
+
+func _do_recruit(building: Building, unit_data: Resource) -> void:
+	var active_units = TurnManager.get_faction_units(building.faction_id)
 	
-	var check = selected_building.can_recruit(unit_data, economy_manager, active_units)
+	var check = building.can_recruit(unit_data, economy_manager, active_units)
 	if not check["can_recruit"]:
 		_update_hud_text("❌ Recruitment failed: %s" % check["reason"])
 		return
@@ -154,7 +159,7 @@ func _try_recruit_at_selected_castle() -> void:
 	var spawn_cell := Vector2i(-1, -1)
 	var dirs = [Vector2i.DOWN, Vector2i.RIGHT, Vector2i.UP, Vector2i.LEFT]
 	for d in dirs:
-		var target = selected_building.grid_position + d
+		var target = building.grid_position + d
 		if grid_manager.is_cell_walkable(target):
 			spawn_cell = target
 			break
@@ -163,7 +168,7 @@ func _try_recruit_at_selected_castle() -> void:
 		_update_hud_text("❌ Failed: All cells around Castle are full!")
 		return
 
-	var new_unit = selected_building.recruit_unit(unit_data, spawn_cell, economy_manager, unit_container)
+	var new_unit = building.recruit_unit(unit_data, spawn_cell, economy_manager, unit_container)
 	_update_hud_text("✨ Recruited %s at %s!" % [unit_data.unit_name, spawn_cell])
 	queue_redraw()
 
