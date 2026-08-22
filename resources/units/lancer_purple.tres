@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/factions/purple/Lancer/Lancer_Idle.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Purple Lancer"
+unit_class = "Cavalry"
+tier = 3
+description = "Shadow lancer flanking unsuspecting foes."
+max_health = 90
+attack_power = 38
+defense_power = 10
+movement_points = 5
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 140
+recruit_cost_iron = 3
+capacity_weight = 3
+spritesheet = ExtResource("2_tex")
+hframes = 12
+vframes = 1
+upgrade_paths = {}

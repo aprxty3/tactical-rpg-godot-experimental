@@ -1,24 +1,24 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/skeleton/warrior/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/skeleton/skull/v1/skull_v1_1.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Skeleton Warrior"
+unit_name = "Cursed Skull"
 unit_class = "Undead"
 tier = 1
-description = "Reanimated skeletal warrior fighting with rusty blade."
-max_health = 45
-attack_power = 18
-defense_power = 4
-movement_points = 3
+description = "Floating cursed skull seeking living essence."
+max_health = 25
+attack_power = 16
+defense_power = 1
+movement_points = 4
 attack_range_min = 1
 attack_range_max = 1
-recruit_cost_gold = 40
-recruit_cost_iron = 1
+recruit_cost_gold = 25
+recruit_cost_iron = 0
 capacity_weight = 1
 spritesheet = ExtResource("2_tex")
-hframes = 4
+hframes = 1
 vframes = 1
 upgrade_paths = {}

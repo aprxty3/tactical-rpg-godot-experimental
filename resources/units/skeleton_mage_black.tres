@@ -1,23 +1,23 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/wizzard/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/skeleton/mage/Idle/Idle-Sheet.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Yellow Wizzard"
-unit_class = "Mage"
+unit_name = "Skeleton Mage"
+unit_class = "Undead"
 tier = 2
-description = "Area elemental sorcerer piercing heavy armor."
-max_health = 45
-attack_power = 32
-defense_power = 3
+description = "Undead spellcaster casting cursed soul bolts."
+max_health = 35
+attack_power = 26
+defense_power = 2
 movement_points = 2
 attack_range_min = 2
 attack_range_max = 2
-recruit_cost_gold = 120
+recruit_cost_gold = 70
 recruit_cost_iron = 0
-capacity_weight = 2
+capacity_weight = 1
 spritesheet = ExtResource("2_tex")
 hframes = 4
 vframes = 1

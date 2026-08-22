@@ -51,13 +51,13 @@ All major changes to the **War Perang Tactics** project are recorded below.
 ### 8. 🗂️ Asset Directory Restructuring, Archer Animation Fix & 5-Faction Unit Expansion
 - **Asset Cleanliness & Reorganization**: Restructured the messy 24-folder `/assets` directory into 9 clean, intuitive categories: `audio/`, `buildings/`, `characters/`, `decorations/`, `effects/`, `items/`, `legacy/`, `terrain/`, and `ui/`. Automatically migrated and updated all path references across all `.tscn`, `.tres`, `.gd`, and `.import` files with zero broken links.
 - **Archer Animation Resolution**: Fixed TinySwords Archer slicing bug by configuring correct dimensions (`1536x1344` $\rightarrow$ `hframes = 8, vframes = 7`). Upgraded `TacticalUnit.gd`'s animation generator to automatically map Row 3 (8 frames) for Archer attacks.
-- **Complete 5-Faction Unit Rosters**: Generated and verified 17 complete unit resources across all 5 game factions:
-  - 🔵 **Blue Kingdom**: Blue Pawn, Blue Warrior, Blue Archer.
-  - 🔴 **Red Legion**: Red Pawn, Red Warrior, Red Archer.
-  - 🟡 **Yellow Empire**: Yellow Pawn, Yellow Warrior, Yellow Archer, Yellow Priest, Yellow Wizzard.
-  - 🟣 **Purple Syndicate**: Purple Pawn, Purple Warrior, Purple Archer, Purple Rogue.
-  - ⚫ **Black Coven / Necropolis**: Skeleton, Vampire.
-- **Comprehensive Headless Verification**: Automated multi-unit assertion test (`TestAllUnits.gd`) validating spritesheet textures, frame dimensions, and animation libraries across all 17 unit resources with 100% pass rate.
+- **Complete 5-Faction Unit Rosters & Scene Prefabs**: Generated and verified **32 unit resources** (`.tres`) and **40 unit scenes** (`.tscn`) covering all lineages and color variants across all 5 factions:
+  - 🔵 **Blue Kingdom**: Blue Pawn, Blue Warrior, Blue Archer, Blue Knight, Blue Lancer, Blue Monk.
+  - 🔴 **Red Legion**: Red Pawn, Red Warrior, Red Archer, Red Lancer, Red Monk.
+  - 🟡 **Yellow Empire**: Yellow Pawn, Yellow Warrior, Yellow Archer, Yellow Priest, Yellow Wizzard, Yellow Lancer, Yellow Monk.
+  - 🟣 **Purple Syndicate**: Purple Pawn, Purple Warrior, Purple Archer, Purple Rogue, Purple Lancer, Purple Monk.
+  - ⚫ **Black Coven / Necropolis**: Skeleton Fodder (Base), Skeleton Warrior, Skeleton Mage, Skeleton Rogue, Cursed Skull, Vampire, Death Lancer, Necromancer Monk.
+- **Comprehensive Headless Verification**: Automated multi-unit assertion test (`TestAllUnits.gd`) validating spritesheet textures, frame dimensions, and animation libraries across all 32 unit resources with 100% pass rate.
 
 
 ---

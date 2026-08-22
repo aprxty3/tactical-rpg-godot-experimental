@@ -1,21 +1,21 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/skeleton/warrior/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/skeleton/rogue/Idle/Idle-Sheet.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Skeleton Warrior"
+unit_name = "Skeleton Rogue"
 unit_class = "Undead"
-tier = 1
-description = "Reanimated skeletal warrior fighting with rusty blade."
-max_health = 45
-attack_power = 18
-defense_power = 4
-movement_points = 3
+tier = 2
+description = "Nimble undead skirmisher striking from the dead of night."
+max_health = 40
+attack_power = 22
+defense_power = 3
+movement_points = 4
 attack_range_min = 1
 attack_range_max = 1
-recruit_cost_gold = 40
+recruit_cost_gold = 60
 recruit_cost_iron = 1
 capacity_weight = 1
 spritesheet = ExtResource("2_tex")

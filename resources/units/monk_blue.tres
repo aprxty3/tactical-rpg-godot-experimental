@@ -1,17 +1,17 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/priest/priest1/v1/priest1_v1_1.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/factions/blue/Monk/Idle.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Yellow Priest"
+unit_name = "Blue Monk"
 unit_class = "Support"
 tier = 2
-description = "Holy healer that cleanses ailments and purges undead."
-max_health = 45
+description = "Holy monk supporting frontline forces with rejuvenating prayers."
+max_health = 55
 attack_power = 16
-defense_power = 3
+defense_power = 4
 movement_points = 3
 attack_range_min = 1
 attack_range_max = 2
@@ -19,6 +19,6 @@ recruit_cost_gold = 100
 recruit_cost_iron = 0
 capacity_weight = 2
 spritesheet = ExtResource("2_tex")
-hframes = 1
+hframes = 6
 vframes = 1
 upgrade_paths = {}
