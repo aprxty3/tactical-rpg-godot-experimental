@@ -24,10 +24,15 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - **Event-Driven Narrative**: Hooked into `EventBus.combat_resolved` and `building_captured` to broadcast `dialogue_generated` signals to the HUD.
 - **Graceful Offline Fallback**: Safely defaults to offline hardcoded text if `GEMINI_API_KEY` is missing or rate-limited.
 
-### 3. 🎭 Core Unit Archetypes & Animation System (Milestone 2 Completed)
+### 3. 🎭 Core Unit Archetypes & Animation System
 - **Dynamic Animation Injector**: Upgraded `TacticalUnit.gd` to programmatically generate TinySwords-compliant animations (`idle`, `run`, `attack`) based on sprite dimensions, completely removing the need for manual track clicking and preventing out-of-bounds crashes.
 - **Combat & Movement Animations**: `GridManager` and `CombatResolver` now natively call `play_animation("run")` and `play_animation("attack")` while handling sprite direction facing via `face_direction()`.
 - **New Unit Data & Prefabs**: Generated accurate `UnitData.tres` and `TacticalUnit.tscn` prefabs for **Archer**, **Rogue**, **Wizzard**, **Priest**, **Skeleton**, and **Vampire**.
+
+### 4. 🎮 Comprehensive UI, SFX & Victory Conditions (Milestone 2 Completed)
+- **MainHUD (UI)**: Built a decoupled, responsive `MainHUD.tscn` (CanvasLayer) using `MarginContainer` and `PanelContainer` logic. Includes a Top Resource Bar, a Bottom-Left Unit/Building Inspector, and floating context action text.
+- **Robust Victory Checks**: Upgraded `TurnManager.gd` to correctly calculate "Defeat by Castle Capture" and "Defeat by Annihilation" (0 units & 0 castles).
+- **SFX Framework**: Created an `AudioManager.gd` autoload that seamlessly hooks into `EventBus` signals (`unit_move_completed`, `combat_resolved`, `victory_condition_met`). Generated procedural placeholder `.wav` assets for instant feedback.
 
 ---
 

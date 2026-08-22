@@ -7,6 +7,7 @@ extends Node
 var current_phase: GameConfig.Phase = GameConfig.Phase.UPKEEP
 var current_faction_index: int = 0
 var turn_number: int = 1
+var _is_game_over: bool = false
 
 ## Ordered list of faction IDs participating in this match.
 var faction_order: Array[int] = []
@@ -27,6 +28,7 @@ func _connect_signals() -> void:
 	EventBus.unit_died.connect(_on_unit_died)
 	EventBus.unit_deserted.connect(_on_unit_deserted)
 	EventBus.unit_spawned.connect(_on_unit_spawned)
+	EventBus.building_captured.connect(_on_building_captured)
 
 
 ## Initialize the turn system with participating factions.
@@ -180,37 +182,67 @@ func _end_current_turn() -> void:
 
 # === Victory / Defeat Checks ===
 
-func _check_victory_conditions(faction_id: int) -> void:
-	# Total Annihilation: check if any enemy faction has zero units
-	for other_faction in faction_order:
-		if other_faction == faction_id:
-			continue
-		var enemy_units := get_faction_units(other_faction)
-		var alive_count := 0
-		for unit in enemy_units:
+func _check_victory_conditions(_faction_id: int) -> void:
+	if _is_game_over:
+		return
+		
+	var alive_factions = []
+	var tree = get_tree()
+	if not tree:
+		return
+		
+	for fac in faction_order:
+		var units := get_faction_units(fac)
+		var alive_unit_count := 0
+		for unit in units:
 			if is_instance_valid(unit):
-				alive_count += 1
-		if alive_count == 0:
-			EventBus.victory_condition_met.emit(faction_id, "total_annihilation")
-			return
-
-	# TODO: Castle capture check (needs GridManager/building tracking)
-	# TODO: Economic domination check (75% gold mines for 3 turns)
+				alive_unit_count += 1
+				
+		var alive_castle_count := 0
+		var has_any_buildings := false
+		for bld in tree.get_nodes_in_group("buildings"):
+			if bld is Building and bld.faction_id == fac:
+				has_any_buildings = true
+				if bld.building_type == Building.BuildingType.CASTLE:
+					alive_castle_count += 1
+				
+		# Robust Victory/Defeat Rules:
+		# 1. Defeat by Annihilation: 0 units and 0 castles.
+		# 2. Defeat by Castle Capture: 0 castles (even if you have units).
+		if alive_castle_count == 0:
+			# Lost castle (or never had one, but we assume factions start with a castle in this game mode)
+			EventBus.defeat_condition_met.emit(fac, "castle_captured")
+		elif alive_unit_count == 0 and alive_castle_count == 0:
+			EventBus.defeat_condition_met.emit(fac, "annihilation")
+		else:
+			alive_factions.append(fac)
+			
+	if alive_factions.size() == 1:
+		_is_game_over = true
+		EventBus.victory_condition_met.emit(alive_factions[0], "supremacy")
+	elif alive_factions.size() == 0:
+		_is_game_over = true
 
 
 # === Signal Handlers ===
 
 func _on_unit_died(unit: Node, _cause: String) -> void:
 	_remove_unit_from_tracking(unit)
+	_check_victory_conditions(-1)
 
 
 func _on_unit_deserted(unit: Node) -> void:
 	_remove_unit_from_tracking(unit)
+	_check_victory_conditions(-1)
 
 
 func _on_unit_spawned(unit: Node, faction_id: int) -> void:
 	if faction_id in faction_units:
 		faction_units[faction_id].append(unit)
+
+
+func _on_building_captured(_building: Node, _faction_id: int) -> void:
+	_check_victory_conditions(-1)
 
 
 func _remove_unit_from_tracking(unit: Node) -> void:

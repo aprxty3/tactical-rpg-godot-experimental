@@ -1,0 +1,182 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/MainHUD.gd" id="1_hud"]
+
+[node name="MainHUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="UI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TopBar" type="MarginContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 64.0
+grow_horizontal = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+mouse_filter = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/TopBar"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ResourcesPanel" type="PanelContainer" parent="UI/TopBar/HBoxContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="UI/TopBar/HBoxContainer/ResourcesPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="HBoxContainer" type="HBoxContainer" parent="UI/TopBar/HBoxContainer/ResourcesPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="GoldLabel" type="Label" parent="UI/TopBar/HBoxContainer/ResourcesPanel/MarginContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "💰 Gold: 0"
+
+[node name="IronLabel" type="Label" parent="UI/TopBar/HBoxContainer/ResourcesPanel/MarginContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "⛏️ Iron: 0"
+
+[node name="CapLabel" type="Label" parent="UI/TopBar/HBoxContainer/ResourcesPanel/MarginContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "👥 Troop Cap: 0/0"
+
+[node name="Spacer" type="Control" parent="UI/TopBar/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="TurnPanel" type="PanelContainer" parent="UI/TopBar/HBoxContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="UI/TopBar/HBoxContainer/TurnPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="TurnLabel" type="Label" parent="UI/TopBar/HBoxContainer/TurnPanel/MarginContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Turn 1 - Upkeep"
+
+[node name="BottomLeft" type="MarginContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -128.0
+offset_right = 256.0
+grow_vertical = 0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+mouse_filter = 2
+
+[node name="InspectorPanel" type="PanelContainer" parent="UI/BottomLeft"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="UI/BottomLeft/InspectorPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/BottomLeft/InspectorPanel/MarginContainer"]
+layout_mode = 2
+
+[node name="InspectorTitle" type="Label" parent="UI/BottomLeft/InspectorPanel/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "⚔️ Unit Name"
+
+[node name="InspectorStats" type="Label" parent="UI/BottomLeft/InspectorPanel/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
+text = "HP: 100/100 | Move: 3
+ATK: 25 | DEF: 5
+Act: Yes"
+
+[node name="BottomRight" type="MarginContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -128.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+mouse_filter = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UI/BottomRight"]
+layout_mode = 2
+theme_override_constants/separation = 8
+mouse_filter = 2
+
+[node name="ContextPanel" type="PanelContainer" parent="UI/BottomRight/VBoxContainer"]
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="UI/BottomRight/VBoxContainer/ContextPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="ContextLabel" type="Label" parent="UI/BottomRight/VBoxContainer/ContextPanel/MarginContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 0)
+layout_mode = 2
+text = "Select unit to move/attack, or Castle to recruit [R]."
+autowrap_mode = 2
+
+[node name="EndTurnBtn" type="Button" parent="UI/BottomRight/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "End Turn [SPACE]"
+
+[node name="Center" type="CenterContainer" parent="UI"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="VictoryLabel" type="Label" parent="UI/Center"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "VICTORY"

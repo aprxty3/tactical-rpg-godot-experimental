@@ -41,13 +41,13 @@ Status: 🔴 In Progress
 - [x] Main scene setup (scene tree hierarchy)
 
 ## Milestone 2: Playable Prototype & Unit Expansion
-Status: 🔴 In Progress
+Status: 🟢 Completed
 
 - [x] Implement additional Unit Classes (Archer, Rogue, Wizzard, Priest, Vampire, Skeleton).
 - [x] Integrate Spritesheet Animations for movement, attacking, and death.
-- [ ] Implement robust Victory/Defeat condition checks based on Castle captures or Annihilation.
-- [ ] Build a comprehensive UI (Resource bar, Unit inspector panel, Action context menu).
-- [ ] Add sound effects (SFX) for combat impacts and movement.
+- [x] Implement robust Victory/Defeat condition checks based on Castle captures or Annihilation.
+- [x] Build a comprehensive UI (Resource bar, Unit inspector panel, Action context menu).
+- [x] Add sound effects (SFX) for combat impacts and movement.
 - [x] In-Game AI Narrative Engine: `GeminiClient.gd` autoload powered by **Gemini 3.7 Flash** for dynamic combat banter and territory capture declarations.
 
 

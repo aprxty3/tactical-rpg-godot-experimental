@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://c6g7y7ukmvl1x"]
+[gd_scene load_steps=15 format=3 uid="uid://c6g7y7ukmvl1x"]
 
 [ext_resource type="Script" path="res://scripts/test/TestGridController.gd" id="1_test_ctrl"]
 [ext_resource type="Script" path="res://scripts/managers/GridManager.gd" id="2_grid_mgr"]
@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" uid="uid://c3qg0m0k0x8m1" path="res://scenes/buildings/GoldMine.tscn" id="11_mine_scene"]
 [ext_resource type="Resource" path="res://resources/units/pawn_blue.tres" id="12_pawn_data"]
 [ext_resource type="Resource" path="res://resources/units/warrior_red.tres" id="13_warrior_data"]
+[ext_resource type="PackedScene" path="res://scenes/ui/MainHUD.tscn" id="14_main_hud"]
 
 [node name="TestGridScene" type="Node2D"]
 script = ExtResource("1_test_ctrl")
@@ -67,22 +68,4 @@ unit_data = ExtResource("13_warrior_data")
 position = Vector2(512, 320)
 zoom = Vector2(1.1, 1.1)
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
-
-[node name="InstructionPanel" type="PanelContainer" parent="CanvasLayer"]
-offset_left = 16.0
-offset_top = 16.0
-offset_right = 820.0
-offset_bottom = 86.0
-
-[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/InstructionPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 8
-
-[node name="Label" type="Label" parent="CanvasLayer/InstructionPanel/MarginContainer"]
-layout_mode = 2
-text = "💰 Resource Bar Loading...
-🎮 Klik Castle milikmu untuk rekrut [R]. Klik Gold Mine untuk merebut tambang. [SPASI] untuk End Turn."
+[node name="MainHUD" parent="." instance=ExtResource("14_main_hud")]
