@@ -90,3 +90,13 @@ If you create a new system that requires data exchange:
    ```gdscript
    EventBus.weather_changed.connect(_on_weather_changed)
    ```
+
+---
+
+## 🧠 5. Coding Philosophy (ROBUST, DRY, KISS, YAGNI)
+
+All code contributions and AI generations for this project must follow these principles:
+*   **ROBUST**: Ensure code gracefully handles missing nodes or null instances (use `is_instance_valid()`). Headless testing must always return Exit Code 0 without errors.
+*   **DRY (Don't Repeat Yourself)**: Avoid copy-pasting code or manual scene setups. Use inheritance, helper functions, or dynamic programmatic generation to keep the codebase clean.
+*   **KISS (Keep It Simple, Stupid)**: Avoid over-engineering. Use Godot's built-in features (like `AStarGrid2D`) rather than reinventing the wheel.
+*   **YAGNI (You Aren't Gonna Need It)**: Do not build features or architectural abstractions that are not explicitly required by the current milestone. Keep it lean.

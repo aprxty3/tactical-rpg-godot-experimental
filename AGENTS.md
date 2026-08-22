@@ -48,6 +48,13 @@ Operational instructions for AI Assistants (Gemini, Claude, Antigravity, etc.) t
   ---
   ```
 
+### 5. AI Coding Principles (ROBUST, DRY, KISS, YAGNI)
+When writing or refactoring code in this repository, you MUST strictly adhere to the following principles:
+*   **ROBUST**: Handle edge cases and avoid hard crashes. Validate instances using `is_instance_valid()`, add bounds checking for arrays/grids, and ensure headless testing always passes.
+*   **DRY (Don't Repeat Yourself)**: Avoid duplicating logic or scenes manually. Prefer programmatic or dynamic generation (e.g., generating animation frames dynamically instead of hand-crafting individual nodes).
+*   **KISS (Keep It Simple, Stupid)**: Favor simple, readable, and idiomatic Godot solutions. Rely on built-in tools like `AStarGrid2D` over complex custom algorithms.
+*   **YAGNI (You Aren't Gonna Need It)**: Do not build features, abstractions, or scaling systems until they are explicitly required by the current milestone.
+
 ---
 
 ## 🛠️ Validation Workflow

@@ -71,6 +71,15 @@ A turn-based tactical strategy game built in Godot 4.7. Features a Decoupled Dat
 
 ---
 
+## 🧠 Coding Philosophy
+This project strictly enforces the **ROBUST**, **DRY**, **KISS**, and **YAGNI** principles:
+- **ROBUST**: Fail gracefully, use explicit typing, and ensure zero headless script errors.
+- **DRY (Don't Repeat Yourself)**: Eliminate redundancy (e.g., dynamic programmatic generation over manual duplication).
+- **KISS (Keep It Simple, Stupid)**: Use built-in Godot features; avoid over-engineering.
+- **YAGNI (You Aren't Gonna Need It)**: Do not build features or abstractions before they are required by the current milestone.
+
+---
+
 ## 🗺️ Detailed Roadmap & Milestones
 
 - [x] **Milestone 1**: Core Foundation (Decoupled Data-Driven Architecture, EventBus, TurnManager, GridManager, CombatResolver, EconomyManager, Building & Basic AI).

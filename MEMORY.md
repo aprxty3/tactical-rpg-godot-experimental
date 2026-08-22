@@ -40,6 +40,12 @@ This document serves as the **Persistent Context (Eternal Memory)** for develope
      * `4`: `BLACK_COVEN`
      * `99`: `NEUTRAL` (Neutral Buildings / Creatures)
 
+5. **Coding Principles (ROBUST, DRY, KISS, YAGNI)**:
+   * **ROBUST**: Fail gracefully, validate instances (`is_instance_valid`), and use headless tests to ensure no script errors.
+   * **DRY**: No redundant code. Extract logic to helpers or dynamic generators instead of manual duplication.
+   * **KISS**: Simple, understandable, and idiomatic Godot solutions.
+   * **YAGNI**: Implement only what the current milestone demands.
+
 ---
 
 ## ⚖️ Key Formulas & Calculations
