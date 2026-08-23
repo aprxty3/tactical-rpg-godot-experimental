@@ -1,8 +1,8 @@
 [gd_resource type="TileSet" format=3 uid="uid://cxhy51g182n7k"]
 
 [ext_resource type="Texture2D" uid="uid://cj22nmyes3l4l" path="res://assets/terrain/Ground/Tilemap_Flat.png" id="1_tex"]
-[ext_resource type="Texture2D" path="res://assets/terrain/Water/Water.png" id="2_water"]
-[ext_resource type="Texture2D" path="res://assets/terrain/Bridge/Bridge_All.png" id="3_bridge"]
+[ext_resource type="Texture2D" uid="uid://d1xu56icxb3" path="res://assets/terrain/Water/Water.png" id="2_water"]
+[ext_resource type="Texture2D" uid="uid://cfsvgstyhigs8" path="res://assets/terrain/Bridge/Bridge_All.png" id="3_bridge"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_terrain"]
 texture = ExtResource("1_tex")

@@ -315,17 +315,21 @@ func _execute_unit_movement(unit: TacticalUnit, path: Array[Vector2i]) -> void:
 		var target_world_pos = grid_to_world(path[i])
 		tween.tween_property(unit, "global_position", target_world_pos, move_duration_per_tile)
 
-	tween.finished.connect(func():
-		_moving_units.erase(unit)
-		unit.play_animation("idle")
-		
-		# Check if destination tile has a building to capture
-		var building = get_building_at(to_cell)
-		if building and building.faction_id != unit.faction_id:
-			building.capture(unit.faction_id)
-		
-		EventBus.unit_move_completed.emit(unit, from_cell, to_cell)
-	)
+	tween.finished.connect(_on_unit_move_tween_finished.bind(unit, from_cell, to_cell))
+
+
+func _on_unit_move_tween_finished(unit: Variant, from_cell: Vector2i, to_cell: Vector2i) -> void:
+	if not is_instance_valid(unit) or not (unit is TacticalUnit):
+		return
+	_moving_units.erase(unit)
+	unit.play_animation("idle")
+	
+	# Check if destination tile has a building to capture
+	var building = get_building_at(to_cell)
+	if building and building.faction_id != unit.faction_id:
+		building.capture(unit.faction_id)
+	
+	EventBus.unit_move_completed.emit(unit, from_cell, to_cell)
 
 
 ## Get building at a specific tile (if any)

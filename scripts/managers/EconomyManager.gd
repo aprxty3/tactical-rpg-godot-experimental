@@ -168,7 +168,7 @@ func _on_resource_node_captured(node_type: String, new_faction_id: int, old_fact
 			)
 
 
-func _on_building_destroyed(building: Node) -> void:
+func _on_building_destroyed(_building: Node) -> void:
 	# Handle village destruction reducing capacity
 	# Implementation depends on building node structure
 	pass

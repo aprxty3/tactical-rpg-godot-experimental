@@ -207,10 +207,8 @@ func _check_victory_conditions(_faction_id: int) -> void:
 				alive_unit_count += 1
 				
 		var alive_castle_count := 0
-		var has_any_buildings := false
 		for bld in tree.get_nodes_in_group("buildings"):
 			if bld is Building and bld.faction_id == fac:
-				has_any_buildings = true
 				if bld.building_type == Building.BuildingType.CASTLE:
 					alive_castle_count += 1
 				

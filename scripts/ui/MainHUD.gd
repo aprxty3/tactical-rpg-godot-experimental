@@ -109,10 +109,7 @@ func show_recruit_popup(building: Node) -> void:
 	for unit_data in building.get("recruitable_units"):
 		var btn = Button.new()
 		btn.text = "%s (💰%d | ⛏️%d)" % [unit_data.unit_name, unit_data.recruit_cost_gold, unit_data.recruit_cost_iron]
-		btn.pressed.connect(func():
-			recruit_popup.hide()
-			recruit_unit_requested.emit(building, unit_data)
-		)
+		btn.pressed.connect(_on_recruit_button_pressed.bind(building, unit_data))
 		recruit_vbox.add_child(btn)
 
 	recruit_popup.popup_centered(Vector2(250, 200))
@@ -133,13 +130,22 @@ func show_upgrade_popup(unit: Node, is_at_castle: bool) -> void:
 		var target_data = paths[label]
 		var btn = Button.new()
 		btn.text = "%s (💰%d | ⛏️%d)" % [target_data.unit_name, target_data.recruit_cost_gold, target_data.recruit_cost_iron]
-		btn.pressed.connect(func():
-			upgrade_popup.hide()
-			upgrade_unit_requested.emit(unit, target_data)
-		)
+		btn.pressed.connect(_on_upgrade_button_pressed.bind(unit, target_data))
 		upgrade_vbox.add_child(btn)
 
 	upgrade_popup.popup_centered(Vector2(250, 200))
+
+
+func _on_recruit_button_pressed(building: Variant, unit_data: Variant) -> void:
+	recruit_popup.hide()
+	if is_instance_valid(building) and is_instance_valid(unit_data):
+		recruit_unit_requested.emit(building, unit_data)
+
+
+func _on_upgrade_button_pressed(unit: Variant, target_data: Variant) -> void:
+	upgrade_popup.hide()
+	if is_instance_valid(unit) and is_instance_valid(target_data):
+		upgrade_unit_requested.emit(unit, target_data)
 
 func initialize(eco_mgr: Node) -> void:
 	economy_manager = eco_mgr

@@ -307,7 +307,7 @@ func _do_recruit(building: Building, unit_data: Resource) -> void:
 		_update_hud_text("❌ Failed: All cells around Castle are full!")
 		return
 
-	var new_unit = building.recruit_unit(unit_data, spawn_cell, economy_manager, unit_container)
+	var _new_unit = building.recruit_unit(unit_data, spawn_cell, economy_manager, unit_container)
 	_update_hud_text("✨ Recruited %s at %s!" % [unit_data.unit_name, spawn_cell])
 	queue_redraw()
 
@@ -410,16 +410,16 @@ func _draw() -> void:
 		var rect = Rect2(Vector2(hovered_cell.x * cs.x, hovered_cell.y * cs.y), Vector2(cs.x, cs.y))
 		var pad = 4.0
 		# Corner brackets
-		var tl = rect.position + Vector2(pad, pad)
-		var tr = Vector2(rect.end.x - pad, rect.position.y + pad)
-		var bl = Vector2(rect.position.x + pad, rect.end.y - pad)
-		var br = rect.end - Vector2(pad, pad)
+		var pt_tl = rect.position + Vector2(pad, pad)
+		var pt_tr = Vector2(rect.end.x - pad, rect.position.y + pad)
+		var pt_bl = Vector2(rect.position.x + pad, rect.end.y - pad)
+		var pt_br = rect.end - Vector2(pad, pad)
 		var clr = Color(1.0, 1.0, 1.0, 0.8)
-		draw_line(tl, tl + Vector2(10, 0), clr, 2.0)
-		draw_line(tl, tl + Vector2(0, 10), clr, 2.0)
-		draw_line(tr, tr - Vector2(10, 0), clr, 2.0)
-		draw_line(tr, tr + Vector2(0, 10), clr, 2.0)
-		draw_line(bl, bl + Vector2(10, 0), clr, 2.0)
-		draw_line(bl, bl - Vector2(0, 10), clr, 2.0)
-		draw_line(br, br - Vector2(10, 0), clr, 2.0)
-		draw_line(br, br - Vector2(0, 10), clr, 2.0)
+		draw_line(pt_tl, pt_tl + Vector2(10, 0), clr, 2.0)
+		draw_line(pt_tl, pt_tl + Vector2(0, 10), clr, 2.0)
+		draw_line(pt_tr, pt_tr - Vector2(10, 0), clr, 2.0)
+		draw_line(pt_tr, pt_tr + Vector2(0, 10), clr, 2.0)
+		draw_line(pt_bl, pt_bl + Vector2(10, 0), clr, 2.0)
+		draw_line(pt_bl, pt_bl - Vector2(0, 10), clr, 2.0)
+		draw_line(pt_br, pt_br - Vector2(10, 0), clr, 2.0)
+		draw_line(pt_br, pt_br - Vector2(0, 10), clr, 2.0)

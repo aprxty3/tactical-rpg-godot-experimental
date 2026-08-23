@@ -288,4 +288,17 @@ All major changes to the **War Perang Tactics** project are recorded below.
 - All documents in `docs/` have been reorganized and equipped with OKF v0.2 frontmatter:
   - `GDD_Overview.md`, `Macro_Economy.md`, `Technical_Specs.md`, `Architecture.md`, `Factions_and_Units.md`, `Terrain_and_Buildings.md`, `Roadmap.md`, and `index.md`.
 - Automated **Git Hooks** integration (`graphify hook install`).
-- `/graphify update` synchronization generated **25 nodes, 16 edges, 11 communities**.
+- `/graphify update` synchronization generated **414 nodes, 499 edges, 42 communities**.
+
+---
+
+### 12. 🛡️ Engine Warning Elimination, Lambda Capture Safety, & Concurrent HTTP Refactor
+- **EventBus Warning Cleanliness**: Added `@warning_ignore("unused_signal")` to every single signal declaration in `EventBus.gd`, completely silencing 30+ GDScript reload warnings in the Godot editor.
+- **Lambda Capture Lifetime Safety**: Refactored timer and tween callbacks in `CombatResolver.gd`, `GridManager.gd`, and `MainHUD.gd` from capturing raw objects in anonymous closures to using `Callable.bind()` helper methods (`_on_combat_animation_timeout`, `_on_unit_move_tween_finished`, `_on_recruit_button_pressed`, `_on_upgrade_button_pressed`). Completely eliminated Godot runtime errors: `call: Lambda capture at index X was freed. Passed "null" instead.`
+- **Concurrent Gemini HTTP Requests**: Upgraded `GeminiClient.gd` to spawn dedicated, lightweight `HTTPRequest` child nodes dynamically per request and automatically `queue_free()` them upon completion. Completely resolved: `HTTPRequest is processing a request. Wait for completion or cancel it before attempting a new one.`
+- **Compiler Warning Polish**:
+  - Prefixed unused parameters (`_building` in `EconomyManager.gd`, `_new_unit` in `TestGridController.gd`).
+  - Removed unused local variable `has_any_buildings` in `TurnManager.gd`.
+  - Renamed corner bracket coordinates in `TestGridController.gd` (`tl`, `tr`, `bl`, `br` $\rightarrow$ `pt_tl`, `pt_tr`, `pt_bl`, `pt_br`) to prevent shadowing `Object.tr()`.
+  - Replaced ternary enum assignment in `TacticalUnit.gd` with explicit `if/else` block to eliminate incompatible ternary warnings.
+- **Skill Customization Synchronization**: Created modern, comprehensive `war-tactics-dev` skill definitions in `~/.gemini/config/skills/`, `.agents/skills/`, and `docs/skills/`.

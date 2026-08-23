@@ -69,11 +69,10 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 			counter_result["killed_attacker"] = attacker_died
 
 	# Return units to idle shortly after attack
-	var timer = attacker.get_tree().create_timer(0.6)
-	timer.timeout.connect(func():
-		if is_instance_valid(attacker): attacker.play_animation("idle")
-		if is_instance_valid(defender) and not defender_died: defender.play_animation("idle")
-	)
+	var tree := attacker.get_tree()
+	if tree:
+		var timer = tree.create_timer(0.6)
+		timer.timeout.connect(_on_combat_animation_timeout.bind(attacker, defender, defender_died))
 
 	var full_report = {
 		"attacker": attacker,
@@ -189,3 +188,10 @@ func _get_manhattan_distance(a: Vector2i, b: Vector2i) -> int:
 func _on_unit_attack_requested(attacker: Node, target: Node) -> void:
 	if attacker is TacticalUnit and target is TacticalUnit:
 		resolve_combat(attacker, target)
+
+
+func _on_combat_animation_timeout(att: Variant, def: Variant, def_died: bool) -> void:
+	if is_instance_valid(att) and att is TacticalUnit:
+		att.play_animation("idle")
+	if not def_died and is_instance_valid(def) and def is TacticalUnit:
+		def.play_animation("idle")

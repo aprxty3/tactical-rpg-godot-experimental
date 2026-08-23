@@ -41,7 +41,10 @@ func _setup_default_animations() -> void:
 	var create_anim = func(anim_name: String, row: int, frame_count: int, loop: bool, speed: float):
 		var anim = Animation.new()
 		anim.length = frame_count * speed
-		anim.loop_mode = Animation.LOOP_LINEAR if loop else Animation.LOOP_NONE
+		if loop:
+			anim.loop_mode = Animation.LOOP_LINEAR
+		else:
+			anim.loop_mode = Animation.LOOP_NONE
 		var track_idx = anim.add_track(Animation.TYPE_VALUE)
 		anim.track_set_path(track_idx, "Sprite2D:frame")
 		var max_frame = (sprite.hframes * sprite.vframes) - 1

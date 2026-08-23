@@ -90,12 +90,18 @@ func generate_content(prompt: String, system_instruction: String = "") -> String
 	
 	var json_body: String = JSON.stringify(payload)
 	
-	var err: Error = _http_request.request(endpoint, headers, HTTPClient.METHOD_POST, json_body)
+	var http: HTTPRequest = HTTPRequest.new()
+	http.timeout = request_timeout_seconds
+	add_child(http)
+	
+	var err: Error = http.request(endpoint, headers, HTTPClient.METHOD_POST, json_body)
 	if err != OK:
+		http.queue_free()
 		EventBus.ai_generation_failed.emit("HTTP request initiation failed with error code: %d" % err)
 		return ""
 	
-	var result_array: Array = await _http_request.request_completed
+	var result_array: Array = await http.request_completed
+	http.queue_free()
 	var response_code: int = result_array[1]
 	var response_body: PackedByteArray = result_array[3]
 	
