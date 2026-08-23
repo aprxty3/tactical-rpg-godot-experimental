@@ -6,6 +6,7 @@
 [node name="GoldMine" type="Node2D"]
 script = ExtResource("1_bld")
 building_type = 1
+faction_id = 99
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_mine_tex")

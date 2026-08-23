@@ -10,7 +10,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Black Cultist Pawn"
+unit_name = "Cultist Pawn"
 unit_class = "Worker"
 tier = 1
 description = "Devoted cultist gathering souls and building dark altars."
@@ -33,3 +33,5 @@ upgrade_paths = {
 "Monk": ExtResource("6_up"),
 "Rogue": ExtResource("7_up")
 }
+sprite_scale = 0.5135
+sprite_offset = Vector2(0.0, -2.0)

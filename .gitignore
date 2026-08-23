@@ -48,6 +48,14 @@ desktop.ini
 *~
 .directory
 
+# Regenerable dev previews (scripts_dev/preview_*.py)
+scripts_dev/_preview/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
 # IDEs & Editors
 .idea/
 .vscode/

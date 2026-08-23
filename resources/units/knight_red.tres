@@ -1,11 +1,11 @@
 [gd_resource type="Resource" script_class="UnitData" format=3 uid="uid://bukssff8mksbh"]
 
 [ext_resource type="Script" uid="uid://cln0qurq2ymjx" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" uid="uid://qensr1veowus" path="res://assets/characters/knight/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/knight/knight_red.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Red Knight"
+unit_name = "Knight"
 unit_class = "Melee"
 tier = 3
 description = "Fierce legion juggernaut clad in blood-forged plate."
@@ -17,6 +17,7 @@ recruit_cost_gold = 150
 recruit_cost_iron = 4
 capacity_weight = 3
 spritesheet = ExtResource("2_tex")
-hframes = 4
-vframes = 1
-needs_palette_tint = true
+hframes = 6
+vframes = 2
+sprite_scale = 1.3103
+sprite_offset = Vector2(0.5, -1.0)

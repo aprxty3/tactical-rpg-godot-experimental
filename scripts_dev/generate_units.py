@@ -1,17 +1,38 @@
 #!/usr/bin/env python3
-"""One-off generator for Milestone 3's Unit Upgrade Tree.
+"""SUPERSEDED — one-off generator for Milestone 3's Unit Upgrade Tree.
 
-Creates new resources/units/*.tres for the Tier-2 roster fill-ins and every
-new Tier-3 promotion, and patches existing .tres files (tier fixes,
-needs_palette_tint, upgrade_paths). Run once from the repo root:
+Kept for provenance only: this is how the Tier-2 fill-ins and the 40 Tier-3
+promotions were originally created. DO NOT RUN IT AGAIN. It writes the visual
+fields (`spritesheet`, `hframes`, `vframes`, `needs_palette_tint`) that are now
+owned by a different pipeline, and `needs_palette_tint` no longer exists on
+UnitData at all — re-running it would point every Tier-3 unit back at its
+parent's texture and reintroduce a property the engine will reject.
 
-    python3 scripts_dev/generate_units.py
+The current pipeline, run from the repo root:
 
-Safe to re-run: new-file writers are idempotent (full overwrite); existing-file
-patchers use anchored regex replacements and will no-op if already applied.
+    python3 scripts_dev/generate_sprites.py   # derive the art
+    python3 scripts_dev/wire_units.py         # wire it + bake render metrics
+    python3 scripts_dev/validate_project.py   # verify
+
+It also still refers to `priest_yellow.tres`, which was renamed to
+`highpriest_yellow.tres`.
 """
+import sys
+
 import re
 from pathlib import Path
+
+_SUPERSEDED = (
+    "scripts_dev/generate_units.py is superseded and will corrupt the unit "
+    "resources if run.\nUse instead:\n"
+    "  python3 scripts_dev/generate_sprites.py\n"
+    "  python3 scripts_dev/wire_units.py\n"
+    "  python3 scripts_dev/validate_project.py\n"
+    "Pass --i-know-this-is-superseded to override."
+)
+if "--i-know-this-is-superseded" not in sys.argv:
+    print(_SUPERSEDED)
+    sys.exit(2)
 
 ROOT = Path(__file__).resolve().parent.parent
 UNITS_DIR = ROOT / "resources" / "units"

@@ -7,7 +7,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Red Warrior"
+unit_name = "Warrior"
 unit_class = "Melee"
 tier = 2
 description = "Aggressive assault warrior slicing through defenses."
@@ -23,3 +23,5 @@ upgrade_paths = {
 }
 spritesheet = ExtResource("2_tex")
 vframes = 8
+sprite_scale = 0.4176
+sprite_offset = Vector2(-6.0, 5.5)

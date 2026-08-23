@@ -1,11 +1,11 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/knight/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/paladin/paladin_purple.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Purple Paladin"
+unit_name = "Paladin"
 unit_class = "Melee"
 tier = 3
 description = "Purple paladin, a holy knight blending steel and faith."
@@ -19,7 +19,8 @@ recruit_cost_gold = 150
 recruit_cost_iron = 2
 capacity_weight = 3
 spritesheet = ExtResource("2_tex")
-hframes = 4
-vframes = 1
-needs_palette_tint = true
+hframes = 6
+vframes = 2
 upgrade_paths = {}
+sprite_scale = 1.1515
+sprite_offset = Vector2(0.5, 0.0)

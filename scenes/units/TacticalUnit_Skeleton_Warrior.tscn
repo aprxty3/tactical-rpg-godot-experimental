@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/units/TacticalUnit.gd" id="1_unit_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/skeleton/warrior/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/skeletonwarrior/skeletonwarrior_black.png" id="2_tex"]
 [ext_resource type="Resource" path="res://resources/units/skeleton_black.tres" id="3_res"]
 
 [node name="TacticalUnit" type="Node2D"]
@@ -10,7 +10,7 @@ unit_data = ExtResource("3_res")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_tex")
-hframes = 4
-vframes = 1
+hframes = 6
+vframes = 2
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]

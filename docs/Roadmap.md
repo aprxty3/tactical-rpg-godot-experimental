@@ -99,15 +99,49 @@ The Undead lineage is intentionally **not** folded into the 5-faction symmetric 
 
 **Dropped**: *Recruitment Pool Refresh* (replenishment timers for elite units at Castles) — this item predated the decision to make Tier-3 promotion-only. Since elite units are no longer recruited at Castles at all, a refresh timer for them no longer applies; access is already gated by gold/iron cost and the Upgrade action itself.
 
-**Known remaining gap**: `skull_black.tres` ("Cursed Skull", tier 1, Undead) exists as a resource but is not wired into any recruit list or upgrade path — out of scope for this pass, flagged for a future one.
+**Known remaining gap**: `skull_black.tres` ("Cursed Skull", tier 1, Undead) now has its own derived sprite but is still not wired into any recruit list or upgrade path — flagged for a future pass.
+
+### 3. Art Correction Pass (2026-08-23)
+The tree above shipped with its promotions **sharing their parent's texture** — 13 of the
+18 Tier-3 units were visually identical to the Tier-2 unit they were promoted from, which
+made the tree look cosmetic even though it was mechanically real. Corrected:
+
+- [x] **Derived Tier-3 art** for all 18 promotions across 5 factions (66 generated sheets):
+      `scripts_dev/generate_sprites.py` hue-rotates the parent's garment palette onto the
+      faction hue, then applies a per-role value/saturation treatment, rim light, and pixel
+      accessory. Faction owns hue; role owns everything else.
+- [x] **Runtime palette-tint shader retired.** `UnitData.needs_palette_tint` and
+      `TacticalUnit._update_faction_tint()` are removed — faction colour is baked into real
+      per-faction art. This reverses an earlier decision on the same day; the reversal and
+      its rationale are recorded in `MEMORY.md`.
+- [x] **Unit render-size normalisation**: baked `sprite_scale` / `sprite_offset` on
+      `UnitData` put every unit at 38px body height on a 64px tile, regardless of whether
+      its source frame is 16x16 or 320x320.
+- [x] **Undead & Vampire lines migrated** off 16x16 static icons onto the 32px animated
+      strip family, gaining an idle + run cycle and a consistent size.
+- [x] **`highpriest_yellow.tres`** — the last resource not following `{role}_{faction}`.
 
 
 ## Milestone 4: Advanced Tactical Systems & Morale
-Status: ⬜ Planned
+Status: 🟡 In progress — battlefield and terrain groundwork landed 2026-08-23
+
+### Landed early (prerequisites for the systems below)
+- [x] **30x20 battlefield** (`scripts/managers/MapBuilder.gd`): two rivers, four road-driven
+      bridge crossings, ornamental ponds, and a shoreline formed by the grass blob tileset.
+      Replaces the flat 16x10 grass rectangle, which had no chokepoints to fight over.
+- [x] **Impassable terrain**: `GridManager.set_terrain_blocked_cells()` — water blocks both
+      BFS movement range and A* pathing. Terrain blocking is tracked separately from unit
+      occupancy.
+- [x] **Five faction castle slots** on one map (Purple NW, Red NE, Blue SW, Yellow SE, Black
+      Coven centre), plus 4 Gold Mines, 2 Iron Mines and 6 Villages as contested objectives.
+- [x] **`IronMine.tscn`**: `BuildingType.IRON_MINE` had been wired through `EconomyManager`
+      since Milestone 1 but had no scene and had never appeared on a map.
+- [x] **Forest / rock props** placed off roads and building approaches — the terrain that
+      Forest Ambush (below) will attach its bonuses to.
 
 - [ ] **Morale System**: Units shift between 5 states (Fearless → Eager → Fair → Shaken → Fearful) based on nearby deaths or being flanked *(inspired by Symphony of War)*.
 - [ ] **Surrender Mechanic**: Force surrender on low-morale enemies to capture them or gain resources *(inspired by Symphony of War)*.
-- [ ] **Terrain Ambush**: First strike and morale shock bonuses when attacking from Forest terrain *(inspired by Symphony of War)*.
+- [ ] **Terrain Ambush**: First strike and morale shock bonuses when attacking from Forest terrain *(inspired by Symphony of War)*. Props are placed but carry no gameplay effect yet; this needs a per-cell terrain-type map in `MapBuilder` that `CombatResolver` can query (`terrain_def_mult` is already a hook in `_calculate_damage`, currently pinned to 1.0).
 - [ ] **Fog of War**: Implement `FogOfWarTileMapLayer` to obscure enemy movements.
 - [ ] **Environmental Hazards**: Chain detonations via TNT Barrels and dynamic fire spread mechanics.
 - [ ] **Pandora's Box / Treasure Chests**: Random events and loot drops scattered across the map.
@@ -116,8 +150,8 @@ Status: ⬜ Planned
 Status: ⬜ Planned
 
 - [ ] **Advanced Enemy AI**: Strategic target prioritization (Gold Mines, Villages) and defensive maneuvering when at a disadvantage.
-- [ ] **Dynamic Camera System**: Edge panning, scroll-wheel zoom, and screen shake on heavy impacts.
-- [ ] **Visual Polish**: Advanced combat VFX (particles), unit death / desertion animations, and palette swap shaders for faction coloring.
+- [x] **Dynamic Camera System** — *pulled forward, delivered 2026-08-23*: `scripts/ui/TacticalCamera.gd` does WASD/arrow panning, middle- and right-drag, edge panning, and wheel zoom clamped to the map bounds. Pulled out of this milestone early because a 30x20 map is 1920x1280 world pixels and no longer fits one screen. Screen shake on heavy impacts is still outstanding.
+- [ ] **Visual Polish**: Advanced combat VFX (particles) and unit death / desertion animations. *(Palette-swap shaders for faction colouring are no longer planned — superseded by baked per-faction art, see Milestone 3 §3.)*
 - [ ] **Mount System**: Sprite mounting mechanics for cavalry units.
 - [ ] **Full Campaign**: Design a multi-chapter narrative campaign with escalating difficulty and persistent army progression.
 - [ ] **Audio Overhaul**: Full background music (BGM) pipeline and dynamic mixing.

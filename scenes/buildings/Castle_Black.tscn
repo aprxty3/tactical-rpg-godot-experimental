@@ -1,7 +1,7 @@
 [gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/buildings/Building.gd" id="1_bld"]
-[ext_resource type="Texture2D" path="res://assets/buildings/Castle/Castle_Destroyed.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/buildings/Black Buildings/Castle.png" id="2_tex"]
 [ext_resource type="Resource" path="res://resources/units/pawn_black.tres" id="3_u_pawn_black"]
 [ext_resource type="Resource" path="res://resources/units/warrior_black.tres" id="4_u_warrior_black"]
 [ext_resource type="Resource" path="res://resources/units/archer_black.tres" id="5_u_archer_black"]

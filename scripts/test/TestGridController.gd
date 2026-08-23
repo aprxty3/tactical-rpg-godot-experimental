@@ -7,6 +7,9 @@ extends Node2D
 @onready var unit_container: Node2D = $Units
 @onready var building_container: Node2D = $Buildings
 @onready var main_hud: CanvasLayer = $MainHUD
+@onready var map_builder: MapBuilder = $MapBuilder
+@onready var camera: TacticalCamera = $Camera2D
+@onready var decor_container: Node2D = $Decor
 
 var selected_unit: TacticalUnit = null
 var selected_building: Building = null
@@ -16,11 +19,12 @@ var hovered_cell: Vector2i = Vector2i(-1, -1)
 
 
 func _ready() -> void:
-	# TileMapLayer.z_index is set to -1 (in the scene file) so it draws below
-	# this node's own _draw() highlights. z_index here alone would NOT work:
-	# TileMapLayer is our own child, so z_as_relative would tie its effective
-	# z_index to ours, and ties resolve by tree order (children paint over
-	# their parent's _draw()).
+	# The four TileMapLayers carry explicit negative z_index values (-4 water,
+	# -3 ground, -2 path, -1 bridge) so they draw below this node's own _draw()
+	# highlights. A positive z_index here would NOT work instead: the layers are
+	# our own children, so z_as_relative ties their effective z_index to ours,
+	# and ties resolve by tree order — children paint over their parent's
+	# _draw() output.
 
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
 	EventBus.combat_resolved.connect(_on_combat_resolved)
@@ -36,9 +40,14 @@ func _ready() -> void:
 	if main_hud.has_signal("upgrade_unit_requested"):
 		main_hud.upgrade_unit_requested.connect(_do_upgrade)
 
-	# 1. Daftarkan Faksi ke EconomyManager
-	economy_manager.register_faction(GameConfig.Faction.BLUE_KINGDOM, 150, 4)
-	economy_manager.register_faction(GameConfig.Faction.RED_LEGION, 150, 4)
+	# 1. Register every faction that owns something on the map. Only Blue and
+	# Red take turns for now, but the other three hold castles the players can
+	# capture, and captured buildings need a treasury to pay into.
+	economy_manager.register_faction(GameConfig.Faction.BLUE_KINGDOM, 200, 6)
+	economy_manager.register_faction(GameConfig.Faction.RED_LEGION, 200, 6)
+	economy_manager.register_faction(GameConfig.Faction.PURPLE_SYNDICATE, 100, 2)
+	economy_manager.register_faction(GameConfig.Faction.YELLOW_EMPIRE, 100, 2)
+	economy_manager.register_faction(GameConfig.Faction.BLACK_COVEN, 100, 2)
 
 	# 2. Setup AI Manager
 	if ai_manager:
@@ -50,8 +59,8 @@ func _ready() -> void:
 		economy_manager,
 	)
 
-	# 4. Generate tactical map layout on TileMapLayer
-	_setup_tactical_tilemap()
+	# 4. Paint the battlefield and hand its impassable cells to GridManager
+	_setup_tactical_map()
 
 	# Init HUD
 	main_hud.initialize(economy_manager)
@@ -60,41 +69,46 @@ func _ready() -> void:
 	queue_redraw()
 
 
-## Generates a complete, lush 16x10 tactical battlefield with roads and foliage
-func _setup_tactical_tilemap() -> void:
-	var tilemap: TileMapLayer = get_node_or_null("TileMapLayer")
-	if not tilemap:
+## Build the 30x20 battlefield: rivers, bridges, roads, shoreline and props.
+## MapBuilder owns the layout; GridManager stays the only authority on what is
+## walkable, so water is registered as blocked terrain rather than being
+## inferred from tile ids at query time.
+func _setup_tactical_map() -> void:
+	if not map_builder:
 		return
 
-	var gs = grid_manager.grid_size # Vector2i(16, 10)
+	map_builder.grid_size = grid_manager.grid_size
+	var blocked: Array[Vector2i] = map_builder.build(
+		get_node_or_null("TileMapLayer_Water"),
+		get_node_or_null("TileMapLayer_Ground"),
+		get_node_or_null("TileMapLayer_Path"),
+		get_node_or_null("TileMapLayer_Bridge"),
+	)
+	grid_manager.set_terrain_blocked_cells(blocked)
 
-	# 1. Fill entire grid with grass base
-	for x in range(gs.x):
-		for y in range(gs.y):
-			tilemap.set_cell(Vector2i(x, y), 0, Vector2i(1, 1))
+	# Keep props off anything gameplay-relevant.
+	var reserved: Array[Vector2i] = []
+	for bld in get_tree().get_nodes_in_group("buildings"):
+		if bld is Building:
+			reserved.append(bld.grid_position)
+			for d in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+				reserved.append(bld.grid_position + d)
+	for unit in unit_container.get_children():
+		if unit is TacticalUnit:
+			reserved.append(unit.grid_position)
+	map_builder.scatter_decor(decor_container, grid_manager.cell_size, reserved)
 
-	# 2. Dirt pathways connecting Castles and Mine
-	var road_cells = [
-		Vector2i(2, 1), Vector2i(2, 2), Vector2i(3, 2), Vector2i(4, 3), Vector2i(4, 4),
-		Vector2i(5, 3), Vector2i(5, 4), Vector2i(5, 5), Vector2i(6, 4),
-		Vector2i(7, 4), Vector2i(8, 4), Vector2i(8, 5), Vector2i(9, 5), Vector2i(9, 6), Vector2i(10, 6)
-	]
-	for cell in road_cells:
-		tilemap.set_cell(cell, 0, Vector2i(6, 1)) # Dirt center tile
+	if camera:
+		camera.configure(grid_manager.get_map_pixel_size(), _player_start_focus())
 
-	# 3. Subtle foliage / grass flower details
-	var detail_cells = {
-		Vector2i(0, 3): Vector2i(3, 0),
-		Vector2i(1, 7): Vector2i(3, 1),
-		Vector2i(7, 1): Vector2i(3, 0),
-		Vector2i(12, 2): Vector2i(3, 1),
-		Vector2i(14, 8): Vector2i(3, 0),
-		Vector2i(8, 8): Vector2i(3, 1),
-		Vector2i(11, 2): Vector2i(3, 0),
-		Vector2i(13, 5): Vector2i(3, 1),
-	}
-	for cell in detail_cells.keys():
-		tilemap.set_cell(cell, 0, detail_cells[cell])
+
+## Open the match looking at the player's own castle rather than the origin.
+func _player_start_focus() -> Vector2:
+	for bld in get_tree().get_nodes_in_group("buildings"):
+		if bld is Building and bld.building_type == Building.BuildingType.CASTLE \
+				and bld.faction_id == GameConfig.Faction.BLUE_KINGDOM:
+			return bld.global_position
+	return grid_manager.get_map_pixel_size() * 0.5
 
 
 func _update_hud_text(text: String) -> void:
@@ -132,6 +146,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventKey and event.pressed and event.keycode == KEY_U:
 		_try_upgrade_at_selected_unit()
+		return
+
+	if event is InputEventMouseMotion:
+		var cell := grid_manager.world_to_grid(get_global_mouse_position())
+		if cell != hovered_cell:
+			hovered_cell = cell
+			queue_redraw()
 		return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

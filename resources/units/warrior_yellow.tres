@@ -7,7 +7,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Yellow Warrior"
+unit_name = "Warrior"
 unit_class = "Melee"
 tier = 2
 description = "Golden vanguard defender guarding empire borders."
@@ -27,3 +27,5 @@ upgrade_paths = {
 "Knight": ExtResource("3_up"),
 "Lancer": ExtResource("4_up")
 }
+sprite_scale = 0.4176
+sprite_offset = Vector2(-6.0, 5.5)

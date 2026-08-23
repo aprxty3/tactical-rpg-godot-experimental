@@ -57,13 +57,55 @@ func _ready() -> void:
 	assert(poor_unit.unit_data == data_before_fail, "Unit data must NOT change on a failed upgrade")
 	print("✅ [Insufficient Funds] Upgrade correctly rejected, unit remained %s" % poor_unit.unit_data.unit_name)
 
-	# 4. Palette-tint sanity: Knight (generic sheet) tints, Pawn (real per-faction art) does not
-	assert(knight_data.needs_palette_tint, "Knight is flagged for runtime palette tint")
+	# 4. A promotion must LOOK different. Tier-3 units used to re-use their
+	# parent's texture verbatim, so Archer -> Sniper changed nothing on screen.
 	var pawn_data: UnitData = load("res://resources/units/pawn_blue.tres")
-	assert(not pawn_data.needs_palette_tint, "Pawn keeps its hand-painted art, no tint")
-	print("✅ [Palette Tint Flags] Knight=true, Pawn=false as expected")
+	assert(knight_data.spritesheet != pawn_data.spritesheet,
+		"Knight and Pawn must not share a spritesheet")
+	for pair in [
+		["res://resources/units/archer_blue.tres", "res://resources/units/sniper_blue.tres"],
+		["res://resources/units/archer_blue.tres", "res://resources/units/crossbowman_blue.tres"],
+		["res://resources/units/wizzard_blue.tres", "res://resources/units/archmage_blue.tres"],
+		["res://resources/units/rogue_blue.tres", "res://resources/units/assassin_blue.tres"],
+		["res://resources/units/monk_blue.tres", "res://resources/units/highpriest_blue.tres"],
+		["res://resources/units/skeleton_mage_black.tres", "res://resources/units/lich_black.tres"],
+		["res://resources/units/vampire_black.tres", "res://resources/units/vampirelord_black.tres"],
+	]:
+		var base: UnitData = load(pair[0])
+		var promo: UnitData = load(pair[1])
+		assert(base.spritesheet != promo.spritesheet,
+			"%s -> %s must not share a spritesheet" % [base.unit_name, promo.unit_name])
+	print("✅ [Promotion Visuals] every checked promotion swaps its spritesheet")
 
-	# 5. Undead lineage: Skeleton Fodder -> Skeleton Mage -> Lich (own parallel track)
+	# 5. Faction colour must not leak into the displayed name.
+	for res_path in ["res://resources/units/pawn_blue.tres",
+			"res://resources/units/warrior_red.tres",
+			"res://resources/units/wizzard_purple.tres",
+			"res://resources/units/highpriest_yellow.tres"]:
+		var d: UnitData = load(res_path)
+		for word in ["Blue ", "Red ", "Purple ", "Yellow ", "Black "]:
+			assert(not d.unit_name.begins_with(word),
+				"unit_name '%s' still carries a faction prefix" % d.unit_name)
+	print("✅ [Unit Names] recruit/upgrade labels carry no faction prefix")
+
+	# 6. Every unit must render at the same body height regardless of source art.
+	var dir := DirAccess.open("res://resources/units")
+	var checked := 0
+	if dir:
+		dir.list_dir_begin()
+		var f := dir.get_next()
+		while f != "":
+			if f.ends_with(".tres"):
+				var d: UnitData = load("res://resources/units/" + f)
+				assert(d.sprite_scale > 0.0, "%s has no baked sprite_scale" % f)
+				var tex_h: float = float(d.spritesheet.get_height()) / float(maxi(1, d.vframes))
+				assert(tex_h * d.sprite_scale < 200.0, "%s renders absurdly large" % f)
+				checked += 1
+			f = dir.get_next()
+		dir.list_dir_end()
+	print("✅ [Sprite Metrics] %d units carry baked scale/offset" % checked)
+
+	# 7. Undead lineage: Skeleton Fodder -> Skeleton Mage -> Lich (own parallel track)
 	economy.register_faction(GameConfig.Faction.BLACK_COVEN, 200, 5)
 	var undead_scene: PackedScene = load("res://scenes/units/TacticalUnit.tscn")
 	var fodder: TacticalUnit = undead_scene.instantiate()

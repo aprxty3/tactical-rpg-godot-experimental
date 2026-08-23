@@ -7,7 +7,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Blue Archer"
+unit_name = "Archer"
 unit_class = "Ranged"
 tier = 2
 description = "Ranged marksman capable of attacking from distance."
@@ -25,3 +25,5 @@ upgrade_paths = {
 spritesheet = ExtResource("2_tex")
 hframes = 8
 vframes = 7
+sprite_scale = 0.5067
+sprite_offset = Vector2(-3.5, -0.5)

@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/skeleton/base/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/skeletonfodder/skeletonfodder_black.png" id="2_tex"]
 [ext_resource type="Resource" path="res://resources/units/skeleton_black.tres" id="3_up"]
 [ext_resource type="Resource" path="res://resources/units/skeleton_mage_black.tres" id="4_up"]
 [ext_resource type="Resource" path="res://resources/units/skeleton_rogue_black.tres" id="5_up"]
@@ -22,10 +22,12 @@ recruit_cost_gold = 30
 recruit_cost_iron = 0
 capacity_weight = 1
 spritesheet = ExtResource("2_tex")
-hframes = 4
-vframes = 1
+hframes = 6
+vframes = 2
 upgrade_paths = {
 "Skeleton Warrior": ExtResource("3_up"),
 "Skeleton Mage": ExtResource("4_up"),
 "Skeleton Rogue": ExtResource("5_up")
 }
+sprite_scale = 1.2667
+sprite_offset = Vector2(0.0, -1.0)

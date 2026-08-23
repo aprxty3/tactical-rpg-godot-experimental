@@ -1,11 +1,11 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/archer/Blue/Archer_Blue.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/crossbowman/crossbowman_blue.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Blue Crossbowman"
+unit_name = "Crossbowman"
 unit_class = "Ranged"
 tier = 3
 description = "Blue crossbow soldier piercing heavy armor."
@@ -22,3 +22,5 @@ spritesheet = ExtResource("2_tex")
 hframes = 8
 vframes = 7
 upgrade_paths = {}
+sprite_scale = 0.4368
+sprite_offset = Vector2(-3.5, -0.5)

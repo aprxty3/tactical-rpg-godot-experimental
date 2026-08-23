@@ -137,6 +137,32 @@ func unregister_unit(unit: TacticalUnit) -> void:
 			astar.set_point_solid(existing_cell, false)
 
 
+## Mark a cell as impassable terrain (water, cliff). Kept separate from unit
+## occupancy so a unit dying on a bridge tile cannot accidentally clear the
+## river next to it.
+func set_terrain_blocked(cell: Vector2i, blocked: bool = true) -> void:
+	if not is_within_bounds(cell):
+		return
+	if blocked:
+		_obstacle_cells[cell] = true
+		astar.set_point_solid(cell, true)
+	else:
+		_obstacle_cells.erase(cell)
+		if not _occupied_cells.has(cell):
+			astar.set_point_solid(cell, false)
+
+
+## Bulk variant used by MapBuilder once the battlefield is painted.
+func set_terrain_blocked_cells(cells: Array[Vector2i]) -> void:
+	for cell in cells:
+		set_terrain_blocked(cell, true)
+
+
+## Total battlefield size in world pixels — used to clamp the camera.
+func get_map_pixel_size() -> Vector2:
+	return Vector2(grid_size.x * cell_size.x, grid_size.y * cell_size.y)
+
+
 ## Get unit at a specific tile (if any)
 func get_unit_at(cell: Vector2i) -> TacticalUnit:
 	return _occupied_cells.get(cell, null)

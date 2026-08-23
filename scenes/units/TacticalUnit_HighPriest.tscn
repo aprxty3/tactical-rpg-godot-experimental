@@ -1,17 +1,17 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/units/TacticalUnit.gd" id="1_unit"]
-[ext_resource type="Texture2D" path="res://assets/characters/priest/priest1/v1/priest1_v1_1.png" id="2_pawn_tex"]
-[ext_resource type="Resource" path="res://resources/units/priest_yellow.tres" id="2_unit_data"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/highpriest/highpriest_yellow.png" id="2_pawn_tex"]
+[ext_resource type="Resource" path="res://resources/units/highpriest_yellow.tres" id="2_unit_data"]
 
 
-[node name="TacticalUnit_Priest" type="Node2D"]
+[node name="TacticalUnit_HighPriest" type="Node2D"]
 script = ExtResource("1_unit")
 unit_data = ExtResource("2_unit_data")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_pawn_tex")
-hframes = 1
+hframes = 6
 vframes = 1
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]

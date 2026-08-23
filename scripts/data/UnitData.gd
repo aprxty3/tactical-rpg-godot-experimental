@@ -41,9 +41,14 @@ class_name UnitData
 @export var spritesheet: Texture2D
 @export var hframes: int = 6
 @export var vframes: int = 6
+## Uniform Sprite2D scale that normalizes this unit's on-screen size.
+## Source art ranges from 16x16 icons to 320x320 TinySwords frames, so a
+## single node scale would render mages/undead microscopic next to Warriors.
+## Baked offline by scripts_dev/generate_sprites.py from the frame's actual
+## content bounding box: sprite_scale = TARGET_CHAR_PX / content_height.
+@export var sprite_scale: float = 1.0
+## Sprite2D offset (in unscaled texture pixels) that centers the character
+## horizontally and plants its feet on the tile. Also baked offline.
+@export var sprite_offset: Vector2 = Vector2.ZERO
 @export var sprite_frames: SpriteFrames
 @export var portrait: Texture2D
-## True for units sharing a generic, non-faction-colored spritesheet
-## (Knight, Rogue, Wizzard, and their Tier-3 offshoots) — TacticalUnit
-## applies a runtime faction palette-tint shader when this is set.
-@export var needs_palette_tint: bool = false

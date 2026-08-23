@@ -7,7 +7,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Black Archer"
+unit_name = "Archer"
 unit_class = "Ranged"
 tier = 2
 description = "Dark archer shooting shadow-infused arrows."
@@ -27,3 +27,5 @@ upgrade_paths = {
 "Sniper": ExtResource("3_up"),
 "Crossbowman": ExtResource("4_up")
 }
+sprite_scale = 0.427
+sprite_offset = Vector2(4.0, 4.5)

@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/skeleton/warrior/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/skeletonwarrior/skeletonwarrior_black.png" id="2_tex"]
 [ext_resource type="Resource" path="res://resources/units/bonereaper_black.tres" id="3_up"]
 
 [resource]
@@ -20,8 +20,10 @@ recruit_cost_gold = 40
 recruit_cost_iron = 1
 capacity_weight = 2
 spritesheet = ExtResource("2_tex")
-hframes = 4
-vframes = 1
+hframes = 6
+vframes = 2
 upgrade_paths = {
 "Bone Reaper": ExtResource("3_up")
 }
+sprite_scale = 1.2667
+sprite_offset = Vector2(0.0, -1.0)

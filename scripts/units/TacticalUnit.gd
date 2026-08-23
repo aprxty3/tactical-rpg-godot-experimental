@@ -7,8 +7,6 @@ class_name TacticalUnit
 @export var unit_data: UnitData
 @export var faction_id: int = 0
 
-const FACTION_TINT_SHADER: Shader = preload("res://assets/shaders/faction_tint.gdshader")
-
 # === Runtime State (not saved in Resource) ===
 var current_health: int = 0
 var current_movement: int = 0
@@ -62,8 +60,15 @@ func _setup_default_animations() -> void:
 		create_anim.call("idle", 0, 6, true, 0.15)
 		create_anim.call("run", 1, 6, true, 0.1)
 		create_anim.call("attack", 2, 6, false, 0.1)
+	elif sprite.vframes >= 2:
+		# Compact derived sheets (scripts_dev/generate_sprites.py):
+		# row 0 = idle, row 1 = run. Attack replays the run row faster.
+		var cols := maxi(1, sprite.hframes)
+		create_anim.call("idle", 0, cols, true, 0.16)
+		create_anim.call("run", 1, cols, true, 0.09)
+		create_anim.call("attack", 1, cols, false, 0.07)
 	else:
-		# Strip sheets (e.g. Rogue, Wizzard, Skeleton, Priest)
+		# Single-row strip sheets (legacy / static icons)
 		var frames = maxi(1, sprite.hframes)
 		create_anim.call("idle", 0, frames, true, 0.15)
 		create_anim.call("run", 0, frames, true, 0.1)
@@ -308,7 +313,6 @@ func _handle_death(damage_type: String) -> void:
 func _update_visuals() -> void:
 	if not unit_data or not sprite:
 		return
-	_update_faction_tint()
 	if is_instance_valid(unit_data.spritesheet):
 		sprite.texture = unit_data.spritesheet
 		sprite.hframes = unit_data.hframes
@@ -316,21 +320,18 @@ func _update_visuals() -> void:
 		_setup_default_animations()
 	elif unit_data.sprite_frames and sprite:
 		pass
+	_apply_sprite_metrics()
 
 
-## Apply (or clear) the runtime faction palette-tint shader. Only units
-## sharing a generic, non-recolored spritesheet opt in via
-## UnitData.needs_palette_tint — hand-painted per-faction art is left alone.
-func _update_faction_tint() -> void:
-	if not unit_data.needs_palette_tint:
-		sprite.material = null
+## Normalize on-screen size across wildly different source art.
+## Frames range from 16x16 icons to 320x320 TinySwords sheets, so the node
+## itself stays at scale 1.0 and the Sprite2D carries a per-unit scale baked
+## from the art's real content bounding box (UnitData.sprite_scale/offset).
+func _apply_sprite_metrics() -> void:
+	if not sprite or not unit_data:
 		return
-
-	var mat := sprite.material as ShaderMaterial
-	if not mat:
-		mat = ShaderMaterial.new()
-		mat.shader = FACTION_TINT_SHADER
-		sprite.material = mat
-
-	var tint: Color = GameConfig.FACTION_TINT_COLORS.get(faction_id, Color.WHITE)
-	mat.set_shader_parameter("tint_color", tint)
+	var s: float = unit_data.sprite_scale
+	if s <= 0.0:
+		s = 1.0
+	sprite.scale = Vector2(s, s)
+	sprite.offset = unit_data.sprite_offset

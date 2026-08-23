@@ -7,7 +7,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Purple Monk"
+unit_name = "Monk"
 unit_class = "Support"
 tier = 2
 description = "Heretic priest infusing allies with dark resilience."
@@ -27,3 +27,5 @@ upgrade_paths = {
 "High Priest": ExtResource("3_up"),
 "Paladin": ExtResource("4_up")
 }
+sprite_scale = 0.5507
+sprite_offset = Vector2(0.0, -3.5)

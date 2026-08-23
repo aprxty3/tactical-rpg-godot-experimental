@@ -72,3 +72,31 @@ Units positioned in Forest tiles gain a concealment advantage. When an enemy uni
 - **Economy Integration**: See [GDD_Overview.md](GDD_Overview.md) for gold revenue phases and upkeep mechanics.
 - **Unit Production**: See [Factions_and_Units.md](Factions_and_Units.md) for units deployable from Castles.
 - **Godot Scene Setup**: See [Architecture.md](Architecture.md) for `TileMapLayer` and pathfinding configuration.
+
+---
+
+## Implementation Status (2026-08-23)
+
+| Structure | Scene | Ownership visual |
+|---|---|---|
+| Castle | `scenes/buildings/Castle{,_Red,_Purple,_Yellow,_Black}.tscn` | Texture swap from `assets/buildings/{Faction} Buildings/Castle.png` |
+| Village / House | `scenes/buildings/House.tscn` | Texture swap from `{Faction} Buildings/House1.png` |
+| Gold Mine | `scenes/buildings/GoldMine.tscn` | Faction pennant (no per-faction art in the pack) |
+| Iron Mine | `scenes/buildings/IronMine.tscn` | Faction pennant; art is a desaturated derivation of the Gold Mine |
+| Tower | *not yet scened* | Texture swap is already wired in `Building.FACTION_ART_FILE` |
+
+Capturing a structure swaps its sprite to the capturing faction's own building rather than
+tinting the previous owner's — and a captured **Castle recruits the new owner's unit
+variants** via `Building.resolve_for_owner()`.
+
+### Terrain
+
+`scripts/managers/MapBuilder.gd` paints four stacked `TileMapLayer`s — water (z −4),
+grass (−3), sand paths (−2), bridges (−1) — and reports impassable cells to
+`GridManager.set_terrain_blocked_cells()`. **GridManager is the only authority on
+walkability**; nothing infers passability from tile ids.
+
+Currently modelled: **water** (impassable) and **bridges** (the only crossings). Forest and
+rock props are placed but purely decorative — terrain combat modifiers land with Forest
+Ambush in Milestone 4. `CombatResolver._calculate_damage()` already reserves the hook
+(`terrain_def_mult`, pinned to `1.0`).

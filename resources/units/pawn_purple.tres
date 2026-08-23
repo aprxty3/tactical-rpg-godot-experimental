@@ -10,7 +10,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Purple Pawn"
+unit_name = "Pawn"
 unit_class = "Worker"
 tier = 1
 description = "Syndicate operative assigned to logistics."
@@ -33,3 +33,5 @@ upgrade_paths = {
 "Monk": ExtResource("6_up"),
 "Rogue": ExtResource("7_up")
 }
+sprite_scale = 0.6441
+sprite_offset = Vector2(0.0, -2.5)

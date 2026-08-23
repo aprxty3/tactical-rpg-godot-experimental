@@ -125,6 +125,110 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+### 15. 🎨 Sprite Derivation Pipeline — Every Promotion Now Looks Different
+- **The bug**: 13 of the 18 Tier-3 units re-used their Tier-2 parent's texture *verbatim*
+  (`sniper_*.tres` and `crossbowman_*.tres` both pointed at `Archer_{Faction}.png`;
+  `archmage`/`elementalist` at the Wizzard sheet; `assassin`/`shadowblade` at the Rogue
+  sheet; `vampirelord` at the Vampire icon; `lich` at the Cursed Skull icon). Promoting a
+  unit changed its stats and nothing else on screen.
+- **`scripts_dev/spritegen_lib.py` + `generate_sprites.py`**: no image-generation model is
+  available to this project, so **66 spritesheets are derived from their parent art** —
+  the garment palette is hue-rotated onto the faction hue (skin tones and linework
+  detected and excluded, so a Red wizard no longer gets a jaundiced face), then the role
+  applies its own value/saturation treatment, a rim light, and a pixel accessory.
+- **Role markers**: Paladin/High Priest halo, Archmage orb, Elementalist flame, Assassin &
+  Bone Reaper eye-glint, Lich crown, Wraith/Shadowblade/Nightstalker wisps, Vampire Lord
+  circlet. Sniper reads as a dark forest ranger and Crossbowman as pale steel — both tuned
+  strong enough to survive the ~0.46 in-game downscale, where a rim alone is invisible.
+- **The runtime palette-tint shader is gone.** `UnitData.needs_palette_tint` and
+  `TacticalUnit._update_faction_tint()` are removed; faction color is baked into real art.
+  This deliberately reverses the shader decision recorded earlier today — see `MEMORY.md`,
+  which documents the reversal and why the original rationale no longer holds.
+- **Idle + Run in one sheet**: derived sheets are 6x2 (row 0 idle, row 1 run) instead of a
+  4-frame idle strip, so the 32px units finally animate while moving.
+  `TacticalUnit._setup_default_animations()` gained a compact-layout branch for them.
+
+### 16. 📏 Unit Render-Size Normalisation (the "mage is tiny" bug)
+- **Root cause**: source frames range from 16x16 icons (Vampire, Lich, High Priest) through
+  32x32 strips (Wizzard, Knight, Rogue, Skeletons) to 192x192 and 320x320 TinySwords sheets
+  — yet every unit node was hard-scaled to `0.45`. Measured on a 64px tile that rendered a
+  Warrior at 41px, a Pawn at 27px, a **Wizzard at 14px** and the undead icons at **7px**.
+- **Fix**: two new baked fields on `UnitData` — `sprite_scale` and `sprite_offset` — applied
+  by `TacticalUnit._apply_sprite_metrics()`. Unit nodes now stay at `scale = 1.0`; the
+  hardcoded `0.45` is removed from `Building.recruit_unit()` and from the scene.
+- **Baked, not guessed**: `scripts_dev/wire_units.py` measures each sheet's **idle-row**
+  content bounding box and solves for `TARGET_CHAR_PX = 38`. Measuring the union of *all*
+  rows was tried first and is wrong — a unit with a wide attack swing shrinks its resting
+  pose to keep the widest frame in budget. All 91 units now render at exactly 38px.
+
+### 17. 🚩 Faction Ownership Is Visible on Every Captured Building
+- **`Building._update_faction_texture()`** replaces the old `modulate()` tint with a real
+  texture swap out of `assets/buildings/{Blue,Red,Purple,Yellow,Black} Buildings/` — a
+  captured Castle/Village/Tower now *becomes* the capturing faction's building.
+- **`Building._update_faction_banner()`**: Gold and Iron mines have no per-faction art in
+  the pack, so they fly a generated pennant in `GameConfig.FACTION_TINT_COLORS`, anchored
+  above the sprite whatever its size. Neutral buildings fly none.
+- **`Building.resolve_for_owner()`**: a captured castle recruits the **new owner's** unit
+  variants. Blue taking the Yellow keep no longer fields yellow-sprited Blue troops. Costs
+  are priced off the resolved variant in both `can_recruit()` and `recruit_unit()`.
+- **Two authored-scene bugs fixed**: `Castle_Black.tscn` was pointing at
+  `Castle_Destroyed.png` (the Black Coven's keep rendered as a ruin), and the *neutral*
+  village used `House_Blue.png`, so uncaptured villages already looked like the player's.
+  `GoldMine.tscn` also never declared `faction_id`, defaulting to `0` (Blue) instead of Neutral.
+
+### 18. 🗺️ 30x20 Battlefield, Terrain, and a Pan/Zoom Camera
+- **`scripts/managers/MapBuilder.gd`** (new, Logic layer): builds the battlefield from
+  layout constants and hands the impassable cells to GridManager. Two rivers cut the map
+  into a west flank, a contested centre and an east flank; roads are drawn as L-segments
+  between waypoints and **every road/river crossing automatically becomes a bridge**, so
+  the 8 bridge tiles sit exactly where the routes need them.
+- **Four stacked `TileMapLayer`s** (water -4, ground -3, path -2, bridge -1): water fills
+  the whole rect underneath, so the grass blob's own edge tiles form the shoreline. The
+  tileset gained two atlas sources (`Water.png`, `Bridge_All.png`).
+- **Blob-tiling fix**: `Tilemap_Flat`'s 4x4 blocks are a strict edge lookup (col 0 = left
+  edge, 1 = none, 2 = right edge, 3 = both; rows likewise), verified by sampling every
+  tile's border bands. A first attempt randomised columns 1/2 for "variety" and rendered
+  the field as a maze of stray edges.
+- **Map contents**: 5 faction castle slots (Purple NW, Red NE, Blue SW, Yellow SE, Black
+  Coven centre — the contested prize), 4 Gold Mines, 2 Iron Mines, 6 Villages, 20 forest /
+  rock props placed off roads, water and building approaches.
+- **`scenes/buildings/IronMine.tscn`** (new): `BuildingType.IRON_MINE` was wired end-to-end
+  in `EconomyManager` but had no scene and had never appeared on a map. Its art is a
+  desaturated derivation of the Gold Mine sprite.
+- **`GridManager`**: new `set_terrain_blocked()` / `set_terrain_blocked_cells()` /
+  `get_map_pixel_size()`. Terrain blocking is kept separate from unit occupancy so a unit
+  dying on a bridge cannot clear the river beside it.
+- **`scripts/ui/TacticalCamera.gd`** (new): WASD/arrows, middle- or right-drag, and edge
+  panning, plus wheel zoom clamped to 0.55–2.0. `Camera2D`'s own `limit_*` properties do
+  the clamping, so the view can never leave the map. Pulled forward from Milestone 5
+  because a 1920x1280 battlefield no longer fits one screen.
+- **Also fixed**: `hovered_cell` was drawn by `_draw()` but never assigned — the hover
+  cursor had never once appeared. `project.godot` now sets nearest-neighbour texture
+  filtering (pixel art was being bilinear-filtered) and a 1408x792 default viewport.
+
+### 19. 🏷️ Unit Names, Naming Convention, and Tooling
+- **Faction prefix stripped from `unit_name`** across all 91 resources — the Recruit and
+  Upgrade popups render `unit_name` verbatim, so a Blue castle was offering "Blue Pawn".
+  Flavour names are preserved (`Cultist Pawn`, `Guard Warrior`, `Death Lancer`,
+  `Necromancer Monk`). Verified safe: every name-based branch in `CombatResolver.gd`
+  matches on role words (`vampire`, `wizzard`, `knight`, `paladin`, `skeleton`), never colour.
+- **`priest_yellow.tres` -> `highpriest_yellow.tres`** (+ its scene), the last unit not
+  following `{role}_{faction}` — a landmine for anything resolving units by convention,
+  including the new `resolve_for_owner()`.
+- **New dev tooling** in `scripts_dev/`: `spritegen_lib.py`, `generate_sprites.py`,
+  `wire_units.py`, `validate_project.py` (static integrity check — ext_resource paths,
+  frame divisibility, upgrade-path targets, baked metrics, name prefixes),
+  `preview_map.py` and `preview_units.py` (render the map and the unit lineup to PNG for
+  visual review without the engine). `generate_units.py` is frozen — it would reintroduce
+  the removed `needs_palette_tint` property.
+- **Tests**: `scenes/test_battlefield.tscn` + `TestBattlefield.gd` (map shape, terrain
+  blocking, bridge crossability, capture texture swap, owner-variant recruitment).
+  `TestUpgradeFlow.gd`'s palette-tint assertions are replaced by ones that check what the
+  bug reports were actually about: every promotion swaps its spritesheet, no unit_name
+  carries a faction prefix, and every unit carries baked render metrics.
+
+---
+
 ## 📅 2026-08-22
 
 ### 1. 🏗️ Architecture & System Foundation (Decoupled Data-Driven)

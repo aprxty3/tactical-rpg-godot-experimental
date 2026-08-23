@@ -1,11 +1,11 @@
 [gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
-[ext_resource type="Texture2D" path="res://assets/characters/rogue/Idle/Idle-Sheet.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/generated/assassin/assassin_yellow.png" id="2_tex"]
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Yellow Assassin"
+unit_name = "Assassin"
 unit_class = "Infiltrator"
 tier = 3
 description = "Yellow assassin delivering lethal backstabs."
@@ -19,7 +19,8 @@ recruit_cost_gold = 140
 recruit_cost_iron = 1
 capacity_weight = 3
 spritesheet = ExtResource("2_tex")
-hframes = 4
-vframes = 1
-needs_palette_tint = true
+hframes = 6
+vframes = 2
 upgrade_paths = {}
+sprite_scale = 1.1875
+sprite_offset = Vector2(0.5, -1.0)

@@ -10,7 +10,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Red Pawn"
+unit_name = "Pawn"
 description = "Red legion logistics and field builder."
 max_health = 45
 attack_power = 18
@@ -23,3 +23,5 @@ upgrade_paths = {
 "Wizzard": ExtResource("5_up")
 }
 spritesheet = ExtResource("2_tex")
+sprite_scale = 0.6441
+sprite_offset = Vector2(0.0, -2.5)

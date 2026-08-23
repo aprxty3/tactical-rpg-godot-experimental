@@ -13,6 +13,28 @@ enum BuildingType {
 	TOWER
 }
 
+## Folder name of each faction's hand-painted building set.
+const FACTION_ART_DIR: Dictionary = {
+	GameConfig.Faction.BLUE_KINGDOM: "Blue",
+	GameConfig.Faction.RED_LEGION: "Red",
+	GameConfig.Faction.PURPLE_SYNDICATE: "Purple",
+	GameConfig.Faction.YELLOW_EMPIRE: "Yellow",
+	GameConfig.Faction.BLACK_COVEN: "Black",
+}
+
+## Building types that ship a real per-faction sprite. Capturing one of these
+## swaps the texture outright, so a captured Castle becomes the capturing
+## faction's Castle rather than the old owner's tinted a bit differently.
+const FACTION_ART_FILE: Dictionary = {
+	BuildingType.CASTLE: "Castle.png",
+	BuildingType.HOUSE: "House1.png",
+	BuildingType.TOWER: "Tower.png",
+}
+
+## Resource nodes (mines) have no per-faction art in the pack, so ownership is
+## shown with a generated pennant instead — see _update_faction_banner().
+const BANNER_NAME: StringName = &"FactionBanner"
+
 @export_group("Building Properties")
 @export var building_type: BuildingType = BuildingType.CASTLE
 @export var faction_id: int = GameConfig.Faction.NEUTRAL
@@ -28,8 +50,13 @@ enum BuildingType {
 @onready var sprite: Sprite2D = $Sprite2D
 
 
+var _neutral_texture: Texture2D
+
+
 func _ready() -> void:
 	add_to_group("buildings")
+	if sprite:
+		_neutral_texture = sprite.texture
 	_update_visuals()
 
 
@@ -86,6 +113,10 @@ func can_recruit(unit_data: UnitData, economy_mgr: Node, active_units: Array) ->
 	if not is_instance_valid(unit_data):
 		return {"can_recruit": false, "reason": "Data unit tidak valid."}
 
+	# Price the variant that will actually be spawned (a captured castle
+	# recruits the new owner's troops, not the previous owner's).
+	unit_data = resolve_for_owner(unit_data)
+
 	# 1. Cek Biaya Gold
 	if economy_mgr.get_gold(faction_id) < unit_data.recruit_cost_gold:
 		return {"can_recruit": false, "reason": "Gold tidak cukup! (Butuh %d Gold)" % unit_data.recruit_cost_gold}
@@ -105,9 +136,12 @@ func can_recruit(unit_data: UnitData, economy_mgr: Node, active_units: Array) ->
 
 ## Eksekusi rekrut unit di sekitar kastil
 func recruit_unit(unit_data: UnitData, spawn_cell: Vector2i, economy_mgr: Node, parent_node: Node) -> TacticalUnit:
-	# Bayar biaya
-	economy_mgr.spend_gold(faction_id, unit_data.recruit_cost_gold)
-	economy_mgr.spend_iron(faction_id, unit_data.recruit_cost_iron)
+	# Bayar biaya (harga varian yang benar-benar di-spawn)
+	var to_spawn: UnitData = resolve_for_owner(unit_data)
+	economy_mgr.spend_gold(faction_id, to_spawn.recruit_cost_gold)
+	economy_mgr.spend_iron(faction_id, to_spawn.recruit_cost_iron)
+
+	unit_data = to_spawn
 
 	# Instansiasi unit baru (Gunakan prefab khusus dari UnitData jika ada, fallback ke default)
 	var prefab: PackedScene = unit_data.unit_scene if (unit_data and is_instance_valid(unit_data.unit_scene)) else unit_scene_prefab
@@ -115,7 +149,9 @@ func recruit_unit(unit_data: UnitData, spawn_cell: Vector2i, economy_mgr: Node, 
 	new_unit.unit_data = unit_data
 	new_unit.faction_id = faction_id
 	new_unit.grid_position = spawn_cell
-	new_unit.scale = Vector2(0.45, 0.45)
+	# No node-level scale: TacticalUnit sizes its own Sprite2D from the
+	# per-unit metrics baked into UnitData (sprite_scale / sprite_offset),
+	# so 32px mage art and 192px TinySwords art end up the same height.
 	
 	parent_node.add_child(new_unit)
 	if new_unit.has_method("_initialize_from_data"):
@@ -127,21 +163,97 @@ func recruit_unit(unit_data: UnitData, spawn_cell: Vector2i, economy_mgr: Node, 
 	return new_unit
 
 
+## Return the owning faction's variant of `data`.
+##
+## Castles are capturable, so a Blue army that takes the Yellow Empire's keep
+## would otherwise recruit yellow-sprited troops that fight for Blue. Unit
+## resources follow a `{role}_{faction}.tres` convention, so the owner's
+## variant is a filename swap. Falls back to `data` when no variant exists —
+## the Black Coven's undead have no per-faction versions by design.
+func resolve_for_owner(data: UnitData) -> UnitData:
+	if not is_instance_valid(data):
+		return data
+	var suffix: String = FACTION_ART_DIR.get(faction_id, "").to_lower()
+	if suffix == "":
+		return data
+	var path: String = data.resource_path
+	if path == "":
+		return data
+	var base: String = path.get_basename()
+	var idx: int = base.rfind("_")
+	if idx <= 0:
+		return data
+	var variant: String = "%s_%s.tres" % [base.substr(0, idx), suffix]
+	if variant == path or not ResourceLoader.exists(variant):
+		return data
+	var loaded: UnitData = load(variant) as UnitData
+	return loaded if is_instance_valid(loaded) else data
+
+
 func _update_visuals() -> void:
 	if not sprite:
 		return
-	# Visual update based on faction
-	# For example, if there is a specific texture per faction
-	match faction_id:
-		GameConfig.Faction.BLUE_KINGDOM:
-			modulate = Color(1.0, 1.0, 1.0, 1.0)
-		GameConfig.Faction.RED_LEGION:
-			modulate = Color(1.0, 0.6, 0.6, 1.0)
-		GameConfig.Faction.PURPLE_SYNDICATE:
-			modulate = Color(0.85, 0.6, 1.0, 1.0)
-		GameConfig.Faction.YELLOW_EMPIRE:
-			modulate = Color(1.0, 0.95, 0.55, 1.0)
-		GameConfig.Faction.BLACK_COVEN:
-			modulate = Color(0.55, 0.55, 0.6, 1.0)
-		_:
-			modulate = Color(0.8, 0.8, 0.8, 1.0)
+	_update_faction_texture()
+	_update_faction_banner()
+
+
+## Swap in the owning faction's own building sprite where the art pack has one.
+## Falls back to the scene's authored (neutral / construction) texture.
+func _update_faction_texture() -> void:
+	var dir_name: String = FACTION_ART_DIR.get(faction_id, "")
+	var file_name: String = FACTION_ART_FILE.get(building_type, "")
+
+	if dir_name != "" and file_name != "":
+		var path := "res://assets/buildings/%s Buildings/%s" % [dir_name, file_name]
+		if ResourceLoader.exists(path):
+			sprite.texture = load(path)
+			modulate = Color.WHITE
+			return
+
+	# No faction art for this type (mines) or the building is still neutral.
+	if is_instance_valid(_neutral_texture):
+		sprite.texture = _neutral_texture
+	modulate = Color.WHITE if faction_id != GameConfig.Faction.NEUTRAL else Color(0.82, 0.82, 0.86, 1.0)
+
+
+## Plant a faction-coloured pennant above the building. Mines have no
+## recoloured art, so without this a captured Gold Mine looks untouched; the
+## pennant also gives every building type one consistent ownership tell.
+func _update_faction_banner() -> void:
+	var banner: Node2D = get_node_or_null(NodePath(BANNER_NAME))
+
+	if faction_id == GameConfig.Faction.NEUTRAL:
+		if is_instance_valid(banner):
+			banner.queue_free()
+		return
+
+	var tint: Color = GameConfig.FACTION_TINT_COLORS.get(faction_id, Color.WHITE)
+
+	if not is_instance_valid(banner):
+		banner = Node2D.new()
+		banner.name = BANNER_NAME
+		var pole := Polygon2D.new()
+		pole.name = "Pole"
+		pole.polygon = PackedVector2Array([
+			Vector2(-1.5, 0), Vector2(1.5, 0), Vector2(1.5, -26), Vector2(-1.5, -26)
+		])
+		pole.color = Color(0.24, 0.18, 0.12)
+		banner.add_child(pole)
+		var flag := Polygon2D.new()
+		flag.name = "Flag"
+		flag.polygon = PackedVector2Array([
+			Vector2(1.5, -26), Vector2(20, -21), Vector2(1.5, -16)
+		])
+		banner.add_child(flag)
+		add_child(banner)
+
+	var flag_node := banner.get_node_or_null("Flag") as Polygon2D
+	if flag_node:
+		flag_node.color = tint
+
+	# Sit the pole just above the sprite's drawn top edge, whatever its size.
+	var top: float = -24.0
+	if is_instance_valid(sprite.texture):
+		top = -0.5 * sprite.texture.get_height() * absf(sprite.scale.y) + sprite.offset.y
+	banner.position = Vector2(0, top + 6.0)
+	banner.z_index = 1

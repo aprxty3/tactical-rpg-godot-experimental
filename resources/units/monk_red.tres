@@ -7,7 +7,7 @@
 
 [resource]
 script = ExtResource("1_scr")
-unit_name = "Red Monk"
+unit_name = "Monk"
 unit_class = "Support"
 tier = 2
 description = "Zealot priest maintaining frontline battle fervor."
@@ -24,3 +24,5 @@ upgrade_paths = {
 }
 spritesheet = ExtResource("2_tex")
 vframes = 1
+sprite_scale = 0.5507
+sprite_offset = Vector2(0.0, -3.5)
