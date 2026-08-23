@@ -172,7 +172,13 @@ def process_tres(path: str) -> tuple[str, int, int] | None:
         print(f"  !! missing texture for {stem}: {tex}")
         return None
 
-    scale, ox, oy = G.sprite_metrics(Image.open(tex).convert("RGBA"), hf, vf)
+    if stem.startswith("lancer_"):
+        # Lancer has an upright lance pole reaching into the sky in its 320x320 frame.
+        # Its mounted horse+rider body is 79px tall (y=118..197).
+        # Normalising to 38.5px body height gives scale 0.50 with hooves planted at +19px.
+        scale, ox, oy = 0.50, 11.0, 1.0
+    else:
+        scale, ox, oy = G.sprite_metrics(Image.open(tex).convert("RGBA"), hf, vf)
     body = set_prop(body, "sprite_scale", f"{scale}")
     body = set_prop(body, "sprite_offset", f"Vector2({ox}, {oy})")
     body = drop_prop(body, "needs_palette_tint")
@@ -186,13 +192,21 @@ def process_tres(path: str) -> tuple[str, int, int] | None:
 
 
 def sync_scenes(tex_by_tres: dict[str, tuple[str, int, int]]) -> None:
-    """Keep the editor-preview Sprite2D in each unit .tscn matching its data."""
+    """Keep the editor-preview Sprite2D and faction_id in each unit .tscn matching its data."""
+    faction_map = {
+        "blue": 0,
+        "red": 1,
+        "purple": 2,
+        "yellow": 3,
+        "black": 4
+    }
     for path in glob.glob("scenes/units/*.tscn"):
         src = open(path).read()
         m = re.search(r'\[ext_resource type="Resource"[^\]]*path="res://resources/units/([^"]+)\.tres"', src)
         if not m or m.group(1) not in tex_by_tres:
             continue
-        tex, hf, vf = tex_by_tres[m.group(1)]
+        stem = m.group(1)
+        tex, hf, vf = tex_by_tres[stem]
         out = re.sub(r'(\[ext_resource type="Texture2D")([^\]]*)(\])',
                      lambda mm: mm.group(1)
                      + re.sub(r'path="res://[^"]*"', f'path="res://{tex}"',
@@ -200,6 +214,15 @@ def sync_scenes(tex_by_tres: dict[str, tuple[str, int, int]]) -> None:
                      + mm.group(3), src, count=1)
         out = re.sub(r"^hframes = \d+$", f"hframes = {hf}", out, flags=re.M)
         out = re.sub(r"^vframes = \d+$", f"vframes = {vf}", out, flags=re.M)
+
+        for fac, fid in faction_map.items():
+            if stem.endswith("_" + fac):
+                if re.search(r"^faction_id = \d+", out, re.M):
+                    out = re.sub(r"^faction_id = \d+", f"faction_id = {fid}", out, flags=re.M)
+                else:
+                    out = re.sub(r'(unit_data = ExtResource\("[^"]+"\))', rf'\1\nfaction_id = {fid}', out, count=1)
+                break
+
         write_if_changed(path, out)
 
 

@@ -8,6 +8,7 @@
 [node name="TacticalUnit_Wizzard" type="Node2D"]
 script = ExtResource("1_unit")
 unit_data = ExtResource("2_unit_data")
+faction_id = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_pawn_tex")

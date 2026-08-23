@@ -145,12 +145,15 @@ position = Vector2(288, 1120)
 
 [node name="Red_Pawn" parent="Units" unique_id=1059190179 instance=ExtResource("u_pawn_red")]
 position = Vector2(1632, 224)
+faction_id = 1
 
 [node name="Red_Warrior" parent="Units" unique_id=1201137696 instance=ExtResource("u_warrior_red")]
 position = Vector2(1696, 288)
+faction_id = 1
 
 [node name="Red_Archer" parent="Units" unique_id=2037242414 instance=ExtResource("u_archer_red")]
 position = Vector2(1632, 160)
+faction_id = 1
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1860143065]
 position = Vector2(240, 1000)

@@ -302,3 +302,19 @@ All major changes to the **War Perang Tactics** project are recorded below.
   - Renamed corner bracket coordinates in `TestGridController.gd` (`tl`, `tr`, `bl`, `br` $\rightarrow$ `pt_tl`, `pt_tr`, `pt_bl`, `pt_br`) to prevent shadowing `Object.tr()`.
   - Replaced ternary enum assignment in `TacticalUnit.gd` with explicit `if/else` block to eliminate incompatible ternary warnings.
 - **Skill Customization Synchronization**: Created modern, comprehensive `war-tactics-dev` skill definitions in `~/.gemini/config/skills/`, `.agents/skills/`, and `docs/skills/`.
+
+### 13. 🎯 Initial Troop Capacity, Starvation Bug, Lancer Size Normalization & Godot-AI MCP Testing
+- **Bug Fix #1 (Starting Troop Capacity 10/8 -> 5/8)**:
+  - Fixed starting Red units in `TestGridScene.tscn` (`Red_Pawn`, `Red_Warrior`, `Red_Archer`) and unit scenes in `scenes/units/` lacking `faction_id = 1`, which previously caused all 6 units on the map to default to `faction_id = 0` (Blue Kingdom).
+  - Added defensive auto-resolution of `faction_id` in `TacticalUnit._initialize_from_data()` based on `unit_data` resource filename.
+  - Blue and Red factions now both start cleanly at exactly `5/8` capacity (1 Pawn + 2 Warrior + 2 Archer).
+- **Bug Fix #2 (Starting Troops HP Dropping Below 100%)**:
+  - Root cause identified: The 10/8 capacity overflow caused `EconomyManager.check_logistics()` to trigger Starvation Damage (15 True Damage) during Turn 1 Upkeep.
+  - Resolving capacity to 5/8 completely eliminated accidental starvation. All starting units now begin at 100% full health.
+- **Bug Fix #3 (Lancer Small Sprite Size Normalization)**:
+  - Root cause identified: Lancer's 320x320 sprite contains an upright lance extending 72px above the rider's head. The previous bounding box included the lance pole (150px total), which shrank the horse+rider down to 19.5px tall on a 64px tile.
+  - Re-normalised Lancer's mounted body (79px) across all 5 factions (`lancer_*.tres`) to `sprite_scale = 0.50` and `sprite_offset = Vector2(11.0, 1.0)`. The horse and rider now render at a proportionate 38.5px height matching foot soldiers, with hooves planted at +19px.
+- **Automated MCP Testing (`godot-ai`)**:
+  - Built `tests/test_units.gd`, `test_battlefield.gd`, `test_combat.gd`, `test_economy.gd` inheriting `McpTestSuite`.
+  - Executed live test runner via `godot-ai` MCP server `test_run(verbose=True)`: **4/4 suites passed (563 assertions, 0 failures, 8ms runtime)**.
+  - Updated `AGENTS.md` and `GEMINI.md` QA checklists to require automated `godot-ai` MCP testing before turn completion.

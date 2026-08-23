@@ -23,7 +23,26 @@ func _ready() -> void:
 	assert(eco_mgr != null, "EconomyManager must be present")
 	assert(combat_res != null, "CombatResolver must be present")
 	assert(hud != null, "MainHUD must be present")
-	print("✅ [QA 01] Core subsystems and managers loaded successfully.")
+	
+	# Verify Starting Troop Capacity & Starting Units HP
+	var blue_used_cap = eco_mgr.get_used_capacity(GameConfig.Faction.BLUE_KINGDOM, TurnManager.get_faction_units(GameConfig.Faction.BLUE_KINGDOM))
+	var red_used_cap = eco_mgr.get_used_capacity(GameConfig.Faction.RED_LEGION, TurnManager.get_faction_units(GameConfig.Faction.RED_LEGION))
+	assert(blue_used_cap == 5, "Blue starting used capacity must be 5 (1 Pawn + 2 Warrior + 2 Archer), got %d" % blue_used_cap)
+	assert(red_used_cap == 5, "Red starting used capacity must be 5 (1 Pawn + 2 Warrior + 2 Archer), got %d" % red_used_cap)
+	
+	for unit in units_container.get_children():
+		if unit is TacticalUnit and unit.unit_data:
+			assert(unit.current_health == unit.unit_data.max_health, "Starting unit %s HP must be 100%% (%d/%d)" % [
+				unit.unit_data.unit_name, unit.current_health, unit.unit_data.max_health
+			])
+			
+	# Verify Lancer scale across factions
+	for fac in ["blue", "red", "purple", "yellow", "black"]:
+		var lancer_res: UnitData = load("res://resources/units/lancer_%s.tres" % fac)
+		assert(lancer_res != null, "Lancer resource for %s must exist" % fac)
+		assert(is_equal_approx(lancer_res.sprite_scale, 0.50), "Lancer sprite_scale must be 0.50, got %f" % lancer_res.sprite_scale)
+		
+	print("✅ [QA 01] Core subsystems, initial 5/8 capacity, 100% starting HP, and Lancer metrics validated.")
 
 	# 2. Verify Battlefield & Building Layout (30x20)
 	assert(grid_mgr.grid_size == Vector2i(30, 20), "Grid size must be 30x20")
