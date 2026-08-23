@@ -43,9 +43,8 @@ script = ExtResource("5_ai_mgr")
 [node name="MapBuilder" type="Node" parent="." unique_id=819848685]
 script = ExtResource("6_map_builder")
 
-[node name="TileMapLayer" type="TileMapLayer" parent="." unique_id=1094254153]
+[node name="TileMapLayer_Water" type="TileMapLayer" parent="." unique_id=1094254153]
 z_index = -4
-position = Vector2(0, 5)
 tile_set = ExtResource("8_tileset")
 
 [node name="TileMapLayer_Ground" type="TileMapLayer" parent="." unique_id=350500269]

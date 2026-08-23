@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://ctv8jioye5osm"]
+
+[ext_resource type="Script" path="res://scripts/test/TestQAStress.gd" id="1_qastress"]
+
+[node name="TestQAStress" type="Node2D"]
+script = ExtResource("1_qastress")

@@ -38,7 +38,7 @@ func _ready() -> void:
 			match bld.building_type:
 				Building.BuildingType.CASTLE: castle_count += 1
 				Building.BuildingType.GOLD_MINE, Building.BuildingType.IRON_MINE: mine_count += 1
-				Building.BuildingType.VILLAGE: village_count += 1
+				Building.BuildingType.HOUSE: village_count += 1
 
 	assert(building_count >= 15, "Battlefield must have all landmark buildings placed")
 	print("✅ [QA 02] Battlefield validated: %d Buildings (%d Castles, %d Mines, %d Villages)" % [
@@ -68,7 +68,7 @@ func _ready() -> void:
 	# 4. Test Unit Movement and Pathfinding
 	var target_cell := Vector2i(5, 16)
 	assert(grid_mgr.is_cell_walkable(target_cell), "Target cell must be walkable")
-	grid_mgr.request_unit_move(recruited_unit, target_cell)
+	EventBus.unit_move_requested.emit(recruited_unit, target_cell)
 	await get_tree().create_timer(0.4).timeout
 	assert(recruited_unit.grid_position == target_cell, "Unit must reach target cell")
 	print("✅ [QA 04] Unit movement & Tween execution verified at %s." % target_cell)
@@ -92,7 +92,7 @@ func _ready() -> void:
 
 	# 6. Test Promotion Flow Outside Castle (Field Tax 2x)
 	var warrior_res: UnitData = load("res://resources/units/warrior_blue.tres")
-	var upgrade_success: bool = eco_mgr.process_upgrade(recruited_unit, warrior_res, false) # False = in field
+	var upgrade_success: bool = eco_mgr.process_upgrade(GameConfig.Faction.BLUE_KINGDOM, recruited_unit, warrior_res, false) # False = in field
 	assert(upgrade_success, "Upgrade with Field Tax should succeed if treasury allows")
 	assert(recruited_unit.unit_data == warrior_res, "UnitData should now be Warrior")
 	print("✅ [QA 06] Unit Promotion & Field Tax verified: Unit promoted to %s." % recruited_unit.unit_data.unit_name)
