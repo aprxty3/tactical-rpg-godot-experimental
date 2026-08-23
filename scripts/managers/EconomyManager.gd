@@ -55,29 +55,35 @@ func get_used_capacity(faction_id: int, active_units: Array) -> int:
 
 func add_gold(faction_id: int, amount: int) -> void:
 	_faction_gold[faction_id] = get_gold(faction_id) + amount
-	EventBus.gold_changed.emit(faction_id, get_gold(faction_id))
+	if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("gold_changed"):
+		EventBus.gold_changed.emit(faction_id, get_gold(faction_id))
 
 
 func add_iron(faction_id: int, amount: int) -> void:
 	_faction_iron[faction_id] = get_iron(faction_id) + amount
-	EventBus.iron_changed.emit(faction_id, get_iron(faction_id))
+	if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("iron_changed"):
+		EventBus.iron_changed.emit(faction_id, get_iron(faction_id))
 
 
 func spend_gold(faction_id: int, amount: int) -> bool:
 	if get_gold(faction_id) >= amount:
 		_faction_gold[faction_id] -= amount
-		EventBus.gold_changed.emit(faction_id, get_gold(faction_id))
+		if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("gold_changed"):
+			EventBus.gold_changed.emit(faction_id, get_gold(faction_id))
 		return true
-	EventBus.resources_insufficient.emit(faction_id, "gold")
+	if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("resources_insufficient"):
+		EventBus.resources_insufficient.emit(faction_id, "gold")
 	return false
 
 
 func spend_iron(faction_id: int, amount: int) -> bool:
 	if get_iron(faction_id) >= amount:
 		_faction_iron[faction_id] -= amount
-		EventBus.iron_changed.emit(faction_id, get_iron(faction_id))
+		if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("iron_changed"):
+			EventBus.iron_changed.emit(faction_id, get_iron(faction_id))
 		return true
-	EventBus.resources_insufficient.emit(faction_id, "iron")
+	if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("resources_insufficient"):
+		EventBus.resources_insufficient.emit(faction_id, "iron")
 	return false
 
 
@@ -161,11 +167,12 @@ func _on_resource_node_captured(node_type: String, new_faction_id: int, old_fact
 			if old_faction_id in _faction_villages:
 				_faction_villages[old_faction_id] = maxi(0, _faction_villages[old_faction_id] - 1)
 			_faction_villages[new_faction_id] = _faction_villages.get(new_faction_id, 0) + 1
-			EventBus.capacity_changed.emit(
-				new_faction_id,
-				0,  # Will be recalculated on next check
-				get_max_capacity(new_faction_id)
-			)
+			if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("capacity_changed"):
+				EventBus.capacity_changed.emit(
+					new_faction_id,
+					0,  # Will be recalculated on next check
+					get_max_capacity(new_faction_id)
+				)
 
 
 func _on_building_destroyed(_building: Node) -> void:
