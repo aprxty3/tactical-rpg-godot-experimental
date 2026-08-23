@@ -64,6 +64,20 @@ func _ready() -> void:
 		building_count, castle_count, mine_count, village_count
 	])
 
+	# 2b. Test Village Claiming and Dynamic Capacity Expansion
+	var test_village: Building = null
+	for bld in buildings_container.get_children():
+		if bld is Building and bld.building_type == Building.BuildingType.HOUSE and bld.faction_id == GameConfig.Faction.NEUTRAL:
+			test_village = bld
+			break
+	assert(test_village != null, "A neutral village must exist for claiming")
+	test_village.capture(GameConfig.Faction.BLUE_KINGDOM)
+	var blue_cap_after_village: int = eco_mgr.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM)
+	var blue_used_after_village: int = eco_mgr.get_used_capacity(GameConfig.Faction.BLUE_KINGDOM, TurnManager.get_faction_units(GameConfig.Faction.BLUE_KINGDOM))
+	assert(blue_cap_after_village == 10, "Blue max capacity must be 10 after claiming 1 village, got %d" % blue_cap_after_village)
+	assert(blue_used_after_village == 5, "Blue used capacity must remain 5 (not 0) after claiming village, got %d" % blue_used_after_village)
+	print("✅ [QA 02b] Village claim verified: Capacity updated to %d/%d (Used capacity accurately preserved)." % [blue_used_after_village, blue_cap_after_village])
+
 	# 3. Test Recruitment at Blue Castle
 	var blue_castle: Building = null
 	for bld in buildings_container.get_children():

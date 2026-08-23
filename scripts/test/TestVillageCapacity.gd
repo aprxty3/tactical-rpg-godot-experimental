@@ -8,6 +8,13 @@ func _ready() -> void:
 	economy.register_faction(GameConfig.Faction.BLUE_KINGDOM, 200, 5)
 	economy.register_faction(GameConfig.Faction.RED_LEGION, 200, 5)
 
+	var last_capacity_signal: Dictionary = {}
+	EventBus.capacity_changed.connect(func(fac_id: int, used: int, max_cap: int):
+		last_capacity_signal["faction_id"] = fac_id
+		last_capacity_signal["used"] = used
+		last_capacity_signal["max_cap"] = max_cap
+	)
+
 	var house_scene: PackedScene = load("res://scenes/buildings/House.tscn")
 	var house: Building = house_scene.instantiate()
 	add_child(house)
@@ -20,7 +27,9 @@ func _ready() -> void:
 	house.capture(GameConfig.Faction.BLUE_KINGDOM)
 	var expected_captured := GameConfig.BASE_TROOP_CAPACITY + GameConfig.VILLAGE_CAPACITY_BONUS
 	assert(economy.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM) == expected_captured, "Blue capacity increases by VILLAGE_CAPACITY_BONUS after capture")
-	print("✅ [Capture] Blue captures village, capacity %d -> %d" % [GameConfig.BASE_TROOP_CAPACITY, expected_captured])
+	assert(last_capacity_signal["faction_id"] == GameConfig.Faction.BLUE_KINGDOM, "Signal faction must be Blue Kingdom")
+	assert(last_capacity_signal["max_cap"] == expected_captured, "Signal max_cap must be %d" % expected_captured)
+	print("✅ [Capture] Blue captures village, capacity %d -> %d (Signal max_cap: %d)" % [GameConfig.BASE_TROOP_CAPACITY, expected_captured, last_capacity_signal["max_cap"]])
 
 	# 2. Red recaptures the same village -> Blue's bonus must be removed, Red gains it
 	house.capture(GameConfig.Faction.RED_LEGION)

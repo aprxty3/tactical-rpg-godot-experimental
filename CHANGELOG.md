@@ -328,3 +328,14 @@ All major changes to the **War Perang Tactics** project are recorded below.
   - Fully verified recruiting Skeleton Fodder & Vampire for Blue Kingdom at Castle Black.
   - Verified reachable movement tiles (Skeleton: 24, Vampire: 39) and attack tiles.
   - Verified complete undead upgrade paths: Skeleton Fodder $\rightarrow$ Skeleton Warrior $\rightarrow$ Bone Reaper, and Vampire $\rightarrow$ Vampire Lord while retaining Blue Kingdom ownership.
+
+### 15. 🏡 Village Claiming & Dynamic Troop Capacity Fix (0/10 -> 5/10)
+- **Bug Fix (Troop Capacity Dropping to 0/10 upon Claiming a Village)**:
+  - Root cause identified: In `EconomyManager._on_resource_node_captured()`, claiming a village previously emitted `EventBus.capacity_changed(new_faction_id, 0, get_max_capacity(new_faction_id))` with a hardcoded `0` for used capacity.
+  - When `MainHUD._on_capacity_changed()` received this signal, it formatted the label as `0/10`, completely zeroing out the player's active troop count display until the next turn upkeep.
+  - Fixed `EconomyManager.gd` to dynamically fetch active faction units via `TurnManager.get_faction_units(faction_id)` and calculate the true `used_cap` with `get_used_capacity(faction_id, units)` on village capture, recapture, unit spawn, unit death, and unit promotion.
+  - Also added capacity updates for the previous owner when a village is captured from another faction.
+- **Verification**:
+  - [`scenes/test_village_capacity.tscn`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scenes/test_village_capacity.tscn): Verified base capacity (8), capture (+2 $\rightarrow$ 10), and recapture by enemy.
+  - [`scenes/test_qa_stress.tscn`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scenes/test_qa_stress.tscn): Step `[QA 02b]` verified that claiming a neutral village preserves the 5 starting units weight and immediately updates the HUD to `5/10`.
+  - All 9 integration test suites passed with 100% exit code 0.

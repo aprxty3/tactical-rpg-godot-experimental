@@ -176,7 +176,7 @@ func _on_building_captured(building: Node, faction_id: int) -> void:
 	if not enable_dynamic_dialogue:
 		return
 	var f_name: String = "Blue Kingdom" if faction_id == 0 else "Red Legion"
-	var b_name: String = building.name if is_instance_valid(building) else "Building"
+	var b_name: String = String(building.name) if is_instance_valid(building) else "Building"
 	request_capture_story(b_name, f_name, "Vanguard")
 
 func _emit_fallback_combat_dialogue(attacker: String, defender: String, is_fatal: bool) -> void:

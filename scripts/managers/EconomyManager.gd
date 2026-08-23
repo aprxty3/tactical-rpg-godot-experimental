@@ -18,6 +18,9 @@ func _ready() -> void:
 func _connect_signals() -> void:
 	EventBus.resource_node_captured.connect(_on_resource_node_captured)
 	EventBus.building_destroyed.connect(_on_building_destroyed)
+	EventBus.unit_spawned.connect(_on_unit_lifecycle_changed)
+	EventBus.unit_died.connect(_on_unit_lifecycle_changed)
+	EventBus.unit_upgraded.connect(_on_unit_lifecycle_changed)
 
 
 ## Initialize a faction's starting resources.
@@ -166,13 +169,34 @@ func _on_resource_node_captured(node_type: String, new_faction_id: int, old_fact
 		"village":
 			if old_faction_id in _faction_villages:
 				_faction_villages[old_faction_id] = maxi(0, _faction_villages[old_faction_id] - 1)
+				if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("capacity_changed"):
+					var old_units: Array = TurnManager.get_faction_units(old_faction_id) if is_instance_valid(TurnManager) else []
+					EventBus.capacity_changed.emit(
+						old_faction_id,
+						get_used_capacity(old_faction_id, old_units),
+						get_max_capacity(old_faction_id)
+					)
+
 			_faction_villages[new_faction_id] = _faction_villages.get(new_faction_id, 0) + 1
 			if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("capacity_changed"):
+				var new_units: Array = TurnManager.get_faction_units(new_faction_id) if is_instance_valid(TurnManager) else []
 				EventBus.capacity_changed.emit(
 					new_faction_id,
-					0,  # Will be recalculated on next check
+					get_used_capacity(new_faction_id, new_units),
 					get_max_capacity(new_faction_id)
 				)
+
+
+func _on_unit_lifecycle_changed(_arg1 = null, _arg2 = null, _arg3 = null) -> void:
+	if Engine.is_editor_hint() or not is_instance_valid(EventBus) or not EventBus.has_signal("capacity_changed"):
+		return
+	if not is_instance_valid(TurnManager):
+		return
+	for fid in _faction_gold.keys():
+		var units: Array = TurnManager.get_faction_units(fid)
+		var used_cap: int = get_used_capacity(fid, units)
+		var max_cap: int = get_max_capacity(fid)
+		EventBus.capacity_changed.emit(fid, used_cap, max_cap)
 
 
 func _on_building_destroyed(_building: Node) -> void:
