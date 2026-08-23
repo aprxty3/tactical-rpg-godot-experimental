@@ -8,18 +8,21 @@ func _ready() -> void:
 	add_child(main_scene)
 	
 	var hud: CanvasLayer = main_scene.get_node("MainHUD")
-	var tilemap: TileMapLayer = main_scene.get_node("TileMapLayer")
+	var ground_layer: TileMapLayer = main_scene.get_node_or_null("TileMapLayer_Ground")
+	var water_layer: TileMapLayer = main_scene.get_node_or_null("TileMapLayer_Water")
 	var grid_mgr: GridManager = main_scene.get_node("GridManager")
 	
-	# 1. Verify TileMap Coverage (16x10)
+	# 1. Verify TileMap Layer Coverage (30x20)
 	var filled_cells = 0
 	for x in range(grid_mgr.grid_size.x):
 		for y in range(grid_mgr.grid_size.y):
-			var cell = tilemap.get_cell_atlas_coords(Vector2i(x, y))
-			assert(cell != Vector2i(-1, -1), "Cell must be populated at " + str(Vector2i(x, y)))
+			var pos = Vector2i(x, y)
+			var has_tile = (ground_layer and ground_layer.get_cell_atlas_coords(pos) != Vector2i(-1, -1)) or \
+						   (water_layer and water_layer.get_cell_atlas_coords(pos) != Vector2i(-1, -1))
+			assert(has_tile, "Cell must be populated in Ground or Water layer at " + str(pos))
 			filled_cells += 1
 			
-	print("✅ Verified 100% TileMap grid coverage: ", filled_cells, " tiles populated!")
+	print("✅ Verified 100% TileMap grid coverage: ", filled_cells, " tiles populated across layers!")
 	
 	# 2. Verify End Turn Confirmation Popup
 	assert(hud.has_method("show_end_turn_confirmation"), "HUD has show_end_turn_confirmation")

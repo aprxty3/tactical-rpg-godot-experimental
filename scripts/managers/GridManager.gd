@@ -97,7 +97,7 @@ func is_cell_walkable(cell: Vector2i, ignore_unit: TacticalUnit = null) -> bool:
 		return false
 	if astar.is_point_solid(cell):
 		# If solid due to an ignored unit (e.g., self when calculating route)
-		if _occupied_cells.get(cell) == ignore_unit:
+		if ignore_unit != null and _occupied_cells.get(cell) == ignore_unit:
 			return true
 		return false
 	if _obstacle_cells.has(cell):
