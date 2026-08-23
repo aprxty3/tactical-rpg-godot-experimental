@@ -12,6 +12,55 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+## 📅 Milestone 4 — Advanced Tactical Systems & Morale (2026-08-23)
+
+All six outstanding Milestone 4 systems shipped in one pass, plus the terrain
+layer they all depend on. Verified by `scenes/test_milestone4.tscn` — **61
+integration checks, all passing** — with the five existing suites unchanged.
+
+### M4.1 🗺️ Terrain System & Movement Cost
+- **`GameConfig.TerrainType` + `TERRAIN_RULES`**: every cell now carries a move cost, a damage-taken multiplier, a concealment flag, an ambush flag and a flammability. One table, consulted by combat, vision and fire alike.
+- **`MapBuilder` derives terrain while it paints**, so a cell is Forest because a tree was actually drawn on it — the cover the player sees is exactly the cover the rules apply. Forest anchors now grow into 2-4 cell clumps instead of single decorative tiles.
+- **`GridManager` is the single terrain authority** from then on: `get_terrain`, `get_move_cost`, `get_damage_taken_mult`, `is_concealing`, `is_ambush_cover`, plus runtime mutation via `set_terrain`.
+- **Dijkstra movement field** replaces the uniform-cost BFS. Forest/rock cost 2 MP, road/bridge 1, so the west and east highways finally mean something. Reachability *and* the walked route come from the same field, which guarantees a unit is never offered a tile it cannot afford.
+
+### M4.2 😰 Morale System
+- **`MoraleManager.gd`** (new Logic-layer manager) is the only writer of morale. Nearby deaths, damage taken, flanking, ambushes, starvation, and captured/lost buildings all move it; it drifts back toward Fair each upkeep.
+- **Scalar 0-100 on `TacticalUnit`**, with the five states derived from it — an enum FSM, per the state-machine decision flowchart (5 states, one concern, no nesting). Drives an attack multiplier of 0.80x–1.15x and desertion at Fearful.
+- **Undead are immune**, derived from `unit_class` — no new resource field, no migration of the 91 `.tres` files.
+- **Overhead morale strip** under each HP bar (hidden for undead), plus a full readout in the inspector panel.
+
+### M4.3 🏳️ Surrender Mechanic
+- A unit that **survives** an attack while Shaken or Fearful may break. It freezes as a prisoner — cannot act, move, or be attacked again — and its captor decides.
+- **The player is asked** through a modal built as a full-rect Control with no cancel path (a `PopupPanel` can be dismissed by clicking away, which would strand the prisoner forever). **An AI captor decides itself**: take the prisoner if troop capacity allows, ransom them otherwise.
+- **Captured units defect**, adopting the new owner's own art through the newly shared `UnitData.variant_for_faction()` — the same lookup `Building.resolve_for_owner()` now delegates to.
+
+### M4.4 🌲 Terrain Ambush
+- Attacking out of Forest **suppresses the counter-attack entirely** and lands a morale shock on the victim. Fills the `terrain_def_mult` hook that had been pinned to 1.0 since Milestone 1.
+
+### M4.5 🌫️ Fog of War
+- **`VisionManager.gd`** + `FogOfWarTileMapLayer` with a tileset generated in code, so the fog can never drift out of alignment when the grid is resized. Three states: unseen, explored-and-remembered, visible.
+- **Advance Wars rules, not raycast LOS**: sight radius per unit class and building type, and units on concealing terrain are only spotted from an adjacent tile. Cheap, no corner cases, and familiar to the genre.
+- **Symmetric — the AI is blind too.** `AIManager` targets only what it can see and keeps a last-known-position scouting report, so losing sight of an enemy makes it march on the last sighting rather than going passive.
+
+### M4.6 💥 Environmental Hazards
+- **`MapObjectManager.gd`** + a shared **`MapObject`** base for `Chest`, `Barrel` and `Fire` — all three are "one cell, reacts when stepped on, ticks once per round", so they share one base instead of three near-identical scripts.
+- **Powder kegs** sit beside the bridge mouths, derived from the map's own bridge analysis rather than hardcoded coordinates. Detonate when stepped on or shot, deal TRUE damage, and **chain** through neighbours via a breadth-first walk over a visited set — each keg consumed before its blast is applied so it can never be queued twice.
+- **Fire** damages whoever stands in it, spreads to flammable neighbours, and **burns forest down to `SCORCHED`**, permanently stripping that cell's cover, concealment and ambush. Explosions ignite with a boosted chance (`BLAST_IGNITION_MULT`) so forest always catches but grass only sometimes does.
+
+### M4.7 🎁 Pandora's Box
+- Seeded chest scatter (a fixed seed reproduces a layout exactly for tests), resolving into the four outcomes already priced in `GameConfig`: war spoils, a mercenary, a trap, or the awakened dead — who enlist under the opener's **enemy**.
+- Closes a Milestone 3 gap: `skull_black.tres` ("Cursed Skull"), previously wired into nothing, is now what claws out of a cursed chest.
+
+### M4.8 🐛 Pre-existing bugs found and fixed
+Each was confirmed against the unmodified build before being touched.
+- **Stale roster entries crashed the game.** `EconomyManager.get_used_capacity()` and `_apply_starvation()` ran `is` against roster entries without `is_instance_valid` — and `is` on a freed instance is a hard crash, not a false. Both are read on every HUD refresh and recruit check. Surfaced by the new test suite.
+- **Discrete key commands accepted auto-repeat.** Space / R / U / Escape all fired on `echo` events, so *holding* Space would open the end-turn prompt and confirm it in the same breath. Fixed by dropping `event.echo` on all four — ending a turn, recruiting and promoting are one-per-press actions.
+  - ⚠️ **Open, environment-side**: an idle match still advances by itself on this machine (~1 turn per 13s before the fix, ~1 per 35s after). Stack-dumping every `end_turn()` caller showed *all* of them arriving through the Space handler — never from the AI — and the same runaway reproduces on the unmodified pre-Milestone-4 build. Since the echo guard did not stop it, the remaining events are genuine discrete Space presses being delivered to the game window from outside the project (a chattering space bar, or another input source with focus). Worth checking the hardware before reading it as a game bug.
+- **AI turn hardening** (defensive): `AIManager` awaited the *global* `unit_move_completed`, which resumes on whichever unit arrives first and never resumes at all if the move is rejected. Replaced with a bounded per-unit wait (`GridManager.is_unit_moving`) and a `_turn_running` re-entrancy guard.
+
+---
+
 ## 📅 Summary of Today's Changes (2026-08-23)
 
 ### 1. 🌐 Language & Localization Standardization

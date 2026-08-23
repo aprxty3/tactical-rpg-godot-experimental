@@ -20,7 +20,10 @@ func _connect_signals() -> void:
 	EventBus.building_destroyed.connect(_on_building_destroyed)
 	EventBus.unit_spawned.connect(_on_unit_lifecycle_changed)
 	EventBus.unit_died.connect(_on_unit_lifecycle_changed)
+	EventBus.unit_deserted.connect(_on_unit_lifecycle_changed)
 	EventBus.unit_upgraded.connect(_on_unit_lifecycle_changed)
+	# A defection moves capacity weight from one army to the other.
+	EventBus.unit_captured.connect(_on_unit_lifecycle_changed)
 
 
 ## Initialize a faction's starting resources.
@@ -46,10 +49,17 @@ func get_max_capacity(faction_id: int) -> int:
 
 
 ## Calculate the total Troop Capacity weight of active units.
+##
+## Validity-checked first: a roster entry can outlive its node by a frame, and
+## `is` on a freed instance is a hard crash rather than a false. This is read on
+## every HUD refresh, recruit check and surrender prompt, so it has to survive a
+## stale entry instead of taking the game down with it.
 func get_used_capacity(faction_id: int, active_units: Array) -> int:
 	var total := 0
 	for unit in active_units:
-		if unit is TacticalUnit and unit.faction_id == faction_id and unit.unit_data:
+		if not is_instance_valid(unit) or not (unit is TacticalUnit):
+			continue
+		if unit.faction_id == faction_id and is_instance_valid(unit.unit_data):
 			total += unit.unit_data.capacity_weight
 	return total
 
@@ -158,7 +168,9 @@ func check_logistics(faction_id: int, active_units: Array) -> void:
 func _apply_starvation(active_units: Array, faction_id: int) -> void:
 	for i in range(active_units.size() - 1, -1, -1):
 		var unit = active_units[i]
-		if unit is TacticalUnit and unit.faction_id == faction_id:
+		if not is_instance_valid(unit) or not (unit is TacticalUnit):
+			continue
+		if unit.faction_id == faction_id:
 			unit.take_damage(GameConfig.STARVATION_DAMAGE, "starvation")
 
 

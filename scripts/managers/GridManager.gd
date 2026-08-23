@@ -158,6 +158,66 @@ func set_terrain_blocked_cells(cells: Array[Vector2i]) -> void:
 		set_terrain_blocked(cell, true)
 
 
+# ==============================================================================
+# TERRAIN TYPES — cover, movement cost and concealment
+# ==============================================================================
+# MapBuilder decides the layout; GridManager owns it from then on. Everything
+# that asks "what is on this cell" — CombatResolver for cover, VisionManager for
+# concealment, MapObjectManager for flammability — asks here, so there is
+# exactly one answer.
+
+## Vector2i -> GameConfig.TerrainType
+var _terrain: Dictionary = {}
+
+
+## Install the finished terrain map from MapBuilder.
+func set_terrain_map(terrain: Dictionary) -> void:
+	_terrain = terrain.duplicate()
+	for cell in _terrain:
+		_apply_terrain_weight(cell)
+
+
+## Change one cell's terrain at runtime (a forest burning down to scorched
+## earth). Emits terrain_changed so the view and any cached vision can react.
+func set_terrain(cell: Vector2i, terrain: GameConfig.TerrainType) -> void:
+	if not is_within_bounds(cell) or _terrain.get(cell) == terrain:
+		return
+	_terrain[cell] = terrain
+	_apply_terrain_weight(cell)
+	EventBus.terrain_changed.emit(cell, terrain)
+
+
+func get_terrain(cell: Vector2i) -> GameConfig.TerrainType:
+	return _terrain.get(cell, GameConfig.TerrainType.PLAIN)
+
+
+## Movement points required to ENTER this cell.
+func get_move_cost(cell: Vector2i) -> int:
+	return int(GameConfig.terrain_rule(get_terrain(cell), "move_cost"))
+
+
+## Damage multiplier applied to a unit standing here (< 1.0 is cover).
+func get_damage_taken_mult(cell: Vector2i) -> float:
+	return float(GameConfig.terrain_rule(get_terrain(cell), "damage_taken_mult"))
+
+
+## Does this cell hide whoever stands on it from distant observers?
+func is_concealing(cell: Vector2i) -> bool:
+	return bool(GameConfig.terrain_rule(get_terrain(cell), "conceals"))
+
+
+## Can an attack launched from this cell be an ambush?
+func is_ambush_cover(cell: Vector2i) -> bool:
+	return bool(GameConfig.terrain_rule(get_terrain(cell), "ambush"))
+
+
+## Keep AStar's own weights in step with the terrain map, so any caller that
+## still routes through get_path_cells() prefers roads over forest too.
+func _apply_terrain_weight(cell: Vector2i) -> void:
+	if astar and is_within_bounds(cell):
+		astar.set_point_weight_scale(cell, float(get_move_cost(cell)))
+
+
 ## Total battlefield size in world pixels — used to clamp the camera.
 func get_map_pixel_size() -> Vector2:
 	return Vector2(grid_size.x * cell_size.x, grid_size.y * cell_size.y)
@@ -168,58 +228,117 @@ func get_unit_at(cell: Vector2i) -> TacticalUnit:
 	return _occupied_cells.get(cell, null)
 
 
+## Is this unit currently mid-move? Lets a caller wait for one specific unit's
+## walk to finish instead of awaiting the global unit_move_completed signal,
+## which fires for whichever unit happens to arrive first.
+func is_unit_moving(unit: TacticalUnit) -> bool:
+	return _moving_units.has(unit)
+
+
 # ==============================================================================
 # STEP 3: KALKULASI JANGKAUAN (MOVEMENT & ATTACK RANGE)
 # ==============================================================================
 
-## Get a list of all cells the unit can reach with its remaining movement (BFS / Flood Fill)
+const MOVE_DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
+
+
+## Flood the map outward from a unit, paying each cell's terrain cost.
+##
+## Terrain made steps cost 1 or 2, so a plain BFS no longer answers "how far can
+## this unit go" — it needs Dijkstra. Reachability and the executed route are
+## both derived from this one field, which is what guarantees a unit can never
+## be shown a cell it cannot actually afford to walk to.
+##
+## Returns {"cost": Dictionary[Vector2i, int], "came_from": Dictionary[Vector2i, Vector2i]}.
+func _compute_movement_field(unit: TacticalUnit) -> Dictionary:
+	var start: Vector2i = unit.grid_position
+	var budget: int = unit.current_movement
+	var cost: Dictionary = {start: 0}
+	var came_from: Dictionary = {}
+	var frontier: Array[Vector2i] = [start]
+
+	while not frontier.is_empty():
+		# Small frontier (bounded by the movement budget), so a linear scan for
+		# the cheapest node beats the bookkeeping of a real priority queue.
+		var idx: int = 0
+		for i in range(1, frontier.size()):
+			if cost[frontier[i]] < cost[frontier[idx]]:
+				idx = i
+		var current: Vector2i = frontier[idx]
+		frontier.remove_at(idx)
+		var current_cost: int = cost[current]
+
+		for dir in MOVE_DIRECTIONS:
+			var next_cell: Vector2i = current + dir
+			if not is_within_bounds(next_cell) or _obstacle_cells.has(next_cell):
+				continue
+
+			# Enemies block the way; friendly units can be walked through but
+			# not stopped on (filtered when the reachable list is built).
+			var occupant: TacticalUnit = _occupied_cells.get(next_cell)
+			if occupant != null and occupant != unit and occupant.faction_id != unit.faction_id:
+				continue
+
+			var step: int = get_move_cost(next_cell)
+			if step >= GameConfig.MOVE_COST_IMPASSABLE:
+				continue
+
+			var next_cost: int = current_cost + step
+			if next_cost > budget:
+				continue
+			if cost.has(next_cell) and cost[next_cell] <= next_cost:
+				continue
+
+			cost[next_cell] = next_cost
+			came_from[next_cell] = current
+			frontier.append(next_cell)
+
+	return {"cost": cost, "came_from": came_from}
+
+
+## Every cell the unit can both afford to reach and legally stop on.
 func get_reachable_cells(unit: TacticalUnit) -> Array[Vector2i]:
 	var reachable: Array[Vector2i] = []
 	if not is_instance_valid(unit) or not unit.can_move():
 		return reachable
 
-	var max_steps: int = unit.current_movement
-	var start_cell: Vector2i = unit.grid_position
-	
-	# Antrean BFS: [Vector2i, cost_so_far]
-	var queue: Array[Dictionary] = [{"cell": start_cell, "cost": 0}]
-	var visited: Dictionary = {start_cell: 0}
-
-	var directions = [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
-
-	while queue.size() > 0:
-		var current = queue.pop_front()
-		var curr_cell: Vector2i = current["cell"]
-		var curr_cost: int = current["cost"]
-
-		if curr_cost > 0 and curr_cell != start_cell:
-			# Destination cell must not be occupied by another unit
-			if not _occupied_cells.has(curr_cell):
-				reachable.append(curr_cell)
-
-		if curr_cost >= max_steps:
-			continue
-
-		for dir in directions:
-			var next_cell = curr_cell + dir
-			var next_cost = curr_cost + 1 # Default step cost = 1 (bisa dimodif terrain)
-
-			if not is_within_bounds(next_cell):
-				continue
-			if _obstacle_cells.has(next_cell):
-				continue
-			
-			# Check unit obstacles: enemy units block the path
-			if _occupied_cells.has(next_cell):
-				var other_unit: TacticalUnit = _occupied_cells[next_cell]
-				if other_unit != unit and other_unit.faction_id != unit.faction_id:
-					continue # Musuh memblokir jalan
-
-			if not visited.has(next_cell) or next_cost < visited[next_cell]:
-				visited[next_cell] = next_cost
-				queue.append({"cell": next_cell, "cost": next_cost})
-
+	var field: Dictionary = _compute_movement_field(unit)
+	for cell in field["cost"]:
+		if cell != unit.grid_position and not _occupied_cells.has(cell):
+			reachable.append(cell)
 	return reachable
+
+
+## The exact route the unit will walk to `target`, or an empty array if it
+## cannot afford it. Reconstructed from the same field that decided
+## reachability, so the two can never disagree.
+func get_movement_path(unit: TacticalUnit, target: Vector2i) -> Array[Vector2i]:
+	var path: Array[Vector2i] = []
+	if not is_instance_valid(unit):
+		return path
+
+	var field: Dictionary = _compute_movement_field(unit)
+	var came_from: Dictionary = field["came_from"]
+	if not field["cost"].has(target):
+		return path
+
+	var cursor: Vector2i = target
+	path.append(cursor)
+	while cursor != unit.grid_position:
+		if not came_from.has(cursor):
+			return [] as Array[Vector2i]
+		cursor = came_from[cursor]
+		path.append(cursor)
+	path.reverse()
+	return path
+
+
+## Movement points a route actually costs (the start cell is already paid for).
+func get_path_cost(path: Array[Vector2i]) -> int:
+	var total: int = 0
+	for i in range(1, path.size()):
+		total += get_move_cost(path[i])
+	return total
 
 
 ## Get list of attackable tiles from a specific position
@@ -271,17 +390,13 @@ func _on_unit_move_requested(unit: Node, target_cell: Vector2i) -> void:
 		return # Unit masih dalam proses animasi bergerak
 
 	var from_cell: Vector2i = tactical_unit.grid_position
-	if from_cell == target_cell:
+	if from_cell == target_cell or _occupied_cells.has(target_cell):
 		return
 
-	# Cek apakah target valid dalam jangkauan
-	var reachable = get_reachable_cells(tactical_unit)
-	if not reachable.has(target_cell):
-		push_warning("GridManager: Cell %s unreachable for unit %s" % [target_cell, tactical_unit.name])
-		return
-
-	var path = get_path_cells(from_cell, target_cell, tactical_unit)
+	# One movement field decides both affordability and the route walked.
+	var path := get_movement_path(tactical_unit, target_cell)
 	if path.size() <= 1:
+		push_warning("GridManager: Cell %s unreachable for unit %s" % [target_cell, tactical_unit.name])
 		return
 
 	_execute_unit_movement(tactical_unit, path)
@@ -300,9 +415,9 @@ func _execute_unit_movement(unit: TacticalUnit, path: Array[Vector2i]) -> void:
 	astar.set_point_solid(to_cell, true)
 	unit.grid_position = to_cell
 
-	# Hitung movement cost
-	var steps_cost = path.size() - 1
-	unit.consume_movement(steps_cost)
+	# Charge the terrain the route actually crossed, not the number of tiles:
+	# cutting through a forest costs more than the same distance down a road.
+	unit.consume_movement(get_path_cost(path))
 
 	# Animasi pergerakan halus (Tween)
 	unit.play_animation("run")

@@ -13,6 +13,14 @@ var current_movement: int = 0
 var has_acted: bool = false
 var grid_position: Vector2i = Vector2i.ZERO
 
+## Morale as a 0..100 scalar. GameConfig.MoraleLevel is derived from it rather
+## than stored, so there is one source of truth and tuning happens on the
+## scalar. MoraleManager is the only thing that should write this.
+var morale: int = GameConfig.MORALE_DEFAULT
+## Set while this unit has broken and is awaiting its captor's decision. A
+## surrendering unit is frozen: it cannot act, move, or be attacked again.
+var pending_surrender: bool = false
+
 # === Node References ===
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
@@ -22,14 +30,25 @@ var hp_bar: ProgressBar
 var hp_label: Label
 var _hp_tween: Tween
 var _fill_style: StyleBoxFlat
+var _hp_bg_style: StyleBoxFlat
+
+# === Overhead Morale Strip ===
+var morale_bar: ColorRect
+var morale_fill: ColorRect
 
 
 func _ready() -> void:
+	# Mirrors Building's "buildings" group: lets VisionManager and
+	# MapObjectManager sweep every unit on the field without depending on
+	# TurnManager having registered it first.
+	add_to_group("units")
+
 	if unit_data:
 		_initialize_from_data()
 	
 	_setup_default_animations()
 	_setup_health_bar()
+	_setup_morale_bar()
 
 
 ## Setup standard TinySwords animation frames dynamically based on unit archetype
@@ -104,8 +123,11 @@ func _initialize_from_data() -> void:
 	current_health = unit_data.max_health
 	current_movement = unit_data.movement_points
 	has_acted = false
+	morale = GameConfig.MORALE_DEFAULT
+	pending_surrender = false
 	_update_visuals()
 	_update_health_bar(false)
+	_update_morale_bar()
 
 
 ## Reset movement and action points at the start of a new turn.
@@ -187,6 +209,10 @@ func upgrade_to(new_data: UnitData) -> void:
 
 	_update_visuals()
 	_update_health_bar(false)
+	# A promotion is a shot in the arm — and it also re-evaluates immunity, so
+	# the strip has to be refreshed either way.
+	adjust_morale(GameConfig.MORALE_KILL_BONUS)
+	_update_morale_bar()
 	if animation_player and animation_player.has_animation("level_up_effect"):
 		animation_player.play("level_up_effect")
 
@@ -209,12 +235,83 @@ func consume_action() -> void:
 
 ## Check if this unit can still act this turn.
 func can_act() -> bool:
-	return not has_acted
+	return not has_acted and not pending_surrender
 
 
 ## Check if this unit can still move this turn.
 func can_move() -> bool:
-	return current_movement > 0
+	return current_movement > 0 and not pending_surrender
+
+
+# === Morale ===
+
+## Current morale band. Undead never waver, so they read as FAIR forever and
+## every multiplier lands on 1.0 without a special case at each call site.
+func get_morale_level() -> GameConfig.MoraleLevel:
+	if is_morale_immune():
+		return GameConfig.MoraleLevel.FAIR
+	return GameConfig.morale_level_for(morale)
+
+
+func is_morale_immune() -> bool:
+	return is_instance_valid(unit_data) and unit_data.is_morale_immune()
+
+
+## Attack output multiplier from the unit's current morale band.
+func get_morale_attack_mult() -> float:
+	return float(GameConfig.MORALE_ATTACK_MULT.get(get_morale_level(), 1.0))
+
+
+## Shift morale by `delta`, clamped to 0..MORALE_MAX. Emits morale_changed only
+## when the band actually crossed, so listeners fire on meaningful shifts rather
+## than on every point. Returns the new level.
+func adjust_morale(delta: int) -> GameConfig.MoraleLevel:
+	if is_morale_immune() or delta == 0:
+		return get_morale_level()
+
+	var old_level := get_morale_level()
+	morale = clampi(morale + delta, 0, GameConfig.MORALE_MAX)
+	var new_level := get_morale_level()
+	_update_morale_bar()
+
+	if new_level != old_level:
+		_show_floating_indicator(
+			GameConfig.MORALE_LABEL.get(new_level, "?"),
+			GameConfig.MORALE_COLOR.get(new_level, Color.WHITE),
+		)
+		EventBus.morale_changed.emit(self, old_level, new_level)
+	return new_level
+
+
+## Defect to a new faction without dying.
+##
+## The unit adopts the new owner's own art where a `{role}_{faction}` variant
+## exists, and arrives shaken and spent — capturing an enemy should not also
+## hand you a free extra action this turn. TurnManager re-buckets it off the
+## unit_captured signal, keeping this an actor-only concern.
+func change_faction(new_faction_id: int) -> void:
+	if faction_id == new_faction_id:
+		return
+
+	var old_faction := faction_id
+	faction_id = new_faction_id
+
+	if is_instance_valid(unit_data):
+		var variant := UnitData.variant_for_faction(unit_data, new_faction_id)
+		if variant != unit_data:
+			unit_data = variant
+			_update_visuals()
+
+	pending_surrender = false
+	has_acted = true
+	current_movement = 0
+	morale = GameConfig.MORALE_AFTER_CAPTURE
+
+	_apply_hp_bar_faction_color()
+	_update_health_bar(false)
+	_update_morale_bar()
+
+	EventBus.unit_captured.emit(self, old_faction, new_faction_id)
 
 
 # === Private Methods ===
@@ -228,13 +325,14 @@ func _setup_health_bar() -> void:
 	hp_bar.size = Vector2(70, 10)
 	hp_bar.position = Vector2(-35, -55)
 	
-	# Background style
-	var bg_style := StyleBoxFlat.new()
-	bg_style.bg_color = Color(0.08, 0.08, 0.1, 0.85)
-	bg_style.border_color = Color(0.8, 0.2, 0.2, 0.95) if faction_id != 0 else Color(0.2, 0.5, 0.9, 0.95)
-	bg_style.set_border_width_all(1)
-	bg_style.set_corner_radius_all(2)
-	hp_bar.add_theme_stylebox_override("background", bg_style)
+	# Background style — the border carries the owner's colour, which is how a
+	# defecting unit reads as having changed sides.
+	_hp_bg_style = StyleBoxFlat.new()
+	_hp_bg_style.bg_color = Color(0.08, 0.08, 0.1, 0.85)
+	_hp_bg_style.set_border_width_all(1)
+	_hp_bg_style.set_corner_radius_all(2)
+	hp_bar.add_theme_stylebox_override("background", _hp_bg_style)
+	_apply_hp_bar_faction_color()
 	
 	# Fill style
 	_fill_style = StyleBoxFlat.new()
@@ -256,6 +354,13 @@ func _setup_health_bar() -> void:
 	
 	add_child(hp_bar)
 	_update_health_bar(false)
+
+
+func _apply_hp_bar_faction_color() -> void:
+	if not _hp_bg_style:
+		return
+	var tint: Color = GameConfig.FACTION_TINT_COLORS.get(faction_id, Color(0.7, 0.7, 0.75))
+	_hp_bg_style.border_color = Color(tint.r, tint.g, tint.b, 0.95)
 
 
 func _update_health_bar(animate: bool = false) -> void:
@@ -296,9 +401,57 @@ func _update_health_bar(animate: bool = false) -> void:
 		hp_bar.value = float(maxi(0, current_health))
 
 
+## A thin strip under the HP bar. Deliberately not a second numeric readout —
+## the exact scalar belongs in the inspector panel; on the battlefield the
+## player only needs to see at a glance which units are about to break.
+func _setup_morale_bar() -> void:
+	morale_bar = ColorRect.new()
+	morale_bar.name = "MoraleStrip"
+	morale_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	morale_bar.color = Color(0.08, 0.08, 0.1, 0.85)
+	morale_bar.size = Vector2(70, 4)
+	morale_bar.position = Vector2(-35, -43)
+
+	morale_fill = ColorRect.new()
+	morale_fill.name = "Fill"
+	morale_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	morale_fill.position = Vector2.ZERO
+	morale_fill.size = Vector2(70, 4)
+	morale_bar.add_child(morale_fill)
+
+	add_child(morale_bar)
+	_update_morale_bar()
+
+
+func _update_morale_bar() -> void:
+	if not is_instance_valid(morale_bar):
+		return
+	# Undead have no morale to show, so they get no strip at all.
+	if is_morale_immune():
+		morale_bar.visible = false
+		return
+
+	morale_bar.visible = true
+	var level := get_morale_level()
+	var ratio: float = clampf(float(morale) / float(GameConfig.MORALE_MAX), 0.0, 1.0)
+	morale_fill.size = Vector2(70.0 * ratio, 4)
+	morale_fill.color = GameConfig.MORALE_COLOR.get(level, Color.WHITE)
+
+
+## Walk off the battlefield without being killed — a morale break rather than a
+## wound. Routed through the same removal path as a death so every listener
+## (grid occupancy, rosters, capacity) unregisters the unit exactly once.
+func desert() -> void:
+	if current_health <= 0:
+		return
+	current_health = 0
+	_show_floating_indicator("DESERTED", GameConfig.MORALE_COLOR[GameConfig.MoraleLevel.FEARFUL])
+	_handle_death("desertion")
+
+
 func _handle_death(damage_type: String) -> void:
 	match damage_type:
-		"starvation":
+		"starvation", "desertion":
 			EventBus.unit_deserted.emit(self)
 		_:
 			EventBus.unit_died.emit(self, damage_type)

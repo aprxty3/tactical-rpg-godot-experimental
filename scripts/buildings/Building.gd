@@ -166,28 +166,11 @@ func recruit_unit(unit_data: UnitData, spawn_cell: Vector2i, economy_mgr: Node, 
 ## Return the owning faction's variant of `data`.
 ##
 ## Castles are capturable, so a Blue army that takes the Yellow Empire's keep
-## would otherwise recruit yellow-sprited troops that fight for Blue. Unit
-## resources follow a `{role}_{faction}.tres` convention, so the owner's
-## variant is a filename swap. Falls back to `data` when no variant exists —
-## the Black Coven's undead have no per-faction versions by design.
+## would otherwise recruit yellow-sprited troops that fight for Blue. The
+## resolution itself lives on UnitData because defection needs the identical
+## lookup when a surrendered unit changes sides.
 func resolve_for_owner(data: UnitData) -> UnitData:
-	if not is_instance_valid(data):
-		return data
-	var suffix: String = FACTION_ART_DIR.get(faction_id, "").to_lower()
-	if suffix == "":
-		return data
-	var path: String = data.resource_path
-	if path == "":
-		return data
-	var base: String = path.get_basename()
-	var idx: int = base.rfind("_")
-	if idx <= 0:
-		return data
-	var variant: String = "%s_%s.tres" % [base.substr(0, idx), suffix]
-	if variant == path or not ResourceLoader.exists(variant):
-		return data
-	var loaded: UnitData = load(variant) as UnitData
-	return loaded if is_instance_valid(loaded) else data
+	return UnitData.variant_for_faction(data, faction_id)
 
 
 func _update_visuals() -> void:

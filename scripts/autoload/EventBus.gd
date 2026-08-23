@@ -63,10 +63,37 @@ signal combat_advantage_applied(advantage_type: String, multiplier: float)
 # === Morale Signals (Roadmap: Milestone 4) ===
 @warning_ignore("unused_signal")
 signal morale_changed(unit: Node, old_level: int, new_level: int)
+## A unit broke and is awaiting its captor's decision (capture or ransom).
 @warning_ignore("unused_signal")
 signal surrender_triggered(unit: Node)
+## A human captor must choose what to do with a prisoner. Only fires for the
+## player's own captures — AI captors decide for themselves without a prompt.
+@warning_ignore("unused_signal")
+signal surrender_decision_required(unit: Node, captor_faction_id: int)
+## The captor decided. `outcome` is "capture" or "ransom".
+@warning_ignore("unused_signal")
+signal surrender_resolved(unit: Node, outcome: String, captor_faction_id: int)
+## A unit changed allegiance without dying (defection after surrender).
+@warning_ignore("unused_signal")
+signal unit_captured(unit: Node, old_faction_id: int, new_faction_id: int)
 @warning_ignore("unused_signal")
 signal ambush_triggered(ambusher: Node, target: Node)
+
+# === Terrain & Vision Signals (Milestone 4) ===
+## A cell's terrain type changed at runtime (e.g. forest burned to scorched).
+@warning_ignore("unused_signal")
+signal terrain_changed(cell: Vector2i, new_terrain: int)
+## A faction's visible set was recomputed — the fog layer redraws on this.
+@warning_ignore("unused_signal")
+signal vision_updated(faction_id: int)
+
+# === Environmental Hazard Signals (Milestone 4) ===
+@warning_ignore("unused_signal")
+signal hazard_detonated(cell: Vector2i, radius: int, chain_index: int)
+@warning_ignore("unused_signal")
+signal fire_ignited(cell: Vector2i)
+@warning_ignore("unused_signal")
+signal fire_extinguished(cell: Vector2i, scorched: bool)
 
 # === Building & Map Signals ===
 @warning_ignore("unused_signal")

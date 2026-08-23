@@ -10,6 +10,14 @@ extends Node2D
 @onready var map_builder: MapBuilder = $MapBuilder
 @onready var camera: TacticalCamera = $Camera2D
 @onready var decor_container: Node2D = $Decor
+@onready var morale_manager: MoraleManager = $MoraleManager
+@onready var vision_manager: VisionManager = $VisionManager
+@onready var map_object_manager: MapObjectManager = $MapObjectManager
+@onready var map_object_container: Node2D = $MapObjects
+
+## The faction the human is playing. Everything view-side (fog, surrender
+## prompts, input gating) is written from this faction's perspective.
+const PLAYER_FACTION: int = GameConfig.Faction.BLUE_KINGDOM
 
 var selected_unit: TacticalUnit = null
 var selected_building: Building = null
@@ -32,6 +40,9 @@ func _ready() -> void:
 	EventBus.building_captured.connect(_on_building_captured)
 	EventBus.dialogue_generated.connect(_on_dialogue_generated)
 	EventBus.story_event_narrated.connect(_on_story_event_narrated)
+	EventBus.terrain_changed.connect(_on_terrain_changed)
+	EventBus.vision_updated.connect(_on_vision_updated)
+	EventBus.surrender_triggered.connect(_on_surrender_triggered)
 
 	if main_hud.has_signal("end_turn_requested"):
 		main_hud.end_turn_requested.connect(end_turn)
@@ -39,6 +50,8 @@ func _ready() -> void:
 		main_hud.recruit_unit_requested.connect(_do_recruit)
 	if main_hud.has_signal("upgrade_unit_requested"):
 		main_hud.upgrade_unit_requested.connect(_do_upgrade)
+	if main_hud.has_signal("surrender_choice_made"):
+		main_hud.surrender_choice_made.connect(_on_surrender_choice_made)
 
 	# 1. Register every faction that owns something on the map. Only Blue and
 	# Red take turns for now, but the other three hold castles the players can
@@ -49,9 +62,17 @@ func _ready() -> void:
 	economy_manager.register_faction(GameConfig.Faction.YELLOW_EMPIRE, 100, 2)
 	economy_manager.register_faction(GameConfig.Faction.BLACK_COVEN, 100, 2)
 
-	# 2. Setup AI Manager
+	# 2. Wire the Milestone 4 managers. Each takes its dependencies through
+	#    setup() rather than reaching for node paths, so the same managers drop
+	#    into the focused test scenes unchanged.
+	morale_manager.human_faction_id = PLAYER_FACTION
+	morale_manager.setup(grid_manager, economy_manager)
+	vision_manager.observer_faction_id = PLAYER_FACTION
+	combat_resolver.setup(grid_manager)
+	map_object_manager.setup(grid_manager, economy_manager, map_object_container, unit_container)
+
 	if ai_manager:
-		ai_manager.setup(grid_manager, economy_manager)
+		ai_manager.setup(grid_manager, economy_manager, vision_manager, map_object_manager)
 
 	# 3. Setup match dengan EconomyManager terinjeksi
 	TurnManager.setup_match(
@@ -63,7 +84,7 @@ func _ready() -> void:
 	_setup_tactical_map()
 
 	# Init HUD
-	main_hud.initialize(economy_manager)
+	main_hud.initialize(economy_manager, grid_manager)
 
 	TurnManager.start_turn()
 	queue_redraw()
@@ -98,6 +119,16 @@ func _setup_tactical_map() -> void:
 			reserved.append(unit.grid_position)
 	map_builder.scatter_decor(decor_container, grid_manager.cell_size, reserved)
 
+	# Terrain types are only final once the props are down — a cell is forest
+	# because a tree was actually drawn on it, not because it was planned to be.
+	grid_manager.set_terrain_map(map_builder.get_terrain_map())
+
+	# Hazards and treasure go in last, so they can avoid everything above.
+	map_object_manager.populate(map_builder, reserved)
+
+	# Fog needs the finished terrain to know what conceals.
+	vision_manager.setup(grid_manager, get_node_or_null("FogOfWarTileMapLayer"))
+
 	if camera:
 		camera.configure(grid_manager.get_map_pixel_size(), _player_start_focus())
 
@@ -117,7 +148,13 @@ func _update_hud_text(text: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	# A prisoner is waiting on a decision. The prompt has no cancel path on
+	# purpose, so nothing else — not even Escape — is allowed through until the
+	# player answers it.
+	if main_hud and main_hud.has_method("is_surrender_popup_active") and main_hud.is_surrender_popup_active():
+		return
+
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 		if main_hud and main_hud.has_method("is_end_turn_confirmation_active") and main_hud.is_end_turn_confirmation_active():
 			main_hud.hide_end_turn_confirmation()
 			return
@@ -130,7 +167,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if TurnManager.get_current_faction() == GameConfig.Faction.RED_LEGION:
 		return
 
-	if event is InputEventKey and event.pressed and event.keycode == KEY_SPACE:
+	# `not event.echo` on every discrete command below: a held key auto-repeats
+	# many times a second, and Space in particular would then open the end-turn
+	# prompt and immediately confirm it, burning through turns without the
+	# player ever letting go. Ending a turn, recruiting and promoting are all
+	# one-per-press actions, so repeats are dropped.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_SPACE:
 		if main_hud and main_hud.has_method("is_end_turn_confirmation_active"):
 			if main_hud.is_end_turn_confirmation_active():
 				main_hud._on_confirm_end_turn()
@@ -140,11 +182,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			end_turn()
 		return
 
-	if event is InputEventKey and event.pressed and event.keycode == KEY_R:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
 		_try_recruit_at_selected_castle()
 		return
 
-	if event is InputEventKey and event.pressed and event.keycode == KEY_U:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_U:
 		_try_upgrade_at_selected_unit()
 		return
 
@@ -184,10 +226,21 @@ func _handle_cell_click(cell: Vector2i) -> void:
 	var unit_at_cell = grid_manager.get_unit_at(cell)
 	var building_at_cell = grid_manager.get_building_at(cell)
 
+	# An enemy hidden by fog is not there as far as the player is concerned:
+	# it can be neither clicked nor targeted, and the cell behaves as empty.
+	if unit_at_cell != null and not _is_unit_visible(unit_at_cell):
+		unit_at_cell = null
+
 	if selected_unit != null and unit_at_cell != null and unit_at_cell != selected_unit:
 		if unit_at_cell.faction_id != selected_unit.faction_id and attackable_cells.has(cell):
 			EventBus.unit_attack_requested.emit(selected_unit, unit_at_cell)
 			_deselect_all()
+			return
+
+	# Shooting a powder keg is an attack action in its own right — that is the
+	# whole reason the kegs sit beside the bridge mouths.
+	if selected_unit != null and unit_at_cell == null and attackable_cells.has(cell):
+		if _try_shoot_barrel(cell):
 			return
 
 	if unit_at_cell != null:
@@ -209,6 +262,35 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		return
 
 	_deselect_all()
+
+
+## Can the human player currently see this unit?
+func _is_unit_visible(unit: TacticalUnit) -> bool:
+	if not is_instance_valid(vision_manager):
+		return true
+	return vision_manager.can_see_unit(PLAYER_FACTION, unit)
+
+
+## Detonate a keg on `cell` if one is there. Costs the selected unit its action.
+func _try_shoot_barrel(cell: Vector2i) -> bool:
+	if not is_instance_valid(map_object_manager) or not selected_unit.can_act():
+		return false
+
+	var has_barrel := false
+	for obj in map_object_manager.objects_at(cell):
+		if obj is Barrel and not obj.is_spent():
+			has_barrel = true
+			break
+	if not has_barrel:
+		return false
+
+	selected_unit.face_direction(grid_manager.grid_to_world(cell))
+	selected_unit.play_animation("attack")
+	selected_unit.consume_action()
+	map_object_manager.detonate_at(cell)
+	_update_hud_text("💥 Powder keg detonated!")
+	_deselect_all()
+	return true
 
 
 func _select_unit(unit: TacticalUnit) -> void:
@@ -348,6 +430,39 @@ func _on_combat_resolved(result: Dictionary) -> void:
 		log_str += " ➔ ☠️ %s DIED!" % def_name
 
 	_update_hud_text(log_str)
+	queue_redraw()
+
+
+## A forest burned down. GridManager already rewrote the terrain; the tree
+## standing on it has to go too, or the map would still promise cover it no
+## longer gives.
+func _on_terrain_changed(cell: Vector2i, new_terrain: int) -> void:
+	if new_terrain == GameConfig.TerrainType.SCORCHED and is_instance_valid(map_builder):
+		map_builder.clear_decor_at(cell)
+	# Movement ranges are terrain-dependent, so a live selection is now stale.
+	if selected_unit:
+		_select_unit(selected_unit)
+	queue_redraw()
+
+
+func _on_vision_updated(_faction_id: int) -> void:
+	queue_redraw()
+
+
+func _on_surrender_triggered(unit: Node) -> void:
+	var unit_name: String = "A unit"
+	if unit is TacticalUnit and is_instance_valid(unit.unit_data):
+		unit_name = unit.unit_data.unit_name
+	_update_hud_text("🏳️ %s has broken and surrendered!" % unit_name)
+
+
+func _on_surrender_choice_made(unit: Node, choice: String) -> void:
+	if is_instance_valid(morale_manager) and unit is TacticalUnit:
+		morale_manager.resolve_surrender(unit, choice)
+	_update_hud_text(
+		"⚔️ Prisoner pressed into service." if choice == "capture"
+		else "💰 Prisoner ransomed for gold."
+	)
 	queue_redraw()
 
 

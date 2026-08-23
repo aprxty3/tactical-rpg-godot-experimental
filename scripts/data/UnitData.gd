@@ -36,6 +36,12 @@ class_name UnitData
 ## Example: {"Knight": preload("res://resources/units/knight.tres")}
 @export var upgrade_paths: Dictionary = {}
 
+@export_group("Vision & Morale")
+## Sight radius in tiles for Fog of War. Leave at 0 to inherit the archetype
+## default from GameConfig.VISION_BY_CLASS — that keeps all 91 existing .tres
+## files valid without a migration, while still allowing per-unit overrides.
+@export var vision_range: int = 0
+
 @export_group("Visuals")
 @export var unit_scene: PackedScene
 @export var spritesheet: Texture2D
@@ -52,3 +58,45 @@ class_name UnitData
 @export var sprite_offset: Vector2 = Vector2.ZERO
 @export var sprite_frames: SpriteFrames
 @export var portrait: Texture2D
+
+
+# === Derived Data ===
+# Pure lookups, not game logic: they resolve a stored value against its
+# archetype default so every caller reads the same answer.
+
+## Effective sight radius, falling back to the archetype default.
+func get_vision_range() -> int:
+	if vision_range > 0:
+		return vision_range
+	return GameConfig.VISION_BY_CLASS.get(unit_class, GameConfig.VISION_DEFAULT)
+
+
+## The undead feel no fear: they never gain, lose, or act on morale.
+func is_morale_immune() -> bool:
+	return unit_class == "Undead"
+
+
+## Return `data` rewritten as the given faction's own variant.
+##
+## Resources follow a `{role}_{faction}.tres` convention, so the owner's version
+## is a filename swap. Falls back to `data` unchanged when no variant exists —
+## the Black Coven's undead have no per-faction versions by design. Used both
+## when recruiting at a captured castle and when a defeated unit defects.
+static func variant_for_faction(data: UnitData, faction_id: int) -> UnitData:
+	if not is_instance_valid(data):
+		return data
+	var suffix: String = GameConfig.FACTION_SUFFIX.get(faction_id, "")
+	if suffix == "":
+		return data
+	var path: String = data.resource_path
+	if path == "":
+		return data
+	var base: String = path.get_basename()
+	var idx: int = base.rfind("_")
+	if idx <= 0:
+		return data
+	var variant: String = "%s_%s.tres" % [base.substr(0, idx), suffix]
+	if variant == path or not ResourceLoader.exists(variant):
+		return data
+	var loaded: UnitData = load(variant) as UnitData
+	return loaded if is_instance_valid(loaded) else data

@@ -8,6 +8,9 @@
 [ext_resource type="Script" uid="uid://s725iatejh81" path="res://scripts/managers/MapBuilder.gd" id="6_map_builder"]
 [ext_resource type="Script" uid="uid://6dxge84sdlwp" path="res://scripts/ui/TacticalCamera.gd" id="7_camera"]
 [ext_resource type="TileSet" uid="uid://cxhy51g182n7k" path="res://resources/tilesets/terrain_flat_tileset.tres" id="8_tileset"]
+[ext_resource type="Script" path="res://scripts/managers/MoraleManager.gd" id="24_b04lf"]
+[ext_resource type="Script" path="res://scripts/managers/VisionManager.gd" id="25_jgmjf"]
+[ext_resource type="Script" path="res://scripts/managers/MapObjectManager.gd" id="26_8j6b7"]
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Black.tscn" id="castle_black"]
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle.tscn" id="castle_blue"]
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Purple.tscn" id="castle_purple"]
@@ -145,18 +148,30 @@ position = Vector2(288, 1120)
 
 [node name="Red_Pawn" parent="Units" unique_id=1059190179 instance=ExtResource("u_pawn_red")]
 position = Vector2(1632, 224)
-faction_id = 1
 
 [node name="Red_Warrior" parent="Units" unique_id=1201137696 instance=ExtResource("u_warrior_red")]
 position = Vector2(1696, 288)
-faction_id = 1
 
 [node name="Red_Archer" parent="Units" unique_id=2037242414 instance=ExtResource("u_archer_red")]
 position = Vector2(1632, 160)
-faction_id = 1
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1860143065]
 position = Vector2(240, 1000)
 script = ExtResource("7_camera")
 
 [node name="MainHUD" parent="." unique_id=699340811 instance=ExtResource("main_hud")]
+
+[node name="MoraleManager" type="Node" parent="." unique_id=1861443968]
+script = ExtResource("24_b04lf")
+
+[node name="VisionManager" type="Node" parent="." unique_id=1726688930]
+script = ExtResource("25_jgmjf")
+
+[node name="MapObjectManager" type="Node" parent="." unique_id=431956771]
+script = ExtResource("26_8j6b7")
+
+[node name="MapObjects" type="Node2D" parent="." unique_id=1935240172]
+z_index = -1
+
+[node name="FogOfWarTileMapLayer" type="TileMapLayer" parent="." unique_id=1105013382]
+z_index = 10

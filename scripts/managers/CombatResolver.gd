@@ -10,9 +10,18 @@ class_name CombatResolver
 ## Apakah serangan balik diaktifkan?
 @export var enable_counter_attack: bool = true
 
+## Injected so combat can ask what terrain a unit is standing on. Optional:
+## with no GridManager every cell reads as PLAIN and combat behaves exactly as
+## it did before Milestone 4, which is what the older test scenes rely on.
+var grid_manager: GridManager
+
 
 func _ready() -> void:
 	EventBus.unit_attack_requested.connect(_on_unit_attack_requested)
+
+
+func setup(grid_mgr: GridManager) -> void:
+	grid_manager = grid_mgr
 
 
 ## Eksekusi pertarungan antara Attacker dan Defender
@@ -25,9 +34,20 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 		push_warning("CombatResolver: %s cannot act this turn." % attacker.name)
 		return {}
 
+	# A unit that has already broken is a prisoner awaiting a decision, not a
+	# target — striking it again would resolve its captor's choice for them.
+	if defender.pending_surrender:
+		return {}
+
 	# 2. Hitung serangan utama (Attacker -> Defender)
 	var attack_result = _calculate_damage(attacker, defender)
-	
+
+	# Striking out of forest cover is an ambush: the victim never gets to swing
+	# back, and MoraleManager turns the shock into a morale hit.
+	var is_ambush: bool = _is_ambush(attacker)
+	if is_ambush:
+		EventBus.ambush_triggered.emit(attacker, defender)
+
 	# Emit sinyal awal pertarungan
 	EventBus.combat_started.emit(attacker, defender)
 
@@ -52,9 +72,9 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	# 3. Konsumsi aksi attacker
 	attacker.consume_action()
 
-	# 4. Counter-Attack if defender survives and is in range
+	# 4. Counter-Attack if defender survives, is in range, and was not ambushed
 	var counter_result: Dictionary = {}
-	if not defender_died and enable_counter_attack:
+	if not defender_died and enable_counter_attack and not is_ambush:
 		var distance = _get_manhattan_distance(attacker.grid_position, defender.grid_position)
 		var def_min_range: int = defender.unit_data.attack_range_min if is_instance_valid(defender.unit_data) else 1
 		var def_max_range: int = defender.unit_data.attack_range_max if is_instance_valid(defender.unit_data) else 1
@@ -79,7 +99,8 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 		"defender": defender,
 		"primary_attack": attack_result,
 		"counter_attack": counter_result,
-		"defender_killed": defender_died
+		"defender_killed": defender_died,
+		"ambush": is_ambush,
 	}
 
 	EventBus.combat_resolved.emit(full_report)
@@ -131,11 +152,19 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 	if att_class == "Infiltrator" or "rogue" in att_name:
 		trait_mult *= 1.50
 
-	# 4. Terrain defense modifier
+	# 4. Terrain the DEFENDER is standing on. Forest and rock soak damage;
+	#    roads and bridges leave a unit exposed.
 	var terrain_def_mult: float = 1.0
+	if is_instance_valid(grid_manager):
+		terrain_def_mult = grid_manager.get_damage_taken_mult(def.grid_position)
+
+	# 5. The attacker's nerve. Undead always read as 1.0.
+	var morale_mult: float = att.get_morale_attack_mult()
 
 	# Hitung total damage
-	var final_damage = int(round(base_damage * advantage_mult * trait_mult * terrain_def_mult * additional_mult))
+	var final_damage = int(round(
+		base_damage * advantage_mult * trait_mult * terrain_def_mult * morale_mult * additional_mult
+	))
 	final_damage = maxi(1, final_damage)
 
 	return {
@@ -143,7 +172,9 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 		"base_damage": int(base_damage),
 		"multiplier": advantage_mult * trait_mult * additional_mult,
 		"advantage_type": advantage_type,
-		"damage_type": damage_type
+		"damage_type": damage_type,
+		"terrain_mult": terrain_def_mult,
+		"morale_mult": morale_mult,
 	}
 
 
@@ -179,6 +210,14 @@ func _get_advantage_multiplier(attacker_class: String, defender_class: String, a
 		return {"multiplier": GameConfig.DISADVANTAGE_MULTIPLIER, "type": "DISADVANTAGE"}
 
 	return {"multiplier": GameConfig.NEUTRAL_MULTIPLIER, "type": "NEUTRAL"}
+
+
+## An attack launched from concealing cover that grants ambush (forest). Rocks
+## hide a unit but give it nowhere to spring from, so they do not ambush.
+func _is_ambush(attacker: TacticalUnit) -> bool:
+	if not is_instance_valid(grid_manager):
+		return false
+	return grid_manager.is_ambush_cover(attacker.grid_position)
 
 
 func _get_manhattan_distance(a: Vector2i, b: Vector2i) -> int:

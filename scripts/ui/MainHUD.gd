@@ -18,6 +18,8 @@ signal end_turn_requested
 
 var current_faction_id: int = 0
 var economy_manager: Node = null
+## Optional — supplies the terrain readout in the unit inspector.
+var grid_manager: Node = null
 
 func _ready() -> void:
 	# Hide inspector, victory, and modal at start
@@ -43,7 +45,11 @@ func _ready() -> void:
 	confirm_btn.pressed.connect(_on_confirm_end_turn)
 	cancel_btn.pressed.connect(hide_end_turn_confirmation)
 	
+	EventBus.surrender_decision_required.connect(_on_surrender_decision_required)
+	EventBus.map_event_triggered.connect(_on_map_event_triggered)
+
 	_setup_recruit_popup()
+	_setup_surrender_modal()
 	_update_context_text("Select unit to move/attack, or Castle to recruit.")
 
 
@@ -147,8 +153,120 @@ func _on_upgrade_button_pressed(unit: Variant, target_data: Variant) -> void:
 	if is_instance_valid(unit) and is_instance_valid(target_data):
 		upgrade_unit_requested.emit(unit, target_data)
 
-func initialize(eco_mgr: Node) -> void:
+# ==============================================================================
+# SURRENDER MODAL
+# ==============================================================================
+
+signal surrender_choice_made(unit: Node, choice: String)
+
+var surrender_modal: Control
+var surrender_text: Label
+var _surrender_unit: TacticalUnit = null
+
+## Built in code like the recruit and upgrade popups, but as a full-screen
+## Control rather than a PopupPanel: a PopupPanel can be dismissed by clicking
+## outside it, and a dismissed prompt would leave the prisoner frozen forever.
+## This overlay has exactly two exits, both of which resolve the capture.
+func _setup_surrender_modal() -> void:
+	surrender_modal = ColorRect.new()
+	surrender_modal.name = "SurrenderModal"
+	surrender_modal.color = Color(0, 0, 0, 0.55)
+	surrender_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	surrender_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 16)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+
+	var title := Label.new()
+	title.text = "🏳️ ENEMY SURRENDERS"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 18)
+	box.add_child(title)
+
+	surrender_text = Label.new()
+	surrender_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(surrender_text)
+
+	var capture_btn := Button.new()
+	capture_btn.text = "⚔️  Capture (joins your army)"
+	capture_btn.pressed.connect(_on_surrender_button.bind("capture"))
+	box.add_child(capture_btn)
+
+	var ransom_btn := Button.new()
+	ransom_btn.text = "💰  Ransom (take the gold)"
+	ransom_btn.pressed.connect(_on_surrender_button.bind("ransom"))
+	box.add_child(ransom_btn)
+
+	margin.add_child(box)
+	panel.add_child(margin)
+	surrender_modal.add_child(panel)
+	add_child(surrender_modal)
+	surrender_modal.hide()
+
+
+func _on_surrender_decision_required(unit: Node, captor_faction_id: int) -> void:
+	if not (unit is TacticalUnit):
+		return
+	_surrender_unit = unit as TacticalUnit
+
+	var data: UnitData = _surrender_unit.unit_data
+	var unit_name: String = data.unit_name if is_instance_valid(data) else _surrender_unit.name
+	var ransom: int = 0
+	var weight: int = 0
+	if is_instance_valid(data):
+		ransom = int(round(data.recruit_cost_gold * GameConfig.SURRENDER_RANSOM_RATIO))
+		weight = data.capacity_weight
+
+	var room: String = ""
+	if is_instance_valid(economy_manager):
+		var used: int = economy_manager.get_used_capacity(
+			captor_faction_id, TurnManager.get_faction_units(captor_faction_id)
+		)
+		var maximum: int = economy_manager.get_max_capacity(captor_faction_id)
+		room = "\nTroop Cap: %d/%d  (this unit costs %d)" % [used, maximum, weight]
+
+	surrender_text.text = "%s has broken and lays down arms.\nRansom pays %d Gold.%s" % [
+		unit_name, ransom, room
+	]
+	surrender_modal.show()
+
+
+func _on_surrender_button(choice: String) -> void:
+	surrender_modal.hide()
+	if is_instance_valid(_surrender_unit):
+		surrender_choice_made.emit(_surrender_unit, choice)
+	_surrender_unit = null
+
+
+func is_surrender_popup_active() -> bool:
+	return is_instance_valid(surrender_modal) and surrender_modal.visible
+
+
+## Narrate whatever came out of a chest.
+func _on_map_event_triggered(event_type: String, _position: Vector2i, result: Dictionary) -> void:
+	match event_type:
+		"war_spoils":
+			_update_context_text("🎁 War Spoils! +%d Gold, +%d Iron." % [result.get("gold", 0), result.get("iron", 0)])
+		"mercenary":
+			_update_context_text("🎁 A mercenary joins you: %s!" % result.get("unit_name", "Unknown"))
+		"trap":
+			_update_context_text("💥 It was a trap! %d damage." % result.get("damage", 0))
+		"awaken_dead":
+			_update_context_text("💀 You disturbed the dead — %d rise against you!" % result.get("count", 0))
+
+
+func initialize(eco_mgr: Node, grid_mgr: Node = null) -> void:
 	economy_manager = eco_mgr
+	grid_manager = grid_mgr
 	_refresh_resources(TurnManager.get_current_faction())
 	_refresh_turn_label()
 
@@ -204,17 +322,43 @@ func _on_unit_selected(unit: Node) -> void:
 	var def: int = unit.unit_data.defense_power if is_instance_valid(unit.unit_data) else 0
 	
 	inspector_title.text = "⚔️ " + u_name
-	inspector_stats.text = "HP: %d/%d | Move: %d\nATK: %d | DEF: %d\nAct: %s" % [
+	inspector_stats.text = "HP: %d/%d | Move: %d\nATK: %d | DEF: %d\nAct: %s\n%s\n%s" % [
 		unit.current_health, hp_max,
 		unit.current_movement,
 		atk, def,
-		"Yes" if unit.can_act() else "No"
+		"Yes" if unit.can_act() else "No",
+		_morale_line(unit as TacticalUnit),
+		_terrain_line(unit as TacticalUnit),
 	]
 	var has_upgrades: bool = is_instance_valid(unit.unit_data) and not unit.unit_data.upgrade_paths.is_empty()
 	if has_upgrades:
 		_update_context_text("Click blue tile to move or enemy to attack.\n[U] Upgrade unit.")
 	else:
 		_update_context_text("Click blue tile to move or enemy to attack.")
+
+## Morale readout: the band, the raw scalar, and what it is doing to damage.
+func _morale_line(unit: TacticalUnit) -> String:
+	if unit.is_morale_immune():
+		return "Morale: — (undead, fearless by nature)"
+	var level := unit.get_morale_level()
+	var mult: float = unit.get_morale_attack_mult()
+	return "Morale: %s (%d) ×%.2f ATK" % [
+		GameConfig.MORALE_LABEL.get(level, "?"), unit.morale, mult
+	]
+
+
+## What the unit is standing in, and whether that helps or hurts.
+func _terrain_line(unit: TacticalUnit) -> String:
+	if not is_instance_valid(grid_manager):
+		return ""
+	var terrain = grid_manager.get_terrain(unit.grid_position)
+	var name_text: String = str(GameConfig.terrain_rule(terrain, "name"))
+	var taken: float = float(GameConfig.terrain_rule(terrain, "damage_taken_mult"))
+	var note: String = "cover" if taken < 1.0 else ("exposed" if taken > 1.0 else "open")
+	if bool(GameConfig.terrain_rule(terrain, "ambush")):
+		note += ", ambush"
+	return "Terrain: %s — ×%.2f dmg taken (%s)" % [name_text, taken, note]
+
 
 func show_building_info(bld: Node) -> void:
 	inspector_panel.show()

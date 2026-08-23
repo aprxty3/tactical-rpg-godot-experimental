@@ -28,6 +28,7 @@ func _connect_signals() -> void:
 	EventBus.unit_died.connect(_on_unit_died)
 	EventBus.unit_deserted.connect(_on_unit_deserted)
 	EventBus.unit_spawned.connect(_on_unit_spawned)
+	EventBus.unit_captured.connect(_on_unit_captured)
 	EventBus.building_captured.connect(_on_building_captured)
 
 
@@ -242,6 +243,15 @@ func _on_unit_deserted(unit: Node) -> void:
 func _on_unit_spawned(unit: Node, faction_id: int) -> void:
 	if faction_id in faction_units:
 		faction_units[faction_id].append(unit)
+
+
+## A unit defected instead of dying. Re-bucket it so both armies' rosters,
+## troop capacity and victory checks immediately reflect the new allegiance.
+func _on_unit_captured(unit: Node, _old_faction_id: int, new_faction_id: int) -> void:
+	_remove_unit_from_tracking(unit)
+	if new_faction_id in faction_units:
+		faction_units[new_faction_id].append(unit)
+	_check_victory_conditions(-1)
 
 
 func _on_building_captured(_building: Node, _faction_id: int) -> void:

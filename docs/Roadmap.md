@@ -123,7 +123,7 @@ made the tree look cosmetic even though it was mechanically real. Corrected:
 
 
 ## Milestone 4: Advanced Tactical Systems & Morale
-Status: 🟡 In progress — battlefield and terrain groundwork landed 2026-08-23
+Status: 🟢 Completed — all six tactical systems shipped 2026-08-23
 
 ### Landed early (prerequisites for the systems below)
 - [x] **30x20 battlefield** (`scripts/managers/MapBuilder.gd`): two rivers, four road-driven
@@ -139,12 +139,89 @@ Status: 🟡 In progress — battlefield and terrain groundwork landed 2026-08-2
 - [x] **Forest / rock props** placed off roads and building approaches — the terrain that
       Forest Ambush (below) will attach its bonuses to.
 
-- [ ] **Morale System**: Units shift between 5 states (Fearless → Eager → Fair → Shaken → Fearful) based on nearby deaths or being flanked *(inspired by Symphony of War)*.
-- [ ] **Surrender Mechanic**: Force surrender on low-morale enemies to capture them or gain resources *(inspired by Symphony of War)*.
-- [ ] **Terrain Ambush**: First strike and morale shock bonuses when attacking from Forest terrain *(inspired by Symphony of War)*. Props are placed but carry no gameplay effect yet; this needs a per-cell terrain-type map in `MapBuilder` that `CombatResolver` can query (`terrain_def_mult` is already a hook in `_calculate_damage`, currently pinned to 1.0).
-- [ ] **Fog of War**: Implement `FogOfWarTileMapLayer` to obscure enemy movements.
-- [ ] **Environmental Hazards**: Chain detonations via TNT Barrels and dynamic fire spread mechanics.
-- [ ] **Pandora's Box / Treasure Chests**: Random events and loot drops scattered across the map.
+### The six tactical systems (all shipped 2026-08-23)
+
+Three new Logic-layer managers carry them, injected through `setup()` like
+`AIManager` and communicating only over `EventBus`: **`MoraleManager`** (morale
+and surrender), **`VisionManager`** (fog of war), and **`MapObjectManager`**
+(chests, kegs, fire). The map objects themselves share one `MapObject` base —
+all three are "one cell, reacts when stepped on, ticks once per round" — so
+`Chest`, `Barrel` and `Fire` stay small and hold no manager references of their
+own.
+
+- [x] **Terrain System** *(prerequisite for the rest)*: `GameConfig.TerrainType`
+      + `TERRAIN_RULES` give every cell a move cost, a damage-taken multiplier,
+      a concealment flag and a flammability. `MapBuilder` derives the map while
+      it paints — a cell is Forest because a tree was actually drawn on it — and
+      `GridManager` owns it from then on as the single authority. Forest anchors
+      now grow into 2-4 cell clumps, because a one-tile wood is decoration and a
+      clump is a position worth taking.
+- [x] **Movement cost**: `GridManager` moved from uniform-cost BFS to a Dijkstra
+      movement field. Forest and rocks cost 2 MP, roads and bridges 1, so the
+      west/east highways are finally worth using. Reachability *and* the route
+      walked are both derived from the same field, which is what guarantees a
+      unit can never be offered a tile it cannot afford to reach.
+- [x] **Morale System**: a 0-100 scalar on `TacticalUnit`, with the 5 states
+      derived from it (an enum FSM — one concern, no nesting). Nearby deaths,
+      damage taken, flanking, ambushes, starvation and lost buildings move it;
+      it drifts back toward Fair each upkeep. Drives an attack multiplier
+      (0.80x-1.15x), desertion at Fearful, and surrender eligibility. **Undead
+      are immune** — derived from `unit_class`, no new field.
+- [x] **Surrender Mechanic**: a unit that survives an attack while Shaken or
+      Fearful may break. It freezes as a prisoner and its captor decides:
+      the player is asked through a modal with no cancel path, an AI captor
+      applies the capacity rule itself (take the prisoner if the army can feed
+      one, ransom them otherwise). Captured units defect — adopting the new
+      owner's own art via `UnitData.variant_for_faction` — arriving wounded,
+      shaken and already spent.
+- [x] **Terrain Ambush**: attacking out of Forest suppresses the counter-attack
+      entirely and lands a morale shock on the victim. Fills the
+      `terrain_def_mult` hook that had been pinned to 1.0 since Milestone 1.
+- [x] **Fog of War**: `FogOfWarTileMapLayer` with a tileset generated in code,
+      three states per cell (unseen / explored-and-remembered / visible). Uses
+      the Advance Wars rule rather than raycast LOS — radius, plus units on
+      concealing terrain only spotted from an adjacent tile — which is cheap and
+      has no corner cases. **Symmetric: the AI is bound by the same fog**, and
+      keeps a last-known-position scouting report so losing sight of an enemy
+      makes it march on the last sighting instead of going passive.
+- [x] **Environmental Hazards**: powder kegs sit beside the bridge mouths
+      (derived from the map's own bridge analysis, not hardcoded). They detonate
+      when stepped on or shot, deal TRUE damage, and chain through neighbouring
+      kegs via a breadth-first walk over a visited set. Fire damages whoever
+      stands in it, spreads to flammable neighbours, and **burns forest down to
+      `SCORCHED`** — permanently removing that cover, concealment and ambush.
+- [x] **Pandora's Box / Treasure Chests**: seeded scatter (fixed seed reproduces
+      a layout for tests). Four outcomes on the existing `GameConfig` odds — war
+      spoils, a mercenary, a trap, or the awakened dead, who enlist under the
+      opener's *enemy*. Closes the Milestone 3 gap: `skull_black.tres` finally
+      has a use.
+
+**Verified**: `scenes/test_milestone4.tscn` — 61 integration checks, all
+passing, covering every system above. The older suites (battlefield, combat,
+upgrade, village, undead) still pass unchanged.
+
+**Fixed along the way** (all pre-existing; each confirmed against the
+unmodified build before being touched):
+- `EconomyManager.get_used_capacity()` / `_apply_starvation()` ran `is` against
+  roster entries without an `is_instance_valid` check, so a single stale
+  reference crashed the game. Both are read on every HUD refresh and recruit
+  check. Found by the new test suite.
+- **Discrete key commands accepted auto-repeat.** Space / R / U / Escape all
+  fired on `echo` events, so *holding* Space opened the end-turn prompt and
+  confirmed it in the same breath. Fixed by dropping `event.echo` on all four.
+  ⚠️ **Still open, environment-side**: an idle match continues to advance by
+  itself on this machine. Stack-dumping every `end_turn()` caller showed all of
+  them arriving through the Space handler — never from the AI — and the same
+  runaway reproduces on the unmodified pre-Milestone-4 build, so it is not
+  something this milestone introduced. As the echo guard did not stop it, the
+  remaining events are real discrete Space presses reaching the game window
+  from outside the project. Check the keyboard before reading it as a game bug.
+- **AI turn hardening** (defensive, no observed failure): `AIManager` awaited
+  the *global* `unit_move_completed`, which resumes on whichever unit arrives
+  first rather than the one being waited on, and never resumes at all if the
+  move is rejected — either way the coroutine desynchronises from its turn, and
+  a late resume would end the turn twice. Replaced with a bounded per-unit wait
+  (`GridManager.is_unit_moving`) plus a `_turn_running` re-entrancy guard.
 
 ## Milestone 5: AI Enhancements, Campaign & Polish
 Status: ⬜ Planned
