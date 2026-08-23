@@ -318,3 +318,13 @@ All major changes to the **War Perang Tactics** project are recorded below.
   - Built `tests/test_units.gd`, `test_battlefield.gd`, `test_combat.gd`, `test_economy.gd` inheriting `McpTestSuite`.
   - Executed live test runner via `godot-ai` MCP server `test_run(verbose=True)`: **4/4 suites passed (563 assertions, 0 failures, 8ms runtime)**.
   - Updated `AGENTS.md` and `GEMINI.md` QA checklists to require automated `godot-ai` MCP testing before turn completion.
+
+### 14. 🧛 Undead (Skeleton, Vampire) Recruitment & Tile Selection Bug Fix
+- **Bug Fix (Vampire and Skeleton Not Moveable / Missing Tiles on Click)**:
+  - Root cause identified: `TacticalUnit._initialize_from_data()` contained a filename-based override that forcibly set `faction_id = BLACK_COVEN` (4) whenever `_black` appeared in the `unit_data` resource path. When the player (Blue Kingdom, faction 0) recruited an undead unit (Skeleton Fodder, Vampire) at Castle Black, this override changed the unit's owner to enemy Faction 4.
+  - Because `unit.faction_id` (4) != `TurnManager.get_current_faction()` (0), clicking on the unit treated it as an enemy, displaying "⚠️ Enemy unit! Select your own unit." and blocking movement/attack tiles.
+  - Removed the filename override in `TacticalUnit.gd`. `faction_id` is now strictly preserved as the commanding player's faction across recruitment, instantiation, and promotion.
+- **New Test Suite ([`scenes/test_undead_gameplay.tscn`](file:///home/aprxty3/Projects/godtot/war-perang-tactics/scenes/test_undead_gameplay.tscn))**:
+  - Fully verified recruiting Skeleton Fodder & Vampire for Blue Kingdom at Castle Black.
+  - Verified reachable movement tiles (Skeleton: 24, Vampire: 39) and attack tiles.
+  - Verified complete undead upgrade paths: Skeleton Fodder $\rightarrow$ Skeleton Warrior $\rightarrow$ Bone Reaper, and Vampire $\rightarrow$ Vampire Lord while retaining Blue Kingdom ownership.

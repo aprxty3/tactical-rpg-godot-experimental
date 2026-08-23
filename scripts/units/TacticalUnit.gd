@@ -100,18 +100,6 @@ func face_direction(target_global_pos: Vector2) -> void:
 func _initialize_from_data() -> void:
 	if not unit_data:
 		return
-	
-	# Defensive auto-resolve of faction_id if default 0 and resource path contains faction name
-	if faction_id == 0 and unit_data.resource_path != "":
-		var path_lower: String = unit_data.resource_path.to_lower()
-		if "_red." in path_lower or "/red/" in path_lower:
-			faction_id = GameConfig.Faction.RED_LEGION
-		elif "_purple." in path_lower or "/purple/" in path_lower:
-			faction_id = GameConfig.Faction.PURPLE_SYNDICATE
-		elif "_yellow." in path_lower or "/yellow/" in path_lower:
-			faction_id = GameConfig.Faction.YELLOW_EMPIRE
-		elif "_black." in path_lower or "/black/" in path_lower:
-			faction_id = GameConfig.Faction.BLACK_COVEN
 
 	current_health = unit_data.max_health
 	current_movement = unit_data.movement_points
