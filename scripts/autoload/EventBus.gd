@@ -115,7 +115,7 @@ signal logistics_collapse_started(faction_id: int)
 @warning_ignore("unused_signal")
 signal logistics_collapse_ended(faction_id: int)
 
-# === AI Story & Dynamic Narrative Signals (Gemini 3.7 Flash) ===
+# === AI Story & Dynamic Narrative Signals (Gemini Flash Lite) ===
 @warning_ignore("unused_signal")
 signal dialogue_generated(speaker_name: String, text: String, emotion: String)
 @warning_ignore("unused_signal")

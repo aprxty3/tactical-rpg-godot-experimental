@@ -48,7 +48,7 @@ Status: 🟢 Completed
 - [x] Implement robust Victory/Defeat condition checks based on Castle captures or Annihilation.
 - [x] Build a comprehensive UI (Resource bar, Unit inspector panel, Action context menu).
 - [x] Add sound effects (SFX) for combat impacts and movement.
-- [x] In-Game AI Narrative Engine: `GeminiClient.gd` autoload powered by **Gemini 3.7 Flash** for dynamic combat banter and territory capture declarations.
+- [x] In-Game AI Narrative Engine: `GeminiClient.gd` autoload powered by **Gemini 3.5 Flash Lite** for dynamic combat banter and territory capture declarations. Flash Lite replaced full Flash on 2026-08-25: the heavier model is a thinking model that burned ~480 reasoning tokens and 2.5-5.6s on a single one-line battle cry, which lands after the fight it is reacting to has ended.
 
 
 ## Milestone 3: Economy & Advanced Progression (Unit Upgrade Tree)

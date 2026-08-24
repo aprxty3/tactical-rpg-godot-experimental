@@ -102,14 +102,13 @@ func spend_iron(faction_id: int, amount: int) -> bool:
 
 # === Income Collection (called during Upkeep Phase) ===
 
-## Collect income from all controlled resource nodes for a faction.
-## gold_mines, iron_mines: count of mines controlled by this faction.
-func collect_income(faction_id: int, gold_mines: int, iron_mines: int, houses: int) -> void:
-	var gold_income := gold_mines * GameConfig.GOLD_MINE_INCOME + houses * GameConfig.HOUSE_GOLD_INCOME
-	var iron_income := iron_mines * GameConfig.IRON_MINE_INCOME
-
-	add_gold(faction_id, gold_income)
-	add_iron(faction_id, iron_income)
+## Pay a faction its per-turn revenue. Takes already-summed totals rather than
+## building counts: each Building states its own yield through get_income(), so
+## what a type is worth lives in exactly one place and a new building type earns
+## income without this function or TurnManager knowing it exists.
+func collect_income(faction_id: int, gold: int, iron: int) -> void:
+	add_gold(faction_id, gold)
+	add_iron(faction_id, iron)
 
 
 # === Upgrade Cost Calculation (Field Tax) ===

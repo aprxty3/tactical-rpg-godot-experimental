@@ -61,7 +61,15 @@ const HOLY_VS_UNDEAD_MULTIPLIER: float = 2.5  # Priest vs Skeleton/Vampire
 const BASE_TROOP_CAPACITY: int = 8
 const VILLAGE_CAPACITY_BONUS: int = 2
 const GOLD_MINE_INCOME: int = 50
-const IRON_MINE_INCOME: int = 30
+## A castle pays a small stipend on top of being a spawn point, so holding one is
+## worth something even before any mine is taken. Deliberately below a gold mine:
+## the castle is already the thing you cannot afford to lose.
+const CASTLE_GOLD_INCOME: int = 20
+## Iron is a scarce gate, not a currency: no unit costs more than 4 iron and a
+## faction opens with 6, so a mine yielding 30/turn made iron free forever after
+## the first capture. 3/turn keeps one mine worth roughly one heavy unit per turn,
+## the same ratio gold runs at, and matches PANDORA_SPOILS_IRON's 2-8 payout.
+const IRON_MINE_INCOME: int = 3
 const HOUSE_GOLD_INCOME: int = 10
 const FIELD_TAX_MULTIPLIER: int = 2       # 200% cost for field upgrades
 const STARVATION_DAMAGE: int = 15         # True damage per overcap turn

@@ -122,25 +122,22 @@ func _execute_upkeep() -> void:
 	var faction_id := get_current_faction()
 	var units := get_faction_units(faction_id)
 
-	# 1. Collect income from controlled resource nodes
+	# 1. Collect income from every building this faction holds. Each Building
+	#    reports its own yield, so a castle's stipend or a future building type
+	#    is paid without this loop knowing which types exist.
 	if economy_manager:
-		var gold_mines := 0
-		var iron_mines := 0
-		var houses := 0
-		
+		var gold := 0
+		var iron := 0
+
 		var tree = get_tree()
 		if tree:
 			for bld in tree.get_nodes_in_group("buildings"):
 				if bld is Building and bld.faction_id == faction_id:
-					match bld.building_type:
-						Building.BuildingType.GOLD_MINE:
-							gold_mines += 1
-						Building.BuildingType.IRON_MINE:
-							iron_mines += 1
-						Building.BuildingType.HOUSE:
-							houses += 1
+					var income: Dictionary = bld.get_income()
+					gold += int(income.get("gold", 0))
+					iron += int(income.get("iron", 0))
 
-		economy_manager.collect_income(faction_id, gold_mines, iron_mines, houses)
+		economy_manager.collect_income(faction_id, gold, iron)
 
 		# 2. Check logistics collapse (starvation)
 		economy_manager.check_logistics(faction_id, units)

@@ -72,7 +72,7 @@ func get_income() -> Dictionary:
 		BuildingType.HOUSE:
 			gold = GameConfig.HOUSE_GOLD_INCOME
 		BuildingType.CASTLE:
-			gold = 20 # Bonus pendapatan pasif kastil
+			gold = GameConfig.CASTLE_GOLD_INCOME
 
 	return {"gold": gold, "iron": iron}
 

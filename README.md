@@ -101,7 +101,7 @@ This project strictly enforces the **ROBUST**, **DRY**, **KISS**, and **YAGNI** 
 ## 🗺️ Detailed Roadmap & Milestones
 
 - [x] **Milestone 1**: Core Foundation (Decoupled Data-Driven Architecture, EventBus, TurnManager, GridManager, CombatResolver, EconomyManager, Building & Basic AI).
-- [ ] **Milestone 2**: Playable Prototype & Unit Expansion (Archer, Rogue, Wizzard, Priest, Vampire, Skeleton + Spritesheet Animations + In-Game Gemini 3.7 Flash AI).
+- [ ] **Milestone 2**: Playable Prototype & Unit Expansion (Archer, Rogue, Wizzard, Priest, Vampire, Skeleton + Spritesheet Animations + In-Game Gemini Flash Lite AI).
 - [ ] **Milestone 3**: Economy & Unit Upgrade Tree (Branching promotions, Field Tax 2x, Troop Capacity / Starvation, Village nodes).
 - [ ] **Milestone 4**: Advanced Tactical Systems (Morale & Surrender, Forest Ambush, Fog of War, TNT Chain Explosions). *Battlefield, impassable terrain and the pan/zoom camera have landed already.*
 - [ ] **Milestone 5**: Full Campaign, Advanced AI, UI Theme/HUD overhaul, SFX/BGM pipeline.

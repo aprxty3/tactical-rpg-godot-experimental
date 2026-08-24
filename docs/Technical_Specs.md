@@ -16,8 +16,8 @@ The economy in this game is driven by three main variables. Management of these 
 
 | Resource Type | Acquisition Method | Primary Utility | Over-cap / Deficit Consequence |
 | :--- | :--- | :--- | :--- |
-| **Gold (G)** | Gold Mines (+50/turn), Houses (+10/turn) | Baseline currency for recruiting all units, especially Magic/Support units. | Cannot drop below 0. Deficit prevents recruitment/upgrades. |
-| **Iron (Fe)** | Iron Mines (+30/turn) | Forging heavy armor and physical weaponry (Knights, Cavaliers). | Cannot drop below 0. Heavy units are locked without it. |
+| **Gold (G)** | Castle (+20/turn), Gold Mines (+50/turn), Houses (+10/turn) | Baseline currency for recruiting all units, especially Magic/Support units. | Cannot drop below 0. Deficit prevents recruitment/upgrades. |
+| **Iron (Fe)** | Iron Mines (+3/turn) | Forging heavy armor and physical weaponry (Knights, Cavaliers). | Cannot drop below 0. Heavy units are locked without it. |
 | **Troop Capacity (TC)** | Base Capacity (8) + Villages (+2/village) | Determines the maximum weight of active units on the board. | **Logistics Collapse:** Triggers starvation penalty if deployed TC > Max TC. |
 
 ### Unit Capacity Weighting System
@@ -33,7 +33,7 @@ Capacity is not calculated as "1 unit = 1 TC". Elite units require greater logis
 These nodes are the primary points of contention (Points of Interest). AI Pathfinding (via `AStarGrid2D`) will prioritize these nodes as secondary objectives besides attacking enemy units.
 
 ### A. Sustained Economy Nodes
-*   **Castle (Headquarters):** Unit spawn point. Has 500 HP. If HP reaches 0, the owning faction is eliminated. The faction that takes over gains spawn access in the area.
+*   **Castle (Headquarters):** Unit spawn point, and a passive node in its own right — pays **+20 Gold/turn** so holding one is worth something before any mine is taken. Has 500 HP. If HP reaches 0, the owning faction is eliminated. The faction that takes over gains spawn access in the area.
 *   **Gold Mine / Iron Mine:** Passive nodes. Once occupied (changes color according to faction), automatically injects resources at the start of every Upkeep Phase.
 *   **Village:** Adds +2 TC. Vulnerable to area of effect attacks. If destroyed by a TNT Barrel, the faction's TC is automatically reduced.
 
