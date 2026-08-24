@@ -242,14 +242,87 @@ unmodified build before being touched):
   (`GridManager.is_unit_moving`) plus a `_turn_running` re-entrancy guard.
 
 ## Milestone 5: AI Enhancements, Campaign & Polish
-Status: ⬜ Planned
+Status: 🟡 In progress — AI, Visual Polish, Mount System and Audio shipped 2026-08-25; Full Campaign deferred
 
-- [ ] **Advanced Enemy AI**: Strategic target prioritization (Gold Mines, Villages) and defensive maneuvering when at a disadvantage.
+**Verified**: `scenes/test_milestone5.tscn` — 88 integration checks, all passing.
+Every earlier suite (Milestone 4, battlefield, combat, all-units, upgrade,
+village, undead) still passes unchanged.
+
+- [x] **Advanced Enemy AI** *(2026-08-25)*: judgement split out of the turn loop
+      into `scripts/managers/ai/AITacticalEvaluator.gd`, so the scoring can be
+      tested on a built board without running a turn, awaiting a signal or
+      timing an animation.
+      - **Objectives are ranked by value per step of travel**, not proximity:
+        `GameConfig.AI_OBJECTIVE_VALUE` divided by the *real* terrain-aware path
+        cost. A Gold Mine 13 MP away now outranks an Iron Mine 11 MP away —
+        exactly the prioritisation the item asked for, which the old
+        nearest-building-wins rule could not express at all.
+      - **Movement follows the Dijkstra field**, not Manhattan distance. The old
+        stepper could not tell a road from a forest and routinely spent 2 MP to
+        save one tile of straight line.
+      - **Defensive manoeuvring**: a unit under `AI_RETREAT_HP_RATIO` health, or
+        standing where incoming threat is `AI_RETREAT_THREAT_RATIO` of the HP it
+        has left, breaks off toward the lowest-threat reachable cell with cover
+        as the tiebreak. A killing blow still outranks fleeing — a corpse cannot
+        chase.
+      - **Attacks are scored, not sorted by HP**: expected damage against the
+        counter it will eat, plus a kill bonus and an ambush bonus. A swing that
+        scores at or below zero is declined rather than feeding the unit in.
+      - **Recruitment counters what it can see**, using the same advantage table
+        combat resolves through.
+      - Damage is never recomputed: `CombatResolver.preview_damage()` was
+        promoted from private, so the AI plans against the exact numbers the
+        player experiences and the two can never drift.
 - [x] **Dynamic Camera System** — *pulled forward, delivered 2026-08-23*: `scripts/ui/TacticalCamera.gd` does WASD/arrow panning, drag-to-pan on any mouse button, edge panning, and wheel zoom clamped to the map bounds. Left-drag was added 2026-08-25 and needed the grid's click handler to move from press to release: whether a left press is a click or the start of a pan is only decidable once the cursor has moved, so acting on press answered the question too early. A 6 px threshold separates the two, and the camera marks a pan's release as handled so a drag never selects the tile it finished over. Pulled out of this milestone early because a 30x20 map is 1920x1280 world pixels and no longer fits one screen. Screen shake on heavy impacts is still outstanding.
-- [ ] **Visual Polish**: Advanced combat VFX (particles) and unit death / desertion animations. *(Palette-swap shaders for faction colouring are no longer planned — superseded by baked per-faction art, see Milestone 3 §3.)*
-- [ ] **Mount System**: Sprite mounting mechanics for cavalry units.
+- [x] **Visual Polish** *(2026-08-25)*: `scripts/managers/VfxManager.gd`, a pure
+      EventBus consumer — no gameplay script references it, so a scene without it
+      plays identically minus the sparkle. Impact, critical, death, desertion,
+      explosion and ambush bursts drive the previously-unused
+      `assets/effects/Particle FX/` art through one shared spawn helper. Death
+      reads red and violent, desertion pale and drifting, so a rout is
+      distinguishable from a kill at a glance.
+      - Uses **CPUParticles2D**: this project ships on the GL Compatibility
+        renderer, where the GPU path's extra features are unavailable anyway.
+      - Screen shake (the last outstanding Dynamic Camera item) animates the
+        camera's **`offset`, never `position`** — `position` is what `limit_*`
+        clamps, so a position-based shake is silently flattened against the map
+        edge, weakest exactly where the fighting tends to be.
+      - `MapObjectManager`'s hand-rolled explosion moved here, so there is one
+        explosion implementation instead of two in different managers.
+      *(Palette-swap shaders for faction colouring are no longer planned —
+      superseded by baked per-faction art, see Milestone 3 §3.)*
+- [x] **Mount System** *(2026-08-25)*: both halves.
+      - **Eight-way facing from five sheets.** Only Lancer ships directional art
+        (`Lancer_{Up|UpRight|Right|DownRight|Down}_Attack.png`, ×5 factions) and
+        it had been sitting unused — the resources pointed only at
+        `Lancer_Idle.png`. The three left-hand directions are those same sheets
+        mirrored, so five sheets cover eight facings.
+      - **Mount / dismount** via `scripts/data/MountProfile.gd` and `[M]`.
+        Mounted is Cavalry at MOV 5 / DEF 10; on foot is Melee at MOV 3 / DEF 14.
+        **Dismounting costs the unit's action** — without that price a rider
+        could stand still swapping class to present whichever one beats its
+        attacker, dodging the advantage triangle for free.
+      - **Backwards compatible by construction**: an empty `directional_attack`
+        and a null `mount_profile` reproduce the old behaviour exactly, so 86 of
+        the 91 unit resources needed no migration and are covered by an explicit
+        regression check.
+- [x] **Audio Overhaul** *(2026-08-25)*: `default_bus_layout.tres` (Master →
+      Music, SFX) plus a rewritten `AudioManager`: an 8-voice SFX pool (the old
+      single player cut off its own previous hit), tween crossfade between
+      tracks, and combat ducking on the bus rather than the player so it
+      survives a track change mid-fight. Track choice follows whose turn it is.
+      - The repo shipped **no music at all**, so
+        `scripts_dev/generate_music.py` renders three placeholder loops with the
+        stdlib only (numpy is absent). Every partial's frequency is snapped to a
+        multiple of 1/loop-length, so each completes a whole number of cycles and
+        the loop point is measurably gentler than the steepest slope already in
+        the track. They are scaffolding for the mixing code, not a soundtrack:
+        drop real tracks at the same paths to replace them.
+      - Loop mode is forced on the stream at load, because generated WAVs have no
+        `.import` loop setting and the score would otherwise play once and stop.
 - [ ] **Full Campaign**: Design a multi-chapter narrative campaign with escalating difficulty and persistent army progression.
-- [ ] **Audio Overhaul**: Full background music (BGM) pipeline and dynamic mixing.
+      **Deferred from this pass**: it needs a save/load layer, which does not
+      exist anywhere in the repo yet, and is alone larger than all of Milestone 4.
 
 ## Future Considerations (Post-MVP Backlog)
 Status: 🔮 Backlog

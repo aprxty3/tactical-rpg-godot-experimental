@@ -26,6 +26,14 @@ var _left_down: bool = false
 var _left_pan: bool = false
 var _left_press_pos: Vector2 = Vector2.ZERO
 
+## Screen shake, decayed in _process. Held as remaining strength + remaining time
+## rather than a Tween because a second impact during a shake must *reinforce*
+## the first, not restart it — a tween would snap the offset back and read as a
+## stutter mid-explosion.
+var _shake_strength: float = 0.0
+var _shake_remaining: float = 0.0
+var _shake_total: float = 0.0
+
 
 ## Fit the camera limits to the battlefield and centre it on `focus`.
 func configure(map_pixel_size: Vector2, focus: Vector2) -> void:
@@ -70,6 +78,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	_process_shake(delta)
+
 	var dir := Vector2.ZERO
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
 		dir.x -= 1.0
@@ -112,3 +122,42 @@ func _edge_pan_direction() -> Vector2:
 func _apply_zoom(delta_zoom: float) -> void:
 	var z: float = clampf(zoom.x + delta_zoom, zoom_min, zoom_max)
 	zoom = Vector2(z, z)
+
+
+## Rattle the view. Reinforcing rather than replacing: a bigger impact during an
+## existing shake takes over, a smaller one is ignored, so a chain of explosions
+## builds instead of resetting on every link.
+func shake(strength: float, duration: float) -> void:
+	if strength <= 0.0 or duration <= 0.0:
+		return
+	if strength >= _shake_strength:
+		_shake_strength = strength
+		_shake_total = duration
+		_shake_remaining = duration
+
+
+## Decay the shake and write it to `offset`.
+##
+## `offset` and NOT `position`: Camera2D clamps `position` against limit_left /
+## limit_right / limit_top / limit_bottom, so a position-based shake is silently
+## flattened against the map edge — weakest exactly where the fighting tends to
+## be. `offset` is applied after that clamp, so the shake is identical
+## everywhere on the map.
+func _process_shake(delta: float) -> void:
+	if _shake_remaining <= 0.0:
+		if offset != Vector2.ZERO:
+			offset = Vector2.ZERO
+		return
+
+	_shake_remaining = maxf(0.0, _shake_remaining - delta)
+	# Fade out over the shake's own duration so it settles instead of cutting.
+	var falloff: float = _shake_remaining / maxf(0.001, _shake_total)
+	var amount: float = _shake_strength * falloff
+	offset = Vector2(
+		randf_range(-amount, amount),
+		randf_range(-amount, amount)
+	)
+
+	if _shake_remaining <= 0.0:
+		_shake_strength = 0.0
+		offset = Vector2.ZERO

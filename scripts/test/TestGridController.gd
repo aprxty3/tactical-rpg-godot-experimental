@@ -12,6 +12,9 @@ extends Node2D
 @onready var decor_container: Node2D = $Decor
 @onready var morale_manager: MoraleManager = $MoraleManager
 @onready var vision_manager: VisionManager = $VisionManager
+## Optional: purely decorative, and nothing here ever reads it back. A scene
+## without it plays identically.
+@onready var vfx_manager: VfxManager = get_node_or_null("VfxManager")
 @onready var map_object_manager: MapObjectManager = $MapObjectManager
 @onready var map_object_container: Node2D = $MapObjects
 
@@ -72,7 +75,10 @@ func _ready() -> void:
 	map_object_manager.setup(grid_manager, economy_manager, map_object_container, unit_container)
 
 	if ai_manager:
-		ai_manager.setup(grid_manager, economy_manager, vision_manager, map_object_manager)
+		# combat_resolver last: it is what lets the AI score a swing with the same
+		# damage formula the player's attacks resolve through.
+		ai_manager.setup(grid_manager, economy_manager, vision_manager,
+			map_object_manager, combat_resolver)
 
 	# 3. Setup match dengan EconomyManager terinjeksi
 	TurnManager.setup_match(
@@ -137,6 +143,9 @@ func _setup_tactical_map() -> void:
 	# Fog needs the finished terrain to know what conceals.
 	vision_manager.setup(grid_manager, get_node_or_null("FogOfWarTileMapLayer"))
 
+	if vfx_manager:
+		vfx_manager.setup(grid_manager, camera, get_node_or_null("Vfx"))
+
 	if camera:
 		camera.configure(grid_manager.get_map_pixel_size(), _player_start_focus())
 
@@ -196,6 +205,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_U:
 		_try_upgrade_at_selected_unit()
+		return
+
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+		_try_toggle_mount()
 		return
 
 	if event is InputEventMouseMotion:
@@ -340,6 +353,43 @@ func _try_recruit_at_selected_castle() -> void:
 
 	if main_hud.has_method("show_recruit_popup"):
 		main_hud.show_recruit_popup(selected_building)
+
+
+## Get the selected rider on or off its horse.
+##
+## Mirrors the recruit/upgrade handlers: refuse with a readable reason rather
+## than silently doing nothing, so a player pressing [M] on the wrong unit
+## learns why instead of assuming the key is broken.
+func _try_toggle_mount() -> void:
+	if not selected_unit:
+		_update_hud_text("⚠️ Select a unit first.")
+		return
+	if selected_unit.faction_id != TurnManager.get_current_faction():
+		_update_hud_text("⚠️ You can only command your own units!")
+		return
+	if not selected_unit.can_mount():
+		_update_hud_text("⚠️ This unit has no mount.")
+		return
+	if not selected_unit.can_act():
+		_update_hud_text("⚠️ This unit has already acted this turn.")
+		return
+
+	var was_mounted: bool = selected_unit.is_mounted
+	if selected_unit.toggle_mount():
+		var state: String = "mounted" if selected_unit.is_mounted else "on foot"
+		_update_hud_text("🐴 %s is now %s (MOV %d · DEF %d · %s)" % [
+			selected_unit.unit_data.unit_name,
+			state,
+			selected_unit.get_effective_movement(),
+			selected_unit.get_effective_defense(),
+			selected_unit.get_effective_class(),
+		])
+		# Re-select so the movement overlay redraws against the new MOV — the
+		# highlighted tiles are computed at selection time and would otherwise
+		# still show the mounted range after stepping off the horse.
+		_select_unit(selected_unit)
+	else:
+		selected_unit.is_mounted = was_mounted
 
 
 func _try_upgrade_at_selected_unit() -> void:

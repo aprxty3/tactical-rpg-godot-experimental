@@ -246,6 +246,39 @@ const FIRE_SPREAD_MULT: float = 1.0
 ## firestorm behind it.
 const BLAST_IGNITION_MULT: float = 3.0
 
+# === Enemy AI Tuning ===
+## What each building is worth as an objective. The AI divides these by the real
+## path cost of reaching them, so a Gold Mine two roads away outranks a Village
+## next door — value per step, not raw proximity. Castles top the list because
+## taking one ends the match; Iron Mines sit low because iron is a scarce gate
+## rather than a currency (see IRON_MINE_INCOME).
+const AI_OBJECTIVE_VALUE: Dictionary = {
+	"castle": 100.0,
+	"gold_mine": 70.0,
+	"village": 55.0,
+	"iron_mine": 40.0,
+	"tower": 30.0,
+}
+## A neutral node is cheaper to take than one that has to be prised off an enemy.
+const AI_NEUTRAL_BONUS: float = 1.25
+## Finishing a wounded unit is worth more than chip damage: a corpse cannot
+## counter-attack next turn. Added to an attack's score when it would kill.
+const AI_KILL_BONUS: float = 1.5
+## How heavily expected counter-attack damage discounts an attack's score. At
+## 1.0 the AI treats damage taken as exactly as bad as damage dealt.
+const AI_COUNTER_WEIGHT: float = 0.8
+## Attacking out of ambush cover suppresses the counter entirely, so it is worth
+## seeking out.
+const AI_AMBUSH_BONUS: float = 0.6
+## Below this fraction of max HP a unit starts looking for a way out.
+const AI_RETREAT_HP_RATIO: float = 0.35
+## ...and so does any unit standing where the incoming threat this turn is at
+## least this fraction of the HP it has left, however healthy it looks.
+const AI_RETREAT_THREAT_RATIO: float = 0.9
+## Retreating units prefer cover; this weights the terrain damage multiplier
+## against raw threat when picking where to fall back to.
+const AI_RETREAT_COVER_WEIGHT: float = 12.0
+
 # === Pandora's Box Rewards ===
 const PANDORA_SPOILS_GOLD: Vector2i = Vector2i(80, 220)
 const PANDORA_SPOILS_IRON: Vector2i = Vector2i(2, 8)

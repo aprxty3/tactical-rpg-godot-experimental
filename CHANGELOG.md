@@ -12,6 +12,120 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+## 📅 Milestone 5 — Advanced AI, Visual Polish, Mount System & Audio (2026-08-25)
+
+Four of Milestone 5's five items. **Full Campaign is deliberately deferred**: it
+needs a save/load layer that does not exist anywhere in the repo, and is alone
+larger than all of Milestone 4.
+
+**Verified**: `scenes/test_milestone5.tscn` — **88 integration checks, all
+passing**. Every earlier suite still passes unchanged.
+
+### M5.1 🧠 Advanced Enemy AI
+- **`scripts/managers/ai/AITacticalEvaluator.gd`** (new, `RefCounted`): the AI's
+  judgement, separated from its turn loop. `AIManager` decides *when* to act;
+  this decides *what is worth doing*. The split is what makes the scoring
+  testable — a test builds a board and asks "is this Gold Mine worth more than
+  that Iron Mine" with no awaits, timers or signals.
+- **Objectives ranked by value per step**, not proximity: `AI_OBJECTIVE_VALUE`
+  ÷ real terrain-aware path cost, with a bonus for neutral over enemy-held.
+  Measured live: a Gold Mine at cost 13 scores 6.25 against an Iron Mine at cost
+  11 scoring 4.17 — the *further* objective correctly wins. The old
+  nearest-building-wins rule could not express this at all.
+- **Terrain-aware movement**: steps are chosen by real path cost with threat as
+  the tiebreak. Manhattan distance used to decide this and could not tell a road
+  (1 MP) from a forest (2 MP).
+- **Defensive manoeuvring** (new behaviour, the Roadmap item's second half): a
+  unit under 35 % HP, or standing where incoming threat is ≥ 90 % of its
+  remaining HP, withdraws to the lowest-threat reachable cell with cover as the
+  tiebreak. Verified: a 45 HP Pawn between two Warriors reads 96 incoming and
+  retreats *at full health*. A killing blow is still taken first — a corpse
+  cannot chase.
+- **Attack scoring** replaces "lowest HP wins": expected damage ÷ target HP,
+  minus the counter it will eat, plus kill and ambush bonuses. A swing scoring
+  ≤ 0 is declined rather than trading a Knight into a Mage for chip damage.
+- **Recruitment counters what it can see**, via the same advantage table combat
+  resolves through.
+- **`CombatResolver.preview_damage()`** promoted from private, plus
+  `class_advantage()`. The AI must never own a second copy of the damage formula
+  — a copy drifts the moment either side is tuned, and the AI would then plan
+  against rules the player never experiences. A `def_cell_override` argument
+  lets threat mapping ask "what would this cost if the unit stood *there*".
+
+### M5.2 ✨ Visual Polish
+- **`scripts/managers/VfxManager.gd`** (new): a pure EventBus consumer. No
+  gameplay script holds a reference, so a scene that omits it behaves
+  identically minus the sparkle — which is what the older focused test scenes
+  need.
+- Six burst types (impact, crit, death, desert, explosion, ambush) driving the
+  previously-unused `assets/effects/Particle FX/` art through **one** shared
+  spawn helper, not one function per effect. Death reads red and violent,
+  desertion pale and drifting upward, so a rout is distinguishable from a kill.
+- **CPUParticles2D, not GPU**: this project ships on the GL Compatibility
+  renderer where the GPU path's extra features are unavailable anyway, and the
+  CPU node needs no `ParticleProcessMaterial`.
+- **Screen shake** — the last outstanding Dynamic Camera item — animates the
+  camera's **`offset`, never `position`**. `position` is what `limit_*` clamps,
+  so a position-based shake is silently flattened against the map edge, weakest
+  exactly where the fighting tends to be. Reinforces rather than restarts, so a
+  chain of explosions builds instead of stuttering.
+- `MapObjectManager._spawn_explosion()` moved here: one explosion
+  implementation instead of two owned by different managers.
+
+### M5.3 🐴 Mount System
+- **Eight-way facing from five sheets.** Only Lancer ships directional art, and
+  it had been unused — the resources pointed only at `Lancer_Idle.png`, which
+  fell into the single-row-strip fallback, so Lancer had no distinct attack
+  animation at all. The three left-hand directions are the Right-side sheets
+  mirrored.
+- **`scripts/data/MountProfile.gd`** (new Resource) + `[M]`. Mounted: Cavalry,
+  MOV 5, DEF 10. On foot: Melee, MOV 3, DEF 14. **Dismounting costs the unit's
+  action** — without that price a rider could stand still swapping class to
+  present whichever one beats its attacker, dodging the advantage triangle for
+  free.
+- **Bug this uncovered**: the Cavalry momentum charge was keyed on
+  `att_class == "Cavalry" or "lancer" in att_name`, so a dismounted rider kept
+  the charge purely because of what it was called — the mount system had no
+  mechanical effect until this was fixed. Now class-only. The equivalent Rogue
+  name check deliberately **stays**, because Skeleton Rogue is class `Undead`
+  (so Holy Smite applies) yet is meant to backstab, and its name is the only
+  thing that says so.
+- **Backwards compatible by construction**: empty `directional_attack` and null
+  `mount_profile` reproduce the old behaviour exactly. 86 of 91 unit resources
+  needed no migration, covered by an explicit regression check.
+- `scripts_dev/wire_mounts.py` wires the five Lancers idempotently, validating
+  that every sheet exists and shares one frame size before touching a file.
+
+### M5.4 🔊 Audio Overhaul
+- **`default_bus_layout.tres`**: Master → Music, SFX.
+- **`AudioManager` rewritten**: an 8-voice SFX pool (the old single player cut
+  off its own previous hit — a busy melee sounded thinner than it was), tween
+  crossfade between tracks, and combat ducking applied to the **bus** rather
+  than the player so it survives a track change mid-fight. Track choice follows
+  whose turn it is.
+- **`scripts_dev/generate_music.py`** (new): the repo shipped no music at all,
+  and crossfade/ducking cannot be judged against silence. Renders three loops
+  with the stdlib only (numpy is absent), matching the existing SFX format.
+  Every partial's frequency is snapped to a multiple of 1/loop-length so each
+  completes a whole number of cycles; the loop point measures 0.08–0.22× the
+  steepest slope already in the track. Placeholder scaffolding, not a
+  soundtrack — drop real tracks at the same paths.
+- Loop mode is forced on the stream at load: generated WAVs carry no `.import`
+  loop setting, and the score would otherwise play once and leave the match
+  silent.
+- Volume API converts through `linear_to_db`, and **mutes at zero** instead of
+  writing `-inf` dB.
+
+### M5.5 🐛 Fixed along the way
+- **`GridManager.get_path_cells()` corrupted the grid.** It restored `from_cell`
+  to solid unconditionally while remembering the original state of `to_cell`, so
+  asking for a route *from an empty cell* marked that cell permanently
+  impassable — invisible until something later failed to path through it. It had
+  zero callers and the AI was about to become the first. Now symmetric.
+- **Cavalry charge keyed on unit name** — see M5.3.
+
+---
+
 ## 📅 Fog Rendering, Economy Scale & Input Fixes (2026-08-25)
 
 A bug-fix pass between Milestone 4 and 5. Every item below was reproduced live

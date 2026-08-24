@@ -368,15 +368,22 @@ func get_path_cells(from_cell: Vector2i, to_cell: Vector2i, _unit: TacticalUnit 
 	if not is_within_bounds(from_cell) or not is_within_bounds(to_cell):
 		return path_array
 
-	# Lepaskan sementara status solid titik awal & akhir agar AStar bisa menemukan rute
+	# Lepaskan sementara status solid titik awal & akhir agar AStar bisa menemukan rute.
+	# Both ends remember what they were: restoring `from_cell` to solid
+	# unconditionally would mark an EMPTY start cell permanently impassable, and
+	# the corruption is invisible until something later fails to path through it.
+	# The AI asks for routes from cells nobody stands on, so this has to be
+	# symmetric with the `to_cell` handling directly below.
+	var start_was_solid: bool = astar.is_point_solid(from_cell)
 	astar.set_point_solid(from_cell, false)
-	var target_was_solid = astar.is_point_solid(to_cell)
+	var target_was_solid: bool = astar.is_point_solid(to_cell)
 	astar.set_point_solid(to_cell, false)
 
 	var raw_path = astar.get_id_path(from_cell, to_cell)
 
 	# Kembalikan status solid
-	astar.set_point_solid(from_cell, true)
+	if start_was_solid:
+		astar.set_point_solid(from_cell, true)
 	if target_was_solid:
 		astar.set_point_solid(to_cell, true)
 

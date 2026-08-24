@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/managers/MoraleManager.gd" id="24_b04lf"]
 [ext_resource type="Script" path="res://scripts/managers/VisionManager.gd" id="25_jgmjf"]
 [ext_resource type="Script" path="res://scripts/managers/MapObjectManager.gd" id="26_8j6b7"]
+[ext_resource type="Script" path="res://scripts/managers/VfxManager.gd" id="27_vfx"]
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Black.tscn" id="castle_black"]
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle.tscn" id="castle_blue"]
 [ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Purple.tscn" id="castle_purple"]
@@ -172,6 +173,12 @@ script = ExtResource("26_8j6b7")
 
 [node name="MapObjects" type="Node2D" parent="." unique_id=1935240172]
 z_index = -1
+
+[node name="VfxManager" type="Node" parent="." unique_id=1428830052]
+script = ExtResource("27_vfx")
+
+[node name="Vfx" type="Node2D" parent="." unique_id=1428830053]
+z_index = 5
 
 [node name="FogOfWarTileMapLayer" type="TileMapLayer" parent="." unique_id=1105013382]
 z_index = 10

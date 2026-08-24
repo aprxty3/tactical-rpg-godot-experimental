@@ -19,8 +19,6 @@ class_name MapObjectManager
 @export var barrel_count: int = 6
 
 ## 1728x192 sheet — nine 192px frames in a single row.
-const EXPLOSION_TEXTURE: String = "res://assets/effects/Explosion/Explosions.png"
-const EXPLOSION_HFRAMES: int = 9
 const DEFAULT_UNIT_SCENE: String = "res://scenes/units/TacticalUnit.tscn"
 ## What claws its way out of a chest that should have stayed shut.
 const AWAKENED_UNITS: Array[String] = [
@@ -213,8 +211,11 @@ func detonate_at(origin: Vector2i) -> void:
 
 
 func _apply_blast(cell: Vector2i, chain_index: int) -> void:
+	# Drawing the blast is VfxManager's job — it listens for this signal. This
+	# manager owns map objects and their rules, not their pyrotechnics, and
+	# keeping the visual here meant a scene could render two explosions or none
+	# depending on which manager it happened to include.
 	EventBus.hazard_detonated.emit(cell, GameConfig.BARREL_BLAST_RADIUS, chain_index)
-	_spawn_explosion(cell)
 
 	for target in _cells_within(cell, GameConfig.BARREL_BLAST_RADIUS):
 		var victim: TacticalUnit = unit_at(target)
@@ -245,35 +246,6 @@ func _cells_within(origin: Vector2i, radius: int) -> Array[Vector2i]:
 			if is_instance_valid(grid_manager) and grid_manager.is_within_bounds(cell):
 				cells.append(cell)
 	return cells
-
-
-func _spawn_explosion(cell: Vector2i) -> void:
-	if not is_instance_valid(object_container) or not is_instance_valid(grid_manager):
-		return
-	var texture: Texture2D = load(EXPLOSION_TEXTURE) as Texture2D
-	if not is_instance_valid(texture):
-		return
-
-	var sprite := Sprite2D.new()
-	sprite.texture = texture
-	sprite.hframes = EXPLOSION_HFRAMES
-	sprite.frame = 0
-	sprite.scale = Vector2.ONE * (110.0 / float(texture.get_height()))
-	sprite.position = grid_manager.grid_to_world(cell)
-	sprite.z_index = 6
-	object_container.add_child(sprite)
-
-	var tween := sprite.create_tween()
-	tween.tween_method(_set_explosion_frame.bind(sprite), 0.0, float(EXPLOSION_HFRAMES), 0.45)
-	tween.tween_callback(sprite.queue_free)
-
-
-## Tween target for the explosion sheet. A bound method rather than an inline
-## lambda: tween_method passes the interpolated value first and the bound sprite
-## after it, and it keeps the call a single readable line.
-func _set_explosion_frame(value: float, sprite: Sprite2D) -> void:
-	if is_instance_valid(sprite):
-		sprite.frame = clampi(int(value), 0, EXPLOSION_HFRAMES - 1)
 
 
 # ==============================================================================

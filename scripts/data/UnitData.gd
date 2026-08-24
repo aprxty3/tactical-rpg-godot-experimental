@@ -59,6 +59,25 @@ class_name UnitData
 @export var sprite_frames: SpriteFrames
 @export var portrait: Texture2D
 
+@export_group("Directional Art (optional)")
+## Attack sheets keyed by facing: "Up", "UpRight", "Right", "DownRight", "Down".
+## The left-facing halves are produced by flipping the Right-side entries, so
+## five sheets cover eight directions.
+##
+## **Leaving this empty is the supported default** — a unit with no entries keeps
+## the plain horizontal-flip behaviour every unit had before, which is why all
+## the existing resources needed no migration. Only the cavalry sheets that ship
+## with per-direction art fill it in.
+@export var directional_attack: Dictionary = {}
+## Frames per directional attack sheet. These are single-row strips, so this is
+## the whole layout — the TinySwords cavalry attacks are 3 frames.
+@export var directional_attack_hframes: int = 3
+
+@export_group("Mount (optional)")
+## Present only on units that ride. Null means "this unit cannot mount", which
+## is every unit that does not explicitly opt in.
+@export var mount_profile: Resource
+
 
 # === Derived Data ===
 # Pure lookups, not game logic: they resolve a stored value against its

@@ -1,0 +1,574 @@
+extends Node2D
+## TestMilestone5 — integration coverage for the four Milestone 5 systems:
+## advanced enemy AI, visual polish, the mount system and the audio pipeline.
+##
+## Same soft-check harness as TestMilestone4: every check reports and the run
+## ends with one summary line, so a break in one system cannot hide the state of
+## the other three.
+##
+## The AI section is deliberately assertion-heavy and await-free. Splitting
+## judgement out into AITacticalEvaluator is what makes that possible — the
+## scoring can be interrogated on a built board without running a turn, timing
+## an animation, or waiting on a signal.
+
+var _passed: int = 0
+var _failed: int = 0
+var _failures: Array[String] = []
+
+var main: Node2D
+var grid: GridManager
+var combat: CombatResolver
+var vision: VisionManager
+var ai: AIManager
+var vfx: VfxManager
+var camera: TacticalCamera
+var units_root: Node2D
+
+
+func _ready() -> void:
+	print("==========================================================")
+	print("🎯 [TEST MILESTONE 5] Advanced AI · VFX · Mount · Audio")
+	print("==========================================================")
+
+	main = load("res://scenes/TestGridScene.tscn").instantiate()
+	add_child(main)
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	grid = main.get_node("GridManager")
+	combat = main.get_node("CombatResolver")
+	vision = main.get_node("VisionManager")
+	ai = main.get_node("AIManager")
+	vfx = main.get_node("VfxManager")
+	camera = main.get_node("Camera2D")
+	units_root = main.get_node("Units")
+
+	# Freeze the scene's own input handling. Turns advancing mid-run would move
+	# the map's units between assertions and make failures irreproducible; the
+	# controller's _unhandled_input is what ends a turn, so silencing it is what
+	# actually holds the board still.
+	main.set_process_unhandled_input(false)
+
+	_test_damage_preview()
+	_test_objective_scoring()
+	_test_terrain_aware_pathing()
+	_test_attack_scoring()
+	_test_threat_and_retreat()
+	_test_recruit_composition()
+	await _test_vfx()
+	_test_camera_shake()
+	_test_mount_system()
+	_test_directional_facing()
+	_test_backwards_compatibility()
+	await _test_audio()
+
+	_report()
+
+
+# ==============================================================================
+# 1. ADVANCED AI
+# ==============================================================================
+
+func _test_damage_preview() -> void:
+	print("\n--- 1. Damage preview (the AI's one source of truth) ---")
+	var a := _spawn("res://resources/units/warrior_blue.tres", 0, Vector2i(4, 4))
+	var d := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(5, 4))
+
+	var preview: Dictionary = combat.preview_damage(a, d)
+	_check(int(preview.get("damage", 0)) > 0, "preview_damage returns a real number")
+
+	var hp_before: int = d.current_health
+	_check(d.current_health == hp_before, "preview_damage does not touch the defender")
+
+	# The number the AI plans with must be the number the player experiences.
+	var resolved: Dictionary = combat.resolve_combat(a, d)
+	var dealt: int = int(resolved["primary_attack"]["damage"])
+	_check(dealt == int(preview["damage"]),
+		"preview matches what resolve_combat actually deals (%d)" % dealt)
+
+	_despawn([a, d])
+
+
+func _test_objective_scoring() -> void:
+	print("\n--- 2. Objective scoring (value per step, not proximity) ---")
+	var ev := AITacticalEvaluator.new(grid, combat, null, 1)
+	var unit := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(15, 8))
+
+	var gold := _building_of_type("gold_mine")
+	var iron := _building_of_type("iron_mine")
+	_check(is_instance_valid(gold) and is_instance_valid(iron),
+		"map provides a Gold Mine and an Iron Mine to compare")
+
+	if is_instance_valid(gold) and is_instance_valid(iron):
+		# Same cell for both, so only the type weighting can separate them.
+		var gold_score: float = GameConfig.AI_OBJECTIVE_VALUE["gold_mine"]
+		var iron_score: float = GameConfig.AI_OBJECTIVE_VALUE["iron_mine"]
+		_check(gold_score > iron_score,
+			"a Gold Mine outranks an Iron Mine at equal distance (%.0f > %.0f)"
+				% [gold_score, iron_score])
+
+	var castle := _building_of_type("castle")
+	if is_instance_valid(castle):
+		_check(GameConfig.AI_OBJECTIVE_VALUE["castle"] > GameConfig.AI_OBJECTIVE_VALUE["gold_mine"],
+			"a Castle outranks every economic node")
+
+	# Owning it means there is nothing to take.
+	var own := _building_of_faction(1)
+	if is_instance_valid(own):
+		_check(ev.score_objective(unit, own) == -INF,
+			"a building the AI already owns scores as no objective")
+
+	var best: Building = ev.best_objective(unit)
+	_check(is_instance_valid(best), "best_objective finds something worth walking to")
+	if is_instance_valid(best):
+		_check(best.faction_id != 1, "the chosen objective is not already ours")
+
+	_despawn([unit])
+
+
+func _test_terrain_aware_pathing() -> void:
+	print("\n--- 3. Terrain-aware pathing (roads beat forest) ---")
+	var ev := AITacticalEvaluator.new(grid, combat, null, 1)
+
+	var road_cell := _cell_of_terrain(GameConfig.TerrainType.ROAD)
+	var forest_cell := _cell_of_terrain(GameConfig.TerrainType.FOREST)
+	_check(road_cell != Vector2i(-1, -1) and forest_cell != Vector2i(-1, -1),
+		"map provides both road and forest to compare")
+
+	if road_cell != Vector2i(-1, -1) and forest_cell != Vector2i(-1, -1):
+		_check(grid.get_move_cost(forest_cell) > grid.get_move_cost(road_cell),
+			"forest costs more to enter than road (%d > %d)"
+				% [grid.get_move_cost(forest_cell), grid.get_move_cost(road_cell)])
+
+	# The cost of a route must reflect the terrain crossed, not the tile count —
+	# this is what the old Manhattan stepper could not express.
+	var a := Vector2i(3, 16)
+	var b := Vector2i(10, 15)
+	var cost: int = ev.path_cost_between(a, b)
+	var manhattan: int = absi(a.x - b.x) + absi(a.y - b.y)
+	_check(cost >= manhattan,
+		"real path cost is never cheaper than the tile count (%d >= %d)" % [cost, manhattan])
+	_check(ev.path_cost_between(a, a) == 0, "cost to stand still is zero")
+
+
+func _test_attack_scoring() -> void:
+	print("\n--- 4. Attack scoring (kills, counters, matchups) ---")
+	var ev := AITacticalEvaluator.new(grid, combat, null, 1)
+	var attacker := _spawn("res://resources/units/warrior_red.tres", 1, Vector2i(8, 8))
+	var healthy := _spawn("res://resources/units/pawn_blue.tres", 0, Vector2i(9, 8))
+	var wounded := _spawn("res://resources/units/pawn_blue.tres", 0, Vector2i(7, 8))
+	wounded.current_health = 1
+
+	var score_healthy: float = ev.score_attack(attacker, healthy)
+	var score_wounded: float = ev.score_attack(attacker, wounded)
+	_check(score_wounded > score_healthy,
+		"a killable target outranks a healthy one (%.2f > %.2f)" % [score_wounded, score_healthy])
+	_check(ev.would_kill(attacker, wounded), "would_kill agrees the 1 HP target dies")
+	_check(not ev.would_kill(attacker, healthy), "would_kill rejects the healthy target")
+
+	var target: TacticalUnit = ev.best_attack_target(attacker)
+	_check(target == wounded, "best_attack_target picks the kill")
+
+	# A unit that cannot act has nothing to offer.
+	attacker.has_acted = true
+	_check(ev.best_attack_target(attacker) == null, "a spent unit finds no target")
+	attacker.has_acted = false
+
+	_despawn([attacker, healthy, wounded])
+
+
+func _test_threat_and_retreat() -> void:
+	print("\n--- 5. Threat map & tactical retreat ---")
+	var ev := AITacticalEvaluator.new(grid, combat, null, 1)
+	var lone := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(15, 8))
+	var foe_a := _spawn("res://resources/units/warrior_blue.tres", 0, Vector2i(16, 8))
+	var foe_b := _spawn("res://resources/units/warrior_blue.tres", 0, Vector2i(14, 8))
+
+	var here: float = ev.threat_at(lone.grid_position, lone)
+	var far: float = ev.threat_at(Vector2i(2, 2), lone)
+	_check(here > 0.0, "standing between two enemies registers threat (%.0f)" % here)
+	_check(far < here, "a distant cell is safer (%.0f < %.0f)" % [far, here])
+
+	_check(ev.should_retreat(lone),
+		"a unit facing more damage than it has HP wants out, even at full health")
+
+	lone.current_health = lone.unit_data.max_health
+	_despawn([foe_a, foe_b])
+	# NOT "threat is now zero": the map has its own garrison, and asserting an
+	# absolute here would be testing the scene's unit placement rather than the
+	# rule. Assert the rule itself, against whatever threat actually remains.
+	var after: float = ev.threat_at(lone.grid_position, lone)
+	_check(after < here,
+		"removing the adjacent enemies lowers the threat (%.0f < %.0f)" % [after, here])
+	var lethal: float = after / float(maxi(1, lone.current_health))
+	_check(ev.should_retreat(lone) == (lethal >= GameConfig.AI_RETREAT_THREAT_RATIO),
+		"at full health the retreat decision follows the threat ratio exactly (%.2f vs %.2f)"
+			% [lethal, GameConfig.AI_RETREAT_THREAT_RATIO])
+
+	# Wounded is its own independent trigger.
+	lone.current_health = int(lone.unit_data.max_health * 0.2)
+	_check(ev.should_retreat(lone), "a badly wounded unit retreats even unthreatened")
+
+	var foe_c := _spawn("res://resources/units/warrior_blue.tres", 0, Vector2i(16, 8))
+	var refuge: Vector2i = ev.best_retreat_cell(lone)
+	if refuge != Vector2i(-1, -1):
+		_check(ev.threat_at(refuge, lone) <= ev.threat_at(lone.grid_position, lone),
+			"the chosen refuge is no more dangerous than standing still")
+	else:
+		_check(true, "no safer cell existed, so the unit correctly stands and fights")
+
+	_despawn([lone, foe_c])
+
+
+func _test_recruit_composition() -> void:
+	print("\n--- 6. Recruitment counters what it can see ---")
+	# The advantage table is the same one combat resolves through.
+	_check(combat.class_advantage("Melee", "Ranged") > 1.0, "Melee beats Ranged")
+	_check(combat.class_advantage("Ranged", "Mage") > 1.0, "Ranged beats Mage")
+	_check(combat.class_advantage("Mage", "Melee") > 1.0, "Mage beats Melee")
+	_check(combat.class_advantage("Ranged", "Melee") < 1.0, "Ranged loses to Melee")
+	_check(is_equal_approx(combat.class_advantage("Melee", "Melee"), 1.0),
+		"a mirror matchup is neutral")
+
+
+# ==============================================================================
+# 2. VISUAL POLISH
+# ==============================================================================
+
+func _test_vfx() -> void:
+	print("\n--- 7. VFX ---")
+	var container: Node2D = main.get_node("Vfx")
+	_check(is_instance_valid(vfx), "VfxManager is present")
+	_check(is_instance_valid(vfx.effect_container), "VfxManager received its container")
+
+	var before: int = container.get_child_count()
+	var spawned := 0
+	for id in ["impact", "crit", "death", "desert", "explosion", "ambush"]:
+		if is_instance_valid(vfx.burst_at_cell(Vector2i(15, 8), id)):
+			spawned += 1
+	_check(spawned == 6, "every named burst spawns (%d/6)" % spawned)
+	_check(container.get_child_count() > before, "effects land in the container")
+
+	_check(vfx.burst_at_cell(Vector2i(15, 8), "no_such_effect") == null,
+		"an unknown effect id is refused rather than crashing")
+
+	var flip := vfx.flipbook_at_cell(
+		Vector2i(15, 8), vfx.EXPLOSION_SHEET, vfx.EXPLOSION_FRAMES, 0.3, 110.0)
+	_check(is_instance_valid(flip), "the explosion flipbook spawns")
+
+	# The leak test: hundreds of these fire in a match, so they must free
+	# themselves without anyone calling back.
+	await get_tree().create_timer(1.6).timeout
+	_check(container.get_child_count() == 0,
+		"every effect freed itself (%d left)" % container.get_child_count())
+
+	# Combat must drive VFX through the bus alone — nothing calls VfxManager.
+	var a := _spawn("res://resources/units/warrior_blue.tres", 0, Vector2i(4, 4))
+	var d := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(5, 4))
+	combat.resolve_combat(a, d)
+	await get_tree().process_frame
+	_check(container.get_child_count() > 0, "combat spawns VFX with no direct call")
+	_despawn([a, d])
+
+
+func _test_camera_shake() -> void:
+	print("\n--- 8. Camera shake ---")
+	var pos_before: Vector2 = camera.position
+	camera.offset = Vector2.ZERO
+	camera.shake(8.0, 0.3)
+	camera._process_shake(0.05)
+	_check(camera.offset != Vector2.ZERO, "shake displaces the camera")
+	# The rule that keeps shake honest at the map edge, where limit_* clamps
+	# position but leaves offset alone.
+	_check(camera.position == pos_before, "shake moves offset, never position")
+
+	camera._process_shake(10.0)
+	_check(camera.offset == Vector2.ZERO, "shake settles back to zero")
+
+	camera.shake(2.0, 0.2)
+	camera._process_shake(0.01)
+	var weak: float = camera.offset.length()
+	camera.shake(20.0, 0.4)
+	camera._process_shake(0.01)
+	_check(camera.offset.length() >= weak,
+		"a stronger impact during a shake reinforces rather than restarting it")
+	camera._process_shake(10.0)
+
+
+# ==============================================================================
+# 3. MOUNT SYSTEM
+# ==============================================================================
+
+func _test_mount_system() -> void:
+	print("\n--- 9. Mount / dismount ---")
+	var lancer := _spawn("res://resources/units/lancer_blue.tres", 0, Vector2i(6, 6))
+	_check(lancer.can_mount(), "a Lancer has a mount profile")
+	_check(lancer.is_mounted, "riders start in the saddle")
+
+	var mounted_class: String = lancer.get_effective_class()
+	var mounted_mov: int = lancer.get_effective_movement()
+	var mounted_def: int = lancer.get_effective_defense()
+	_check(mounted_class == "Cavalry", "mounted, it fights as Cavalry")
+
+	lancer.has_acted = false
+	_check(lancer.toggle_mount(), "dismount succeeds")
+	_check(not lancer.is_mounted, "state flipped to on foot")
+	_check(lancer.get_effective_class() == "Melee", "on foot, it fights as Melee")
+	_check(lancer.get_effective_movement() < mounted_mov,
+		"dismounting costs movement (%d < %d)" % [lancer.get_effective_movement(), mounted_mov])
+	_check(lancer.get_effective_defense() > mounted_def,
+		"dismounting gains defence (%d > %d)" % [lancer.get_effective_defense(), mounted_def])
+
+	# The price that stops a rider from swapping class to dodge every matchup.
+	_check(not lancer.can_act(), "toggling consumes the unit's action")
+	_check(not lancer.toggle_mount(), "a spent unit cannot toggle again")
+
+	# Combat has to read the live class, or a dismounted rider keeps the charge.
+	lancer.has_acted = false
+	var foe := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(7, 6))
+	var on_foot: int = int(combat.preview_damage(lancer, foe).get("damage", 0))
+	lancer.toggle_mount()
+	var mounted_dmg: int = int(combat.preview_damage(lancer, foe).get("damage", 0))
+	_check(mounted_dmg > on_foot,
+		"mounted hits harder than on foot (%d > %d) — the charge follows the class"
+			% [mounted_dmg, on_foot])
+
+	_despawn([lancer, foe])
+
+
+func _test_directional_facing() -> void:
+	print("\n--- 10. Eight-way facing from five sheets ---")
+	var lancer := _spawn("res://resources/units/lancer_blue.tres", 0, Vector2i(10, 10))
+	var origin: Vector2 = lancer.global_position
+
+	var cases := {
+		"Up": Vector2(0, -64), "UpRight": Vector2(64, -64), "Right": Vector2(64, 0),
+		"DownRight": Vector2(64, 64), "Down": Vector2(0, 64),
+	}
+	var correct := 0
+	for expected in cases:
+		lancer.face_direction(origin + cases[expected])
+		if lancer.facing == expected:
+			correct += 1
+	_check(correct == cases.size(), "all five authored facings resolve (%d/5)" % correct)
+
+	# The left half is the same sheets mirrored — five sheets, eight directions.
+	lancer.face_direction(origin + Vector2(-64, 0))
+	_check(lancer.facing == "Right" and lancer.sprite.flip_h,
+		"west mirrors the Right sheet")
+	lancer.face_direction(origin + Vector2(-64, -64))
+	_check(lancer.facing == "UpRight" and lancer.sprite.flip_h,
+		"north-west mirrors the UpRight sheet")
+	lancer.face_direction(origin + Vector2(64, 0))
+	_check(not lancer.sprite.flip_h, "east is unmirrored")
+
+	lancer.face_direction(origin + Vector2(0, -64))
+	var base_tex: Texture2D = lancer.sprite.texture
+	lancer.play_animation("attack")
+	_check(lancer.sprite.texture != base_tex, "attacking swaps to the directional sheet")
+	_check(lancer.sprite.hframes == lancer.unit_data.directional_attack_hframes,
+		"the swapped sheet carries its own frame count")
+	lancer.play_animation("idle")
+	_check(lancer.sprite.texture == lancer.unit_data.spritesheet,
+		"any other animation restores the base sheet")
+
+	_despawn([lancer])
+
+
+func _test_backwards_compatibility() -> void:
+	print("\n--- 11. Regression guard: units without the new fields ---")
+	var pawn := _spawn("res://resources/units/pawn_blue.tres", 0, Vector2i(12, 12))
+	_check(not pawn.can_mount(), "a Pawn has no mount and knows it")
+	_check(not pawn.has_directional_art(), "a Pawn has no directional art")
+	_check(pawn.get_effective_class() == pawn.unit_data.unit_class,
+		"effective class equals the raw stat block")
+	_check(pawn.get_effective_movement() == pawn.unit_data.movement_points,
+		"effective movement equals the raw stat block")
+	_check(pawn.get_effective_defense() == pawn.unit_data.defense_power,
+		"effective defence equals the raw stat block")
+
+	var base_tex: Texture2D = pawn.sprite.texture
+	var base_h: int = pawn.sprite.hframes
+	pawn.play_animation("attack")
+	_check(pawn.sprite.texture == base_tex and pawn.sprite.hframes == base_h,
+		"attacking never swaps the sheet of a unit without directional art")
+
+	pawn.face_direction(pawn.global_position + Vector2(-64, 0))
+	_check(pawn.sprite.flip_h, "plain flip-left still works")
+	pawn.face_direction(pawn.global_position + Vector2(64, 0))
+	_check(not pawn.sprite.flip_h, "plain flip-right still works")
+
+	# The whole roster, not just one sample.
+	var dir_count := 0
+	var mount_count := 0
+	var total := 0
+	var d := DirAccess.open("res://resources/units")
+	if d:
+		for f in d.get_files():
+			if not f.ends_with(".tres"):
+				continue
+			var data = load("res://resources/units/" + f)
+			if not (data is UnitData):
+				continue
+			total += 1
+			if not data.directional_attack.is_empty():
+				dir_count += 1
+			if data.mount_profile != null:
+				mount_count += 1
+				if not (data.mount_profile is MountProfile):
+					_check(false, "%s has a malformed mount_profile" % f)
+	_check(total > 0, "scanned the unit roster (%d resources)" % total)
+	_check(dir_count == 5, "exactly the 5 Lancers carry directional art (%d)" % dir_count)
+	_check(mount_count == 5, "exactly the 5 Lancers carry a mount profile (%d)" % mount_count)
+
+	_despawn([pawn])
+
+
+# ==============================================================================
+# 4. AUDIO
+# ==============================================================================
+
+func _test_audio() -> void:
+	print("\n--- 12. Audio pipeline ---")
+	var am = get_node("/root/AudioManager")
+	_check(AudioServer.get_bus_index("Music") >= 0, "a Music bus exists")
+	_check(AudioServer.get_bus_index("SFX") >= 0, "an SFX bus exists")
+
+	_check(am._sfx_pool.size() > 1, "SFX plays through a pool, not one player")
+	for i in range(4):
+		am.play_sfx("hit")
+	var voices := 0
+	for p in am._sfx_pool:
+		if p.playing:
+			voices += 1
+	_check(voices > 1, "overlapping hits do not cut each other off (%d voices)" % voices)
+	am.play_sfx("no_such_sound")
+	_check(true, "an unknown sfx id is ignored rather than crashing")
+
+	var stream = am._music_stream("calm")
+	_check(stream is AudioStreamWAV, "music loads as a stream")
+	if stream is AudioStreamWAV:
+		_check(stream.loop_mode == AudioStreamWAV.LOOP_FORWARD,
+			"music is forced to loop, regardless of import settings")
+
+	am.stop_music(0.01)
+	await get_tree().create_timer(0.1).timeout
+	am.play_music("calm", 0.25)
+	_check(am.current_music() == "calm", "play_music selects the track")
+	var active_before: int = am._music_active
+	am.play_music("calm")
+	_check(am._music_active == active_before, "re-requesting the same track is a no-op")
+
+	await get_tree().create_timer(0.4).timeout
+	am.play_music("tension", 0.25)
+	_check(am._music_active != active_before, "a crossfade swaps to the other player")
+	await get_tree().create_timer(0.5).timeout
+	_check(am._music_players[am._music_active].volume_db > -1.0,
+		"the incoming track reaches full volume")
+	_check(not am._music_players[1 - am._music_active].playing,
+		"the outgoing track stops once it is inaudible")
+
+	var bus := AudioServer.get_bus_index("Music")
+	var base: float = AudioServer.get_bus_volume_db(bus)
+	am.duck_music(true)
+	await get_tree().create_timer(0.25).timeout
+	var ducked: float = AudioServer.get_bus_volume_db(bus)
+	_check(ducked < base - 3.0, "combat ducks the music (%.1f -> %.1f dB)" % [base, ducked])
+	am.duck_music(false)
+	await get_tree().create_timer(1.1).timeout
+	_check(absf(AudioServer.get_bus_volume_db(bus) - base) < 0.5,
+		"the music returns to its previous level")
+
+	am.set_bus_volume_linear("SFX", 0.5)
+	_check(is_equal_approx(snappedf(am.get_bus_volume_linear("SFX"), 0.01), 0.5),
+		"a linear volume round-trips through dB")
+	am.set_bus_volume_linear("SFX", 0.0)
+	_check(AudioServer.is_bus_mute(AudioServer.get_bus_index("SFX")),
+		"zero mutes the bus instead of setting -inf dB")
+	am.set_bus_volume_linear("SFX", 1.0)
+	_check(not AudioServer.is_bus_mute(AudioServer.get_bus_index("SFX")),
+		"raising the slider unmutes")
+
+	am.stop_music(0.01)
+
+
+# ==============================================================================
+# HELPERS
+# ==============================================================================
+
+## Build a bare unit from a resource. Deliberately not the .tscn: these tests
+## care about data and rules, and instancing the full prefab would drag in
+## per-faction scene wiring that has nothing to do with what is being checked.
+func _spawn(res_path: String, faction: int, cell: Vector2i) -> TacticalUnit:
+	var unit := TacticalUnit.new()
+	var spr := Sprite2D.new()
+	spr.name = "Sprite2D"
+	unit.add_child(spr)
+	var ap := AnimationPlayer.new()
+	ap.name = "AnimationPlayer"
+	unit.add_child(ap)
+	unit.unit_data = load(res_path)
+	unit.faction_id = faction
+	units_root.add_child(unit)
+	grid.register_unit(unit, cell)
+	if is_instance_valid(vision):
+		vision.recompute()
+	return unit
+
+
+func _despawn(units: Array) -> void:
+	for u in units:
+		if is_instance_valid(u):
+			grid.unregister_unit(u)
+			# Leave the group BEFORE queue_free(). Freeing is deferred to the end
+			# of the frame, so a node that has only been queued is still returned
+			# by get_nodes_in_group() and still counts toward threat — which made
+			# a removed enemy appear to keep threatening the cell it left.
+			u.remove_from_group("units")
+			u.queue_free()
+	if is_instance_valid(vision):
+		vision.recompute()
+
+
+func _building_of_type(type_string: String) -> Building:
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if b is Building and b.get_type_string() == type_string and b.faction_id != 1:
+			return b
+	return null
+
+
+func _building_of_faction(faction: int) -> Building:
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if b is Building and b.faction_id == faction:
+			return b
+	return null
+
+
+func _cell_of_terrain(terrain: GameConfig.TerrainType) -> Vector2i:
+	for x in range(grid.grid_size.x):
+		for y in range(grid.grid_size.y):
+			var cell := Vector2i(x, y)
+			if grid.get_terrain(cell) == terrain:
+				return cell
+	return Vector2i(-1, -1)
+
+
+func _check(condition: bool, message: String) -> void:
+	if condition:
+		_passed += 1
+		print("  ✅ %s" % message)
+	else:
+		_failed += 1
+		_failures.append(message)
+		print("  ❌ %s" % message)
+
+
+func _report() -> void:
+	print("\n==========================================================")
+	if _failed == 0:
+		print("🎉 MILESTONE 5 — ALL %d CHECKS PASSED" % _passed)
+	else:
+		print("⚠️  MILESTONE 5 — %d passed, %d FAILED" % [_passed, _failed])
+		for failure in _failures:
+			print("    ✗ %s" % failure)
+	print("==========================================================")

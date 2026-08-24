@@ -1,7 +1,13 @@
-[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="UnitData" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
 [ext_resource type="Texture2D" path="res://assets/characters/factions/blue/Lancer/Lancer_Idle.png" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/characters/factions/blue/Lancer/Lancer_Up_Attack.png" id="10_dir_up"]
+[ext_resource type="Texture2D" path="res://assets/characters/factions/blue/Lancer/Lancer_UpRight_Attack.png" id="11_dir_upright"]
+[ext_resource type="Texture2D" path="res://assets/characters/factions/blue/Lancer/Lancer_Right_Attack.png" id="12_dir_right"]
+[ext_resource type="Texture2D" path="res://assets/characters/factions/blue/Lancer/Lancer_DownRight_Attack.png" id="13_dir_downright"]
+[ext_resource type="Texture2D" path="res://assets/characters/factions/blue/Lancer/Lancer_Down_Attack.png" id="14_dir_down"]
+[ext_resource type="Resource" path="res://resources/mounts/mount_lancer.tres" id="20_mount"]
 
 [resource]
 script = ExtResource("1_scr")
@@ -24,3 +30,12 @@ vframes = 1
 upgrade_paths = {}
 sprite_scale = 0.5
 sprite_offset = Vector2(11.0, 1.0)
+directional_attack = {
+"Up": ExtResource("10_dir_up"),
+"UpRight": ExtResource("11_dir_upright"),
+"Right": ExtResource("12_dir_right"),
+"DownRight": ExtResource("13_dir_downright"),
+"Down": ExtResource("14_dir_down")
+}
+directional_attack_hframes = 3
+mount_profile = ExtResource("20_mount")

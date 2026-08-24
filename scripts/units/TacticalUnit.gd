@@ -21,6 +21,16 @@ var morale: int = GameConfig.MORALE_DEFAULT
 ## surrendering unit is frozen: it cannot act, move, or be attacked again.
 var pending_surrender: bool = false
 
+## Which of the five authored facings this unit is showing. The three left-hand
+## directions are these same sheets flipped, which is why there are five names
+## and eight directions.
+var facing: String = "Down"
+
+## Riders start in the saddle: a cavalry unit's stat block describes its mounted
+## form, so this is the state its own numbers already assume. Meaningless (and
+## never toggled) on units without a mount_profile.
+var is_mounted: bool = true
+
 # === Node References ===
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
@@ -102,16 +112,164 @@ func _setup_default_animations() -> void:
 	animation_player.play("idle")
 
 
-## Play a specific animation if it exists
+## Play a specific animation if it exists.
+##
+## For units with per-direction attack sheets this also swaps the texture to the
+## one matching `facing`, then swaps back for any other animation. The swap is
+## confined to this one function on purpose: callers keep saying
+## `play_animation("attack")` and neither know nor care that cavalry is special.
 func play_animation(anim_name: String) -> void:
-	if animation_player and animation_player.has_animation(anim_name):
+	if not animation_player:
+		return
+	if anim_name == "attack" and has_directional_art():
+		_apply_directional_attack_sheet()
+	elif _using_directional_sheet:
+		_restore_base_sheet()
+
+	if animation_player.has_animation(anim_name):
 		animation_player.play(anim_name)
 
 
-## Make the unit face a specific global position (flips horizontal)
+## True while the Sprite2D is showing a directional sheet instead of the unit's
+## base spritesheet, so the restore only runs when there is something to undo.
+var _using_directional_sheet: bool = false
+
+
+func _apply_directional_attack_sheet() -> void:
+	if not sprite or not is_instance_valid(unit_data):
+		return
+	sprite.texture = unit_data.directional_attack[facing]
+	sprite.hframes = maxi(1, unit_data.directional_attack_hframes)
+	sprite.vframes = 1
+	_using_directional_sheet = true
+	_setup_default_animations()
+
+
+func _restore_base_sheet() -> void:
+	if not sprite or not is_instance_valid(unit_data):
+		return
+	if not is_instance_valid(unit_data.spritesheet):
+		return
+	sprite.texture = unit_data.spritesheet
+	sprite.hframes = unit_data.hframes
+	sprite.vframes = unit_data.vframes
+	_using_directional_sheet = false
+	_setup_default_animations()
+
+
+## Make the unit face a specific global position.
+##
+## Always sets flip_h, which is the whole behaviour for units without
+## directional art — unchanged from before, and the reason none of the existing
+## resources needed touching. Units that DO have per-direction sheets also
+## record which of the five authored facings applies, so the attack animation
+## can pick the matching one.
 func face_direction(target_global_pos: Vector2) -> void:
-	if sprite:
-		sprite.flip_h = target_global_pos.x < global_position.x
+	if not sprite:
+		return
+	var delta: Vector2 = target_global_pos - global_position
+	sprite.flip_h = delta.x < 0.0
+	facing = _facing_for(delta)
+
+
+## Map a direction vector onto one of the five authored facings.
+##
+## Only the magnitudes matter for the choice; the sign of x is carried by
+## flip_h. The 2.4 ratio splits "mostly vertical" from "diagonal": a shallower
+## split made a unit attacking one tile up and one tile across read as straight
+## up, which looks wrong next to the tile it is actually hitting.
+func _facing_for(delta: Vector2) -> String:
+	var ax: float = absf(delta.x)
+	var ay: float = absf(delta.y)
+	if ax <= 0.001 and ay <= 0.001:
+		return facing  # no movement — keep whatever we were showing
+	if ay > ax * 2.4:
+		return "Up" if delta.y < 0.0 else "Down"
+	if ax > ay * 2.4:
+		return "Right"
+	return "UpRight" if delta.y < 0.0 else "DownRight"
+
+
+## Does this unit have an authored sheet for the way it is currently facing?
+func has_directional_art() -> bool:
+	return (
+		is_instance_valid(unit_data)
+		and not unit_data.directional_attack.is_empty()
+		and unit_data.directional_attack.has(facing)
+		and is_instance_valid(unit_data.directional_attack[facing])
+	)
+
+
+# ==============================================================================
+# MOUNT — riders on and off the horse
+# ==============================================================================
+#
+# Everything below reads through the profile and falls back to the plain stat
+# block when there is none. That is what lets 84 of the 85 unit resources ignore
+# the mount system entirely: no profile means get_effective_* returns exactly
+# what get_* always returned.
+
+## Can this unit get on and off a horse at all?
+func can_mount() -> bool:
+	return is_instance_valid(unit_data) and unit_data.mount_profile is MountProfile
+
+
+## The class this unit actually fights as right now.
+##
+## Combat must ask this rather than reading `unit_data.unit_class` directly, or
+## a dismounted Lancer would still be scored as Cavalry and keep the charge
+## bonus it no longer has a horse for.
+func get_effective_class() -> String:
+	if not is_instance_valid(unit_data):
+		return "Worker"
+	if not can_mount():
+		return unit_data.unit_class
+	var profile: MountProfile = unit_data.mount_profile
+	return profile.mounted_class if is_mounted else profile.dismounted_class
+
+
+## Defence including the on-foot bonus.
+func get_effective_defense() -> int:
+	if not is_instance_valid(unit_data):
+		return 0
+	var base: int = unit_data.defense_power
+	if can_mount() and not is_mounted:
+		base += (unit_data.mount_profile as MountProfile).dismount_defense_bonus
+	return base
+
+
+## Movement points including the on-foot penalty. Floors at 1 — a dismounted
+## rider is slow, never rooted, because a unit that cannot move at all could be
+## stranded permanently by a single bad toggle.
+func get_effective_movement() -> int:
+	if not is_instance_valid(unit_data):
+		return 0
+	var base: int = unit_data.movement_points
+	if can_mount() and not is_mounted:
+		base -= (unit_data.mount_profile as MountProfile).dismount_move_penalty
+	return maxi(1, base)
+
+
+## Get on or off the horse. Returns false when the unit cannot or may not.
+##
+## Costs the unit's action for the turn. Without that price a rider could stand
+## in place swapping between Cavalry and Melee to present whichever class beats
+## whatever is attacking it — dodging the advantage triangle for free, which is
+## the one thing the triangle exists to prevent.
+func toggle_mount() -> bool:
+	if not can_mount() or pending_surrender or not can_act():
+		return false
+
+	is_mounted = not is_mounted
+	# Re-cap movement so the change lands this turn, but never hand back points
+	# already spent walking.
+	current_movement = mini(current_movement, get_effective_movement())
+	consume_action()
+	_show_floating_indicator(
+		"MOUNTED" if is_mounted else "ON FOOT",
+		Color(0.85, 0.9, 1.0)
+	)
+	return true
 
 
 
@@ -121,7 +279,7 @@ func _initialize_from_data() -> void:
 		return
 
 	current_health = unit_data.max_health
-	current_movement = unit_data.movement_points
+	current_movement = get_effective_movement()
 	has_acted = false
 	morale = GameConfig.MORALE_DEFAULT
 	pending_surrender = false
@@ -133,7 +291,7 @@ func _initialize_from_data() -> void:
 ## Reset movement and action points at the start of a new turn.
 func reset_for_new_turn() -> void:
 	if unit_data:
-		current_movement = unit_data.movement_points
+		current_movement = get_effective_movement()
 		has_acted = false
 
 
@@ -205,7 +363,7 @@ func upgrade_to(new_data: UnitData) -> void:
 
 	unit_data = new_data
 	current_health = int(hp_ratio * unit_data.max_health)
-	current_movement = unit_data.movement_points
+	current_movement = get_effective_movement()
 
 	_update_visuals()
 	_update_health_bar(false)

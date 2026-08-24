@@ -107,15 +107,38 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	return full_report
 
 
+## Read-only damage preview: exactly what resolve_combat() would deal, with no
+## state touched and no signal emitted.
+##
+## Exists so the AI can score a swing without owning a second copy of the damage
+## formula. A copy would drift the moment either side was tuned, and the AI would
+## then be planning against rules the player never experiences.
+##
+## `def_cell_override` answers "what would this cost if the defender stood there
+## instead" — threat mapping needs that, because it evaluates cells a unit has
+## not moved to yet. Vector2i(-1, -1) means "wherever the defender actually is".
+func preview_damage(att: TacticalUnit, def: TacticalUnit,
+		def_cell_override: Vector2i = Vector2i(-1, -1)) -> Dictionary:
+	if not is_instance_valid(att) or not is_instance_valid(def):
+		return {"damage": 0, "base_damage": 0, "multiplier": 0.0,
+				"advantage_type": "NEUTRAL", "damage_type": "physical",
+				"terrain_mult": 1.0, "morale_mult": 1.0}
+	return _calculate_damage(att, def, 1.0, def_cell_override)
+
+
 ## Kalkulasi damage mendalam dengan formula taktis & class specializations
-func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: float = 1.0) -> Dictionary:
+func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: float = 1.0,
+		def_cell_override: Vector2i = Vector2i(-1, -1)) -> Dictionary:
 	var att_data: UnitData = att.unit_data
 	var def_data: UnitData = def.unit_data
 
 	var atk_power: int = att_data.attack_power if is_instance_valid(att_data) else 20
-	var def_power: int = def_data.defense_power if is_instance_valid(def_data) else 10
-	var att_class: String = att_data.unit_class if is_instance_valid(att_data) else "Worker"
-	var def_class: String = def_data.unit_class if is_instance_valid(def_data) else "Worker"
+	# Defence and class come from the UNIT, not its resource: a dismounted rider
+	# fights as infantry with a shield bonus, and reading the raw stat block here
+	# would keep scoring it as the Cavalry it stepped off.
+	var def_power: int = def.get_effective_defense() if is_instance_valid(def_data) else 10
+	var att_class: String = att.get_effective_class() if is_instance_valid(att_data) else "Worker"
+	var def_class: String = def.get_effective_class() if is_instance_valid(def_data) else "Worker"
 	var att_name: String = att_data.unit_name.to_lower() if is_instance_valid(att_data) else ""
 	var def_name: String = def_data.unit_name.to_lower() if is_instance_valid(def_data) else ""
 
@@ -144,11 +167,22 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 	# 3. Class Fighting Style Modifiers
 	var trait_mult: float = 1.0
 	
-	# Cavalry (Lancer) Momentum Charge (+25% damage when initiating attack)
-	if att_class == "Cavalry" or "lancer" in att_name:
+	# Cavalry (Lancer) Momentum Charge (+25% damage when initiating attack).
+	#
+	# Keyed on the CLASS only. The old `or "lancer" in att_name` fallback meant a
+	# rider that had stepped off its horse kept the charge bonus purely because
+	# of what it was called, which silently defeated the whole point of
+	# dismounting. Every Lancer resource declares unit_class = "Cavalry", so
+	# nothing depended on the name.
+	if att_class == "Cavalry":
 		trait_mult *= 1.25
 
-	# Infiltrator (Rogue) Backstab Critical (+50% damage)
+	# Infiltrator (Rogue) Backstab Critical (+50% damage).
+	#
+	# The name fallback STAYS here, unlike the Cavalry check above: Skeleton
+	# Rogue is class "Undead" (so that Holy Smite applies to it) yet is meant to
+	# backstab, and its name is the only thing that says so. Nothing dismounts
+	# into or out of Infiltrator, so there is no state for the name to contradict.
 	if att_class == "Infiltrator" or "rogue" in att_name:
 		trait_mult *= 1.50
 
@@ -156,7 +190,10 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 	#    roads and bridges leave a unit exposed.
 	var terrain_def_mult: float = 1.0
 	if is_instance_valid(grid_manager):
-		terrain_def_mult = grid_manager.get_damage_taken_mult(def.grid_position)
+		var def_cell: Vector2i = (
+			def_cell_override if def_cell_override != Vector2i(-1, -1) else def.grid_position
+		)
+		terrain_def_mult = grid_manager.get_damage_taken_mult(def_cell)
 
 	# 5. The attacker's nerve. Undead always read as 1.0.
 	var morale_mult: float = att.get_morale_attack_mult()
@@ -176,6 +213,21 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 		"terrain_mult": terrain_def_mult,
 		"morale_mult": morale_mult,
 	}
+
+
+## Public read of the advantage triangle: > 1.0 means `attacker_class` beats
+## `defender_class`, < 1.0 means it loses to it.
+##
+## Exposed so recruitment can pick a counter to what the enemy actually fields
+## without keeping its own copy of the matchup table — the same reasoning as
+## preview_damage(). Names are optional and only matter for the unit-specific
+## rules (Holy vs Undead and friends).
+func class_advantage(attacker_class: String, defender_class: String,
+		attacker_name: String = "", defender_name: String = "") -> float:
+	var info: Dictionary = _get_advantage_multiplier(
+		attacker_class, defender_class, attacker_name, defender_name
+	)
+	return float(info.get("multiplier", 1.0))
 
 
 ## Menentukan multiplier keunggulan taktis (Combat Advantage Triangle)
