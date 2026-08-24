@@ -205,7 +205,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			queue_redraw()
 		return
 
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	# Acts on RELEASE, not press. A left-drag pans the camera, and whether a press
+	# was a click or the start of a pan is only known once the cursor has moved —
+	# so selecting on press would fire before that question could be answered.
+	# TacticalCamera marks the release handled when it ended a pan, so a drag never
+	# reaches this branch at all and cannot select the tile it finished over.
+	if event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if main_hud and main_hud.has_method("is_end_turn_confirmation_active") and main_hud.is_end_turn_confirmation_active():
 			return
 		var mouse_pos = get_global_mouse_position()

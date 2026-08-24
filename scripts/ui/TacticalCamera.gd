@@ -3,8 +3,8 @@ class_name TacticalCamera
 ## TacticalCamera — pan & zoom for a battlefield larger than the viewport.
 ##
 ## The 30x20 grid is 1920x1280 world pixels, so it no longer fits on screen at
-## 1:1. Pan with WASD/arrows, a middle- or right-mouse drag, or by pushing the
-## cursor into the screen edge; zoom with the wheel. Camera2D's own limit_*
+## 1:1. Pan by dragging with any mouse button, with WASD/arrows, or by pushing
+## the cursor into the screen edge; zoom with the wheel. Camera2D's own limit_*
 ## properties do the clamping, so the view can never leave the map.
 
 @export var pan_speed: float = 900.0
@@ -14,7 +14,17 @@ class_name TacticalCamera
 @export var zoom_min: float = 0.55
 @export var zoom_max: float = 2.0
 
+## Left-drag has to pan without stealing click-to-select, so the two are told
+## apart by distance: the press only becomes a pan once the cursor has travelled
+## this far from where it went down. Below it nothing moves and the release
+## falls through to the grid as an ordinary click.
+const LEFT_DRAG_THRESHOLD_PX: float = 6.0
+
+## Middle/right drag — these pan from the first pixel, nothing else wants them.
 var _dragging: bool = false
+var _left_down: bool = false
+var _left_pan: bool = false
+var _left_press_pos: Vector2 = Vector2.ZERO
 
 
 ## Fit the camera limits to the battlefield and centre it on `focus`.
@@ -34,9 +44,29 @@ func _unhandled_input(event: InputEvent) -> void:
 			_apply_zoom(-zoom_step)
 		elif event.button_index in [MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
 			_dragging = event.pressed
-	elif event is InputEventMouseMotion and _dragging:
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				_left_down = true
+				_left_pan = false
+				_left_press_pos = event.position
+			else:
+				# Swallow the release that ended a pan. This camera is a child of the
+				# controller, so it sees unhandled input first; marking the event
+				# handled is what stops the grid from reading the end of a drag as a
+				# click on whatever tile the cursor happened to stop over.
+				if _left_pan:
+					get_viewport().set_input_as_handled()
+				_left_down = false
+				_left_pan = false
+	elif event is InputEventMouseMotion:
 		# Divide by zoom so a drag moves the world under the cursor 1:1.
-		position -= event.relative / zoom
+		if _dragging:
+			position -= event.relative / zoom
+		elif _left_down:
+			if not _left_pan and event.position.distance_to(_left_press_pos) > LEFT_DRAG_THRESHOLD_PX:
+				_left_pan = true
+			if _left_pan:
+				position -= event.relative / zoom
 
 
 func _process(delta: float) -> void:
@@ -50,7 +80,7 @@ func _process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
 		dir.y += 1.0
 
-	if edge_pan_enabled and dir == Vector2.ZERO and not _dragging:
+	if edge_pan_enabled and dir == Vector2.ZERO and not _dragging and not _left_pan:
 		dir = _edge_pan_direction()
 
 	if dir != Vector2.ZERO:
