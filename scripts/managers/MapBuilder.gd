@@ -246,9 +246,13 @@ func _in_bounds(c: Vector2i) -> bool:
 ## roads, water and reserved cells so they never hide a unit or a building.
 ## Which prop lands on a cell now decides that cell's terrain type, so the
 ## cover a player can see is exactly the cover the rules apply.
+## Both tree sheets are 1536x256 holding EIGHT 192px frames, not six. Declaring
+## six made Godot slice them at 256px, so frame 0 carried its own tree plus a
+## 26px strip of the next frame's trunk — the thin vertical slivers that showed
+## up beside every tree on the map.
 const TREE_SPECS: Array = [
-	{"path": "res://assets/terrain/Resources/Wood/Trees/Tree1.png", "hframes": 6, "scale": 0.30, "y": -14.0},
-	{"path": "res://assets/terrain/Resources/Wood/Trees/Tree2.png", "hframes": 6, "scale": 0.30, "y": -14.0},
+	{"path": "res://assets/terrain/Resources/Wood/Trees/Tree1.png", "hframes": 8, "scale": 0.30, "y": -14.0},
+	{"path": "res://assets/terrain/Resources/Wood/Trees/Tree2.png", "hframes": 8, "scale": 0.30, "y": -14.0},
 ]
 const ROCK_SPECS: Array = [
 	{"path": "res://assets/terrain/Rocks/Rock1.png", "hframes": 1, "scale": 0.75, "y": 4.0},

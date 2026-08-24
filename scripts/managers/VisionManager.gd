@@ -19,6 +19,15 @@ class_name VisionManager
 @export var fog_enabled: bool = true
 ## Whose view is painted on screen — the human player's.
 @export var observer_faction_id: int = GameConfig.Faction.BLUE_KINGDOM
+## How dark a never-scouted cell is drawn. Deliberately not opaque: the terrain
+## stays readable underneath, because the fog's job is to hide who is out there,
+## not to hide where the rivers and bridges are. A solid black sheet also read
+## as a rendering failure rather than as fog.
+@export_range(0.0, 1.0) var unseen_opacity: float = 0.78
+## How dark a cell the observer has seen before but cannot see right now. Has to
+## sit clearly between `unseen_opacity` and plain visible, or "remembered" and
+## "never seen" collapse into the same shade.
+@export_range(0.0, 1.0) var explored_opacity: float = 0.42
 
 var grid_manager: GridManager
 var fog_layer: TileMapLayer
@@ -239,8 +248,8 @@ func _paint_fog() -> void:
 ## the fog can never drift out of alignment when the grid is resized.
 func _build_fog_tileset(cell_size: Vector2i) -> TileSet:
 	var image := Image.create(cell_size.x * 2, cell_size.y, false, Image.FORMAT_RGBA8)
-	var unseen := Color(0.02, 0.02, 0.05, 1.0)
-	var explored := Color(0.02, 0.02, 0.05, 0.55)
+	var unseen := Color(0.02, 0.02, 0.05, unseen_opacity)
+	var explored := Color(0.02, 0.02, 0.05, explored_opacity)
 	for y in range(cell_size.y):
 		for x in range(cell_size.x):
 			image.set_pixel(x, y, unseen)

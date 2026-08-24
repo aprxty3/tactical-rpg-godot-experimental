@@ -107,6 +107,14 @@ func _setup_tactical_map() -> void:
 	)
 	grid_manager.set_terrain_blocked_cells(blocked)
 
+	# Units carry only a pixel position from the scene file; GridManager fills in
+	# their grid_position, and it defers that to the end of the frame. Both the
+	# prop reservation below and the fog's first sight pass read grid_position, so
+	# pull the registration forward — otherwise every unit still reads (0, 0) and
+	# the fog permanently marks the map's top-left corner as explored for whoever
+	# owns them.
+	grid_manager.register_existing_units()
+
 	# Keep props off anything gameplay-relevant.
 	var reserved: Array[Vector2i] = []
 	for bld in get_tree().get_nodes_in_group("buildings"):

@@ -27,11 +27,19 @@ var _moving_units: Dictionary = {}
 func _ready() -> void:
 	_initialize_astar_grid()
 	_connect_event_bus()
-	# Register units already in the scene tree on load
-	call_deferred("_auto_register_existing_units")
+	# Register units already in the scene tree on load. This has to be deferred:
+	# _ready() propagates depth-first in tree order, so sibling branches declared
+	# after this node — Units among them — are not in place yet when we run.
+	# Callers that need the roster earlier in the same frame (fog's first sight
+	# pass, prop placement) call register_existing_units() themselves; it is
+	# idempotent, so the deferred call landing afterwards changes nothing.
+	call_deferred("register_existing_units")
 
 
-func _auto_register_existing_units() -> void:
+## Snap every TacticalUnit already in the tree onto the cell its pixel position
+## falls in. Public because scene setup needs the roster before the deferred
+## call fires. Idempotent — register_unit() unregisters first.
+func register_existing_units() -> void:
 	var tree = get_tree()
 	if not tree:
 		return
