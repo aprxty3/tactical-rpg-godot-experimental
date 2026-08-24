@@ -54,6 +54,7 @@ python3 scripts_dev/preview_units.py      # optional: render the unit lineup to 
 | **`[SPACE]` (Spacebar)** | **End Turn** (opens a confirmation modal ➔ switches faction turn). |
 | **`[ESC]`** | Closes a popup / deselects, or quits when nothing is selected. |
 | **`[W][A][S][D]` / Arrows** | Pan the camera. |
+| **Left-Drag on the Map** | Drag the camera. A left press only becomes a drag past 6 px of travel, so an ordinary click still selects and a slightly shaky click is not mistaken for a pan. |
 | **Middle- or Right-Drag** | Drag the camera. Mouse at a screen edge also pans. |
 | **Mouse Wheel** | Zoom (clamped 0.55x – 2.0x). |
 

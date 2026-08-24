@@ -209,13 +209,31 @@ unmodified build before being touched):
 - **Discrete key commands accepted auto-repeat.** Space / R / U / Escape all
   fired on `echo` events, so *holding* Space opened the end-turn prompt and
   confirmed it in the same breath. Fixed by dropping `event.echo` on all four.
-  ⚠️ **Still open, environment-side**: an idle match continues to advance by
-  itself on this machine. Stack-dumping every `end_turn()` caller showed all of
-  them arriving through the Space handler — never from the AI — and the same
-  runaway reproduces on the unmodified pre-Milestone-4 build, so it is not
-  something this milestone introduced. As the echo guard did not stop it, the
-  remaining events are real discrete Space presses reaching the game window
-  from outside the project. Check the keyboard before reading it as a game bug.
+  ⚠️ **Still open**: an idle match continues to advance by itself on this
+  machine. Stack-dumping every `end_turn()` caller showed all of them arriving
+  through the Space handler — never from the AI — and the same runaway
+  reproduces on the unmodified pre-Milestone-4 build, so it is not something
+  this milestone introduced. As the echo guard did not stop it, the events are
+  discrete key-downs rather than auto-repeat.
+
+  *Investigated further 2026-08-25, still not closed.* Reading the raw evdev
+  devices directly (the user is in the `input` group, so no tooling or sudo was
+  needed) found **no key held down** — `EVIOCGKEY` across all 25 input devices
+  came back clean, which rules out a mechanically stuck spacebar. A 240-second
+  capture logged 10 Space presses, **none of them isolated**: every one sat
+  within 2s of other typing, i.e. ordinary input. That capture is *not*
+  conclusive, though — the window was contaminated by 548 other keypresses and
+  the game was not running for all of it.
+
+  Meanwhile the symptom was observed first-hand the same day: during
+  MCP-driven camera testing, with the agent sending **no keyboard input at
+  all**, `TurnManager.turn_number` climbed on its own to 4 and then 5, and Blue
+  units relocated between evaluations. So the behaviour is real and frequent,
+  but the "stray Space from outside the project" explanation is now the
+  *unverified* half. Next step is a clean capture: game running idle, hands off
+  the keyboard, correlating evdev Space events against `turn_number`. If that
+  window shows turns advancing with zero Space events, the original diagnosis is
+  wrong and this returns to being a code bug worth chasing.
 - **AI turn hardening** (defensive, no observed failure): `AIManager` awaited
   the *global* `unit_move_completed`, which resumes on whichever unit arrives
   first rather than the one being waited on, and never resumes at all if the
@@ -227,7 +245,7 @@ unmodified build before being touched):
 Status: ⬜ Planned
 
 - [ ] **Advanced Enemy AI**: Strategic target prioritization (Gold Mines, Villages) and defensive maneuvering when at a disadvantage.
-- [x] **Dynamic Camera System** — *pulled forward, delivered 2026-08-23*: `scripts/ui/TacticalCamera.gd` does WASD/arrow panning, middle- and right-drag, edge panning, and wheel zoom clamped to the map bounds. Pulled out of this milestone early because a 30x20 map is 1920x1280 world pixels and no longer fits one screen. Screen shake on heavy impacts is still outstanding.
+- [x] **Dynamic Camera System** — *pulled forward, delivered 2026-08-23*: `scripts/ui/TacticalCamera.gd` does WASD/arrow panning, drag-to-pan on any mouse button, edge panning, and wheel zoom clamped to the map bounds. Left-drag was added 2026-08-25 and needed the grid's click handler to move from press to release: whether a left press is a click or the start of a pan is only decidable once the cursor has moved, so acting on press answered the question too early. A 6 px threshold separates the two, and the camera marks a pan's release as handled so a drag never selects the tile it finished over. Pulled out of this milestone early because a 30x20 map is 1920x1280 world pixels and no longer fits one screen. Screen shake on heavy impacts is still outstanding.
 - [ ] **Visual Polish**: Advanced combat VFX (particles) and unit death / desertion animations. *(Palette-swap shaders for faction colouring are no longer planned — superseded by baked per-faction art, see Milestone 3 §3.)*
 - [ ] **Mount System**: Sprite mounting mechanics for cavalry units.
 - [ ] **Full Campaign**: Design a multi-chapter narrative campaign with escalating difficulty and persistent army progression.

@@ -12,6 +12,43 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+## 📅 Fog Rendering, Economy Scale & Input Fixes (2026-08-25)
+
+A bug-fix pass between Milestone 4 and 5. Every item below was reproduced live
+through the Godot MCP session before being touched, and re-verified in-game
+after — no fix is claimed on reasoning alone.
+
+### F.1 🌫️ Fog of War — two separate bugs behind one symptom
+- **Vision leaked to the map's top-left corner.** `TacticalUnit.grid_position` is a plain `var` defaulting to `Vector2i.ZERO` and the scene files only set pixel `position`; the cell is filled in by `GridManager`, which **defers** that to the end of the frame. `VisionManager.setup()` runs synchronously inside `_ready()`, so the first sight calculation saw all six starting units standing on cell `(0, 0)`. Blue's Archer (Ranged, vision 6) flooded a Manhattan-6 diamond around the origin — reaching Purple's castle at `(3, 3)`, exactly distance 6 — and because `_explored` never clears, that corner stayed permanently revealed. Red had the same phantom blob.
+  - Fixed by making the registration callable ahead of time: `_auto_register_existing_units()` → **`register_existing_units()`** (public, idempotent), invoked from `TestGridController._setup_tactical_map()` before both the fog setup and the prop reservation. The `call_deferred` call remains as a safety net.
+  - **Second bug closed by the same fix**: the prop-placement `reserved` list also reads `grid_position`, so trees and rocks had been avoiding `(0, 0)` instead of the units' real cells.
+- **Unseen fog was fully opaque**, hiding the map rather than veiling it. `unseen`/`explored` alpha are now exported (`unseen_opacity` 0.78, `explored_opacity` 0.42) so the three states — visible / remembered / never seen — read as three distinct shades with the terrain still legible underneath.
+
+### F.2 🌲 Tree sprites rendered with a sliver of the next frame
+`Tree1.png`/`Tree2.png` are 1536x256 sheets holding **eight** 192 px frames, but `MapBuilder.TREE_SPECS` declared `hframes: 6`. Godot therefore sliced them at 256 px, so frame 0 carried its own tree **plus the 26 px left edge of the next frame's trunk** — the thin vertical strips beside every tree on the map. Corrected to `hframes: 8`. Verified by measuring the per-column alpha profile of both sheets: 8 content runs spaced ~192 px.
+
+Audited the rest of the spritesheet declarations while there: `Rock1`/`Rock3`, `Fire.png` (896x128 ÷ 7) and `Explosions.png` (1728x192 ÷ 9) all check out, as do all 85 unit resources — their 6x2 grids divide cleanly, and the non-square frames are the generator's intentional crop.
+
+### F.3 💰 Economy scale — Iron was worth 10x too much
+`IRON_MINE_INCOME` was **30/turn** while the most expensive unit in the game costs **4 Iron** and a faction opens with **6**, so one captured mine funded 7.5 heavy units *per turn* and Iron stopped being a constraint after the first capture. Three independent signals agreed the constant, not the design, was wrong — unit costs, starting stock, and `PANDORA_SPOILS_IRON`'s 2-8 payout for a *rare* chest. Set to **3/turn**, which puts one mine at roughly one heavy unit per turn — the same ratio Gold already runs at.
+
+### F.4 🏰 Castles now actually pay their stipend
+`Building.get_income()` returned `gold = 20` for a Castle but **had zero callers anywhere in the repo**: `TurnManager` kept its own `match` over building types and simply never listed CASTLE. The passive income had never once been paid.
+- Rather than adding a fourth parallel counter, `TurnManager` now **sums `bld.get_income()`** over the buildings a faction holds, and `collect_income(faction_id, gold, iron)` takes the totals. What a building type is worth now lives in exactly one place, and a future type earns income without either caller knowing it exists — which is precisely the duplication that hid this bug.
+- The literal `20` moved to `GameConfig.CASTLE_GOLD_INCOME`.
+
+### F.5 🧠 GeminiClient was failing every request
+The log spammed `Gemini API request failed (HTTP 0)`. Not a deprecated model — two unrelated faults:
+- **Timeout below the API's own latency.** Measured against the live endpoint, a banter line takes **1.3–2.1 s**; `request_timeout_seconds` was **2.0**. A timed-out Godot `HTTPRequest` reports `response_code = 0` with an empty body, which is where the meaningless "HTTP 0" came from. Raised to **10.0**.
+- **The reply had no token budget left.** Gemini 3.x reasons before answering and `maxOutputTokens` covers thinking **and** output together. At 150 the model spent ~142 tokens thinking and had 4 left for the line, returning `finishReason: MAX_TOKENS` with text truncated mid-sentence (`"You cannot hide in"`) or no text part at all. Raised to **512**. Note `thinkingConfig.thinkingBudget = 0` does *not* help — this model ignores it.
+- **Diagnosis was impossible by design**: the code read only `result_array[1]` and discarded `result_array[0]`, the `Result` enum, so a timeout, a dead link and a TLS fault all printed identically. Transport faults are now named (`"timeout after 10.0s — raise request_timeout_seconds"`).
+- **Model switched to `gemini-3.5-flash-lite`.** Full Flash burned ~480 reasoning tokens and 2.5–5.6 s on a one-line battle cry — arriving after the fight it reacts to has ended. Lite answers the same prompt in ~1.2–1.8 s in-game. Also removed `_http_request`, a pooled `HTTPRequest` node built at startup and never used.
+
+### F.6 🖱️ Left-drag camera panning
+The camera only dragged on middle/right mouse, because left was owned by tile selection — and the grid acted on button **press**, which decides "click or pan?" before the cursor has moved and could answer it. Selection moved to **release**, and a **6 px** threshold separates the two: below it the release falls through as an ordinary click, above it the camera pans and marks the release handled so a drag never selects the tile it finished over. This works without any cross-reference between the two scripts — `TacticalCamera` is a child of the controller, so it receives unhandled input first.
+
+---
+
 ## 📅 Milestone 4 — Advanced Tactical Systems & Morale (2026-08-23)
 
 All six outstanding Milestone 4 systems shipped in one pass, plus the terrain

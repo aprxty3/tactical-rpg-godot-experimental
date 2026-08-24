@@ -24,15 +24,16 @@ The battlefield is dotted with strategic nodes that factions must capture to sus
 
 *   **Castle (Headquarters)**: 
     *   Limit: 1 Main Castle per faction per map.
+    *   Yield: **+20 Gold per turn**. A castle is a passive node in its own right, so a faction that has lost every mine still has a trickle of income to rebuild on.
     *   Function: Primary deployment zone for new units and base of operations. Capturing an enemy's castle grants access to their deployment zone.
 *   **Gold Mine**: 
-    *   Yield: +X Gold per turn.
+    *   Yield: **+50 Gold per turn**.
     *   Utility: Essential for recruiting mercenary-like units, spellcasters (Wizard, Priest), and funding field upgrades.
 *   **Iron Mine**: 
-    *   Yield: +Y Iron per turn.
+    *   Yield: **+3 Iron per turn**. Iron is a scarce gate rather than a currency — no unit costs more than 4 Iron and a faction opens with 6, so the yield is deliberately an order of magnitude below Gold's.
     *   Utility: Critical for forging heavy armor and weapons. Heavy units (Knight, Cavalier) require high Iron upkeep.
 *   **Village**: 
-    *   Yield: +1 to +2 Troops Capacity.
+    *   Yield: **+2 Troop Capacity**, plus **+10 Gold per turn**.
     *   Utility: Expands the maximum number of units a faction can deploy simultaneously on the board.
 
 ---
