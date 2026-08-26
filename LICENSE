@@ -1,0 +1,67 @@
+MIT License
+
+Copyright (c) 2026 aprxty3
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+SCOPE OF THIS LICENSE
+================================================================================
+
+The MIT license above covers ONLY this project's own source code and
+documentation — the contents of scripts/, scripts_dev/, tests/, docs/, the
+scene and resource definitions under scenes/ and resources/, and the Markdown
+files at the repository root.
+
+It does NOT cover the third-party components bundled in this repository. Those
+remain under their original terms and their original copyright holders.
+
+--------------------------------------------------------------------------------
+Bundled editor addons (addons/)
+--------------------------------------------------------------------------------
+Each ships its own LICENSE file, which governs it:
+
+  addons/script-ide/                  MIT — Copyright (c) 2023 Marius Hanl
+  addons/godot_ai/                    MIT — Copyright (c) 2025 Godot AI contributors
+  addons/GDQuest_GDScript_formatter/  MIT — Copyright (c) 2025-present GDQuest
+
+These are MIT-licensed, but by their own authors. Their copyright notices must
+be retained; nothing here relicenses them.
+
+--------------------------------------------------------------------------------
+Art and audio assets (assets/)
+--------------------------------------------------------------------------------
+NOT covered by the MIT license above.
+
+The artwork derives from third-party pixel-art packs (Tiny Swords, Pixel RPG
+Pack) and is redistributed here under those packs' own terms. The generated
+spritesheets under assets/characters/generated/ are programmatic derivatives of
+that source art (palette rotation, rim lighting, role markers) and inherit the
+terms of the art they derive from — the derivation scripts are MIT, the pixels
+they operate on are not.
+
+If you reuse this repository, verify the current terms of those asset packs
+with their original authors before shipping. Do not assume the MIT grant above
+extends to any file under assets/.
+
+--------------------------------------------------------------------------------
+Godot Engine
+--------------------------------------------------------------------------------
+The engine itself is not bundled here. Godot Engine is MIT licensed,
+Copyright (c) 2014-present Godot Engine contributors.
