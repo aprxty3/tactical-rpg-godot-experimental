@@ -206,7 +206,8 @@ python3 scripts_dev/validate_project.py   # static integrity check (must report 
 ├── GUIDE.md         # Developer guide & system expansion
 ├── MEMORY.md        # Architectural invariants & design-decision history
 ├── DISTRIBUTED.md   # Decoupling pattern rationale
-├── LICENSE          # MIT (own code) + third-party scope
+├── LICENSE          # MIT — this project's own code
+├── NOTICE.md        # Licensing scope & third-party components
 └── project.godot    # Godot 4.7 configuration
 ```
 
@@ -220,12 +221,13 @@ This project's **own source code and documentation** are released under the
 That grant is deliberately scoped, and the distinction matters if you reuse this repo:
 
 - **`addons/`** — three bundled editor addons (script-ide, godot_ai, GDQuest GDScript
-  Formatter). Each is MIT under *its own* copyright holder, and ships its own LICENSE
+  Formatter). Each is MIT under *its own* copyright holder and ships its own LICENSE
   file. Their notices must be retained; nothing here relicenses them.
 - **`assets/`** — **not** covered by the MIT grant. The artwork derives from third-party
   pixel-art packs (*Tiny Swords*, *Pixel RPG Pack*) and is redistributed under those
   packs' own terms. The generated spritesheets are programmatic derivatives of that art
   and inherit its terms — the derivation *scripts* are MIT, the *pixels* are not.
 
+Full details, including per-addon copyright holders, are in [`NOTICE.md`](NOTICE.md).
 If you plan to ship anything built on this, verify the current terms of those asset packs
 with their original authors first.
