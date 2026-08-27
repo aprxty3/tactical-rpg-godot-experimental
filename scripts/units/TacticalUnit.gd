@@ -412,7 +412,12 @@ func upgrade_to(new_data: UnitData) -> void:
 
 	unit_data = new_data
 	current_health = int(hp_ratio * unit_data.max_health)
-	current_movement = get_effective_movement()
+	# CLAMP, never refill. Assigning the new maximum here handed a unit that had
+	# already walked its full allowance a brand-new one, so promoting mid-field
+	# bought a second move for the price of the upgrade. Clamping keeps whatever
+	# the unit had left and only trims it if the promotion LOWERED the ceiling —
+	# the same rule `toggle_mount` already uses for exactly the same reason.
+	current_movement = mini(current_movement, get_effective_movement())
 
 	_update_visuals()
 	_update_health_bar(false)

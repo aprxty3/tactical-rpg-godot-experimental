@@ -67,7 +67,12 @@ func _ready() -> void:
 	_test_mount_system()
 	_test_directional_facing()
 	_test_backwards_compatibility()
+	_test_upgrade_does_not_refill_movement()
+	await _test_ai_hunts_enemies()
 	await _test_audio()
+	# LAST: this one latches match_over and re-runs setup_match, which would
+	# pull the board out from under anything that ran after it.
+	await _test_match_end_stops_play()
 
 	_report()
 
@@ -827,6 +832,150 @@ func _test_damage_glitch() -> void:
 	_check(victim.sprite.offset.is_equal_approx(base_offset), "the baked render offset is untouched")
 
 	_despawn([victim])
+
+
+# ==============================================================================
+# 6. BUGFIXES — upgrade movement, AI aggression, match end
+# ==============================================================================
+
+func _test_upgrade_does_not_refill_movement() -> void:
+	print("\n[6a] A promotion does not refund the walk")
+
+	var unit := _spawn("res://resources/units/archer_blue.tres", 0, Vector2i(8, 12))
+	var upgrade: UnitData = null
+	# The dictionary holds UnitData resources directly — str() on one yields
+	# "res:/..." with a single slash, which loads nothing.
+	for key in unit.unit_data.upgrade_paths:
+		upgrade = unit.unit_data.upgrade_paths[key] as UnitData
+		if is_instance_valid(upgrade):
+			break
+	_check(is_instance_valid(upgrade), "the archer has a promotion to take")
+	if not is_instance_valid(upgrade):
+		_despawn([unit])
+		return
+
+	# Walk the unit dry, exactly as the report describes.
+	unit.current_movement = 0
+	unit.upgrade_to(upgrade)
+	_check(unit.current_movement == 0,
+		"a spent unit is still spent after promoting (got %d MP)" % unit.current_movement)
+	_check(not unit.can_move(), "and cannot move again")
+
+	# A partly-spent unit keeps what it had — it is not topped up to the new
+	# maximum, and not reset to zero either.
+	var fresh := _spawn("res://resources/units/archer_blue.tres", 0, Vector2i(9, 12))
+	fresh.current_movement = 1
+	fresh.upgrade_to(upgrade)
+	_check(fresh.current_movement == 1, "a partly-spent unit keeps exactly what it had left")
+
+	# Clamping still has to bite when a promotion LOWERS the ceiling.
+	var slow := _spawn("res://resources/units/archer_blue.tres", 0, Vector2i(10, 12))
+	slow.current_movement = 99
+	slow.upgrade_to(upgrade)
+	_check(slow.current_movement == slow.get_effective_movement(),
+		"an over-full pool is clamped down to the new maximum")
+
+	_despawn([unit, fresh, slow])
+
+
+func _test_ai_hunts_enemies() -> void:
+	print("\n[6b] The AI weighs enemies against buildings")
+
+	var ev = ai.evaluator
+	_check(is_instance_valid(ev), "the evaluator exists")
+	if not is_instance_valid(ev):
+		return
+
+	# ADJACENT on purpose. Fog conceals a unit standing on concealing terrain
+	# unless the observer is next to it, so a prey placed two tiles away can be
+	# legitimately invisible depending on what the map generated there — which
+	# would make this test fail for a reason that has nothing to do with hunting.
+	var hunter := _spawn("res://resources/units/warrior_red.tres", 1, Vector2i(12, 8))
+	var prey := _spawn("res://resources/units/pawn_blue.tres", 0, Vector2i(13, 8))
+	if is_instance_valid(vision):
+		vision.recompute()
+
+	# Report both inputs, not just the verdict: -INF can mean "cannot see it" or
+	# "cannot path to it", and those are different bugs.
+	var seen: bool = ev.can_see(prey)
+	var walk: int = ev.path_cost_between(hunter.grid_position, prey.grid_position)
+	_check(seen, "the hunter can see the prey")
+	_check(walk >= 0, "the hunter can path to the prey's cell (cost %d)" % walk)
+	var score: float = ev.score_enemy_target(hunter, prey)
+	_check(score > 0.0, "a visible enemy is worth walking toward (%.2f)" % score)
+
+	# Comparable with an objective on the same scale — this is what lets the
+	# caller simply take the larger of the two.
+	var far_prey_score: float = ev.score_enemy_target(hunter, prey)
+	var best: Dictionary = ev.best_enemy_target(hunter)
+	_check(best.get("unit") == prey, "best_enemy_target finds it")
+	_check(is_equal_approx(float(best.get("score", 0.0)), far_prey_score),
+		"and reports the same score it was ranked with")
+
+	# A wounded target outranks a healthy one: finishing a unit removes a whole
+	# unit, chipping a healthy one removes nothing.
+	#
+	# Measured on the SAME cell, one after the other, so path cost and visibility
+	# are identical by construction and the only variable left is health. Two
+	# units on two cells would have let terrain decide the comparison.
+	var probe_cell := Vector2i(13, 8)
+	_despawn([prey])
+	await get_tree().process_frame
+
+	var healthy := _spawn("res://resources/units/pawn_blue.tres", 0, probe_cell)
+	if is_instance_valid(vision):
+		vision.recompute()
+	var healthy_score: float = ev.score_enemy_target(hunter, healthy)
+	_despawn([healthy])
+	await get_tree().process_frame
+
+	var wounded := _spawn("res://resources/units/pawn_blue.tres", 0, probe_cell)
+	wounded.current_health = maxi(1, int(wounded.unit_data.max_health * 0.2))
+	if is_instance_valid(vision):
+		vision.recompute()
+	var wounded_score: float = ev.score_enemy_target(hunter, wounded)
+
+	_check(wounded_score > healthy_score,
+		"a wounded target outranks a healthy one on the same cell (%.2f > %.2f)"
+			% [wounded_score, healthy_score])
+
+	# Own units are never prey.
+	var friend := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(13, 8))
+	_check(ev.score_enemy_target(hunter, friend) == -INF, "the AI does not hunt its own")
+
+	_despawn([hunter, wounded, friend])
+
+
+func _test_match_end_stops_play() -> void:
+	print("\n[6c] A finished match actually stops")
+
+	var hud = main.get_node_or_null("CanvasLayer/MainHUD")
+	if hud == null:
+		hud = main.find_child("MainHUD", true, false)
+	_check(is_instance_valid(hud), "the HUD is reachable")
+	if not is_instance_valid(hud):
+		return
+
+	_check(hud.has_method("is_match_over"), "the HUD exposes is_match_over()")
+	_check(not hud.is_match_over(), "a running match is not over")
+
+	var turns_before: int = TurnManager.turn_number
+	EventBus.victory_condition_met.emit(GameConfig.Faction.BLUE_KINGDOM, "test")
+	await get_tree().process_frame
+
+	_check(hud.is_match_over(), "the HUD latches the result")
+	_check(TurnManager.match_over, "TurnManager latches it too")
+
+	# The AI ends its own turn from a coroutine, so blocking player input alone
+	# would leave the losing side still taking turns behind the result screen.
+	TurnManager.end_turn()
+	_check(TurnManager.turn_number == turns_before,
+		"end_turn is refused once the match is decided")
+
+	# Retry reloads the scene, and TurnManager is an autoload that survives it —
+	# so setup_match must clear the latch or the rebuilt board never advances.
+	TurnManager.setup_match([0, 1], null)
+	_check(not TurnManager.match_over, "setup_match clears the latch for Retry")
 
 
 func _spawn(res_path: String, faction: int, cell: Vector2i) -> TacticalUnit:

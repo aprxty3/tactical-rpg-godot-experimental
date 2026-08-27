@@ -165,6 +165,13 @@ func _update_hud_text(text: String) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The match is decided. Nothing gets through — not movement, not attacks, not
+	# End Turn. Showing a VICTORY banner while the board stayed fully playable
+	# underneath it is what made the result feel like a caption rather than an
+	# ending.
+	if main_hud and main_hud.has_method("is_match_over") and main_hud.is_match_over():
+		return
+
 	# A prisoner is waiting on a decision. The prompt has no cancel path on
 	# purpose, so nothing else — not even Escape — is allowed through until the
 	# player answers it.

@@ -93,6 +93,9 @@ signal hazard_detonated(cell: Vector2i, radius: int, chain_index: int)
 @warning_ignore("unused_signal")
 ## A hidden trap detonated. Carries every cell in its footprint, origin first,
 ## so a listener can light the whole blast without re-deriving its shape.
+## The match is decided. Fired once; listeners use it to stop acting.
+signal match_ended(player_won: bool)
+
 signal trap_sprung(cells: Array)
 
 signal fire_ignited(cell: Vector2i)

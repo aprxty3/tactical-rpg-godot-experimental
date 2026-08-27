@@ -20,8 +20,15 @@ var faction_units: Dictionary = {}
 var economy_manager: Node = null
 
 
+## Latched when a victory or defeat is declared. Cleared by `setup_match`, which
+## is what a scene reload runs — so Retry starts a live match rather than one
+## that is already over.
+var match_over: bool = false
+
+
 func _ready() -> void:
 	_connect_signals()
+	EventBus.match_ended.connect(func(_won): match_over = true)
 
 
 func _connect_signals() -> void:
@@ -40,6 +47,10 @@ func setup_match(factions: Array[int], eco_manager: Node) -> void:
 	current_faction_index = 0
 	turn_number = 1
 	current_phase = GameConfig.Phase.UPKEEP
+	# THIS manager is an autoload, so it survives reload_current_scene(). Without
+	# clearing the latch here, Retry would rebuild the board and then refuse to
+	# advance a single turn, because end_turn() would still see a finished match.
+	match_over = false
 
 	# Initialize empty unit arrays for each faction
 	for faction_id in faction_order:
@@ -92,7 +103,13 @@ func advance_phase() -> void:
 
 
 ## End the current faction's turn immediately and advance to the next faction.
+##
+## Refuses once the match is decided. Blocking input in the controller is not
+## enough on its own: the AI ends its own turn from a coroutine, so without this
+## the losing side keeps taking turns behind the result screen.
 func end_turn() -> void:
+	if match_over:
+		return
 	if current_phase != GameConfig.Phase.END_TURN:
 		_enter_phase(GameConfig.Phase.END_TURN)
 	_end_current_turn()

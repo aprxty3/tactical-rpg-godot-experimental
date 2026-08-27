@@ -87,6 +87,23 @@ const FACTION_SUFFIX: Dictionary = {
 	Faction.BLACK_COVEN: "black",
 }
 
+# === Faction Display Names ===
+## What the player is shown. Derived from the same table the resource suffix
+## uses, so a faction cannot be renamed in one place and not the other.
+##
+## The HUD used to announce the enemy turn as "AI TURN (RED LEGION)". "AI" tells
+## the player nothing about who is moving, and on a five-faction map there can be
+## more than one of them.
+static func faction_display_name(faction_id: int) -> String:
+	var suffix: String = str(FACTION_SUFFIX.get(faction_id, ""))
+	return suffix.capitalize() if suffix != "" else "Unknown"
+
+
+## "Red Enemy", "Purple Enemy" — the label for a faction the player is fighting.
+static func faction_enemy_name(faction_id: int) -> String:
+	return "%s Enemy" % faction_display_name(faction_id)
+
+
 # === Faction Palette-Tint Colors (for generic, non-recolored spritesheets) ===
 const FACTION_TINT_COLORS: Dictionary = {
 	Faction.BLUE_KINGDOM: Color(0.25, 0.55, 1.0),
@@ -300,6 +317,21 @@ const AI_RETREAT_THREAT_RATIO: float = 0.9
 ## Retreating units prefer cover; this weights the terrain damage multiplier
 ## against raw threat when picking where to fall back to.
 const AI_RETREAT_COVER_WEIGHT: float = 12.0
+
+## What a living enemy is worth as a DESTINATION, on the same scale as
+## AI_OBJECTIVE_VALUE (castle 100 ... tower 30) and divided by the same real path
+## cost. Without this the AI only ever walked to buildings: `best_objective`
+## always found one on a map carrying 4 gold mines, 2 iron mines, 6 villages and
+## 5 castles, so hunting was unreachable code and the army never engaged unless
+## the player happened to stand in its path.
+##
+## Set between village (55) and gold mine (70): worth diverting for, not worth
+## abandoning a castle capture for.
+const AI_ENEMY_VALUE: float = 62.0
+## A target already hurt is worth more than a fresh one — finishing a wounded
+## unit removes a whole unit, where chipping a healthy one removes nothing.
+## Scales linearly with the fraction of health already gone.
+const AI_WOUNDED_BONUS: float = 45.0
 
 # === Pandora's Box Rewards ===
 const PANDORA_SPOILS_GOLD: Vector2i = Vector2i(80, 220)

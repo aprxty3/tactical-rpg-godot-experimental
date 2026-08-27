@@ -102,6 +102,43 @@ func score_attack(attacker: TacticalUnit, defender: TacticalUnit) -> float:
 	return score
 
 
+## What an enemy is worth to WALK TOWARD, as opposed to `score_attack`, which
+## ranks a swing already in range.
+##
+## Deliberately the same shape as `score_objective` — value divided by real path
+## cost — so the two are directly comparable and the caller can simply take the
+## larger. Anything else (a distance threshold, an "engage" mode flag) would make
+## the two incomparable and turn the choice into a heuristic.
+func score_enemy_target(unit: TacticalUnit, enemy: TacticalUnit) -> float:
+	if not is_instance_valid(unit) or not is_instance_valid(enemy):
+		return -INF
+	if enemy.faction_id == _faction_id or not can_see(enemy):
+		return -INF
+
+	var value: float = GameConfig.AI_ENEMY_VALUE
+	if is_instance_valid(enemy.unit_data) and enemy.unit_data.max_health > 0:
+		var missing: float = 1.0 - (float(enemy.current_health) / float(enemy.unit_data.max_health))
+		value += GameConfig.AI_WOUNDED_BONUS * clampf(missing, 0.0, 1.0)
+
+	var cost: int = path_cost_between(unit.grid_position, enemy.grid_position)
+	if cost < 0:
+		return -INF
+	return value / float(cost + 1)
+
+
+## The visible enemy most worth marching on, with its score.
+## Returns {"unit": TacticalUnit|null, "score": float}.
+func best_enemy_target(unit: TacticalUnit) -> Dictionary:
+	var best: TacticalUnit = null
+	var best_score: float = -INF
+	for enemy in visible_enemies():
+		var score: float = score_enemy_target(unit, enemy)
+		if score > best_score:
+			best_score = score
+			best = enemy
+	return {"unit": best, "score": best_score}
+
+
 ## Would this swing finish the target outright?
 ##
 ## Kept here rather than in the caller so the damage number still comes from one

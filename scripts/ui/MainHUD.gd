@@ -17,6 +17,11 @@ signal end_turn_requested
 @onready var cancel_btn: Button = %CancelBtn
 
 var current_faction_id: int = 0
+
+## Which faction the human is playing. Was previously written as a bare `0`
+## scattered through the comparisons below, which is also why a third faction's
+## turn was announced as the player's.
+@export var player_faction_id: int = GameConfig.Faction.BLUE_KINGDOM
 var economy_manager: Node = null
 ## Optional — supplies the terrain readout in the unit inspector.
 var grid_manager: Node = null
@@ -54,7 +59,7 @@ func _ready() -> void:
 
 
 func show_end_turn_confirmation() -> void:
-	if current_faction_id != 0: # Only allowed on player turn (Blue Kingdom)
+	if current_faction_id != player_faction_id: # Only on the player's own turn
 		return
 	end_turn_modal.show()
 	confirm_btn.grab_focus()
@@ -160,6 +165,10 @@ func _on_upgrade_button_pressed(unit: Variant, target_data: Variant) -> void:
 signal surrender_choice_made(unit: Node, choice: String)
 
 var surrender_modal: Control
+var game_over_modal: Control
+## Latched once the match ends, so a second victory/defeat signal cannot rebuild
+## the result screen and the grid controller has something to ask.
+var _match_over: bool = false
 var surrender_text: Label
 var _surrender_unit: TacticalUnit = null
 
@@ -272,11 +281,15 @@ func initialize(eco_mgr: Node, grid_mgr: Node = null) -> void:
 
 func _on_turn_started(faction_id: int) -> void:
 	current_faction_id = faction_id
-	if faction_id == 1: # RED_LEGION
-		_update_context_text("🔴 AI TURN (RED LEGION) IS PLAYING...")
+	# Anyone who is not the player is an enemy, named by their colour. Hardcoding
+	# faction 1 also meant a third faction taking a turn was announced as YOUR
+	# TURN and left the End Turn button live.
+	if faction_id != player_faction_id:
+		_update_context_text("⚔️ %s IS PLAYING..." % GameConfig.faction_enemy_name(faction_id).to_upper())
 		end_turn_btn.disabled = true
 	else:
-		_update_context_text("🔵 YOUR TURN (BLUE KINGDOM)\nSelect unit or Castle.")
+		_update_context_text("🔵 YOUR TURN (%s)\nSelect unit or Castle." %
+			GameConfig.faction_display_name(faction_id).to_upper())
 		end_turn_btn.disabled = false
 	_refresh_resources(faction_id)
 	_refresh_turn_label()
@@ -391,20 +404,103 @@ func _on_building_captured(building: Node, _faction_id: int) -> void:
 func _update_context_text(text: String) -> void:
 	context_label.text = text
 
+## The match is over.
+##
+## Both outcomes route here rather than each writing the label itself: they are
+## the same event seen from two sides, and having two copies is how one of them
+## ends up showing a result screen the other does not.
 func _on_victory_condition_met(faction_id: int, _condition: String) -> void:
-	if faction_id == 0: # Blue (Player)
-		victory_label.text = "VICTORY"
-		victory_label.add_theme_color_override("font_color", Color(0.2, 0.8, 0.2))
-	else:
-		victory_label.text = "DEFEAT"
-		victory_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))
-	victory_label.show()
+	_end_match(faction_id == player_faction_id)
+
 
 func _on_defeat_condition_met(faction_id: int, _condition: String) -> void:
-	if faction_id == 0: # Blue (Player)
-		victory_label.text = "DEFEAT"
-		victory_label.add_theme_color_override("font_color", Color(0.8, 0.2, 0.2))
-	else:
-		victory_label.text = "VICTORY"
-		victory_label.add_theme_color_override("font_color", Color(0.2, 0.8, 0.2))
+	_end_match(faction_id != player_faction_id)
+
+
+func _end_match(player_won: bool) -> void:
+	if _match_over:
+		return
+	_match_over = true
+
+	victory_label.text = "VICTORY" if player_won else "DEFEAT"
+	victory_label.add_theme_color_override("font_color",
+		Color(0.2, 0.8, 0.2) if player_won else Color(0.8, 0.2, 0.2))
 	victory_label.show()
+
+	end_turn_btn.disabled = true
+	_show_game_over_modal(player_won)
+	EventBus.match_ended.emit(player_won)
+
+
+## Is the match finished? The grid controller asks before acting on input, which
+## is what stops play continuing underneath the result screen — previously the
+## banner appeared and the player could keep moving units indefinitely.
+func is_match_over() -> bool:
+	return _match_over
+
+
+func _show_game_over_modal(player_won: bool) -> void:
+	if is_instance_valid(game_over_modal):
+		game_over_modal.show()
+		return
+
+	game_over_modal = ColorRect.new()
+	game_over_modal.name = "GameOverModal"
+	game_over_modal.color = Color(0, 0, 0, 0.65)
+	game_over_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# STOP, not IGNORE: the overlay has to swallow clicks, or the board stays
+	# playable through it and the "match over" state is cosmetic.
+	game_over_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_CENTER)
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 20)
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+
+	var title := Label.new()
+	title.text = "🏆 VICTORY" if player_won else "💀 DEFEAT"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color",
+		Color(0.3, 0.9, 0.3) if player_won else Color(0.9, 0.3, 0.3))
+	box.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = ("The enemy castles have fallen." if player_won
+		else "Your forces have been broken.")
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(subtitle)
+
+	var retry_btn := Button.new()
+	retry_btn.text = "🔄  Retry"
+	retry_btn.pressed.connect(_on_retry_pressed)
+	box.add_child(retry_btn)
+
+	var quit_btn := Button.new()
+	quit_btn.text = "🚪  Quit"
+	quit_btn.pressed.connect(func(): get_tree().quit())
+	box.add_child(quit_btn)
+
+	margin.add_child(box)
+	panel.add_child(margin)
+	game_over_modal.add_child(panel)
+	add_child(game_over_modal)
+
+
+## Restart the match by reloading the scene.
+##
+## `reload_current_scene` rather than resetting managers by hand: the board, the
+## economy, the fog, the scattered chests and traps and every unit's state all
+## come from scene construction, and a hand-written reset would have to
+## rediscover each of them and would drift the moment a new system was added.
+func _on_retry_pressed() -> void:
+	_match_over = false
+	get_tree().paused = false
+	get_tree().reload_current_scene()

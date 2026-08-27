@@ -386,9 +386,28 @@ func _find_strategic_destination(unit: TacticalUnit) -> Vector2i:
 	if not tree:
 		return Vector2i(-1, -1)
 
-	# 1. The most rewarding objective per step of travel.
+	# 1. Buildings and enemies compete on ONE scale: value divided by the real
+	#    path cost to reach them. Whichever scores higher is where this unit
+	#    goes.
+	#
+	#    The old rule returned the best building the moment it found one, so on
+	#    a map holding 4 gold mines, 2 iron mines, 6 villages and 5 castles there
+	#    was always a building and the enemy-hunting branch below was
+	#    unreachable. The army captured its way around the map and only ever
+	#    fought when a player unit happened to stand in its path — which reads
+	#    exactly like an AI that never attacks.
 	if is_instance_valid(evaluator):
 		var objective: Building = evaluator.best_objective(unit)
+		var objective_score: float = -INF
+		if is_instance_valid(objective):
+			objective_score = evaluator.score_objective(unit, objective)
+
+		var hunt: Dictionary = evaluator.best_enemy_target(unit)
+		var prey: TacticalUnit = hunt.get("unit")
+		var hunt_score: float = float(hunt.get("score", -INF))
+
+		if is_instance_valid(prey) and hunt_score >= objective_score:
+			return prey.grid_position
 		if is_instance_valid(objective):
 			return objective.grid_position
 
