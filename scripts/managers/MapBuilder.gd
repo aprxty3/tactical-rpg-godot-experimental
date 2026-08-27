@@ -415,7 +415,31 @@ func get_barrel_cells(reserved: Array[Vector2i], max_count: int = 6) -> Array[Ve
 ## Treasure positions, scattered with a seeded RNG so every match differs while
 ## a fixed seed still reproduces a layout exactly for tests. Chests avoid roads,
 ## water and prop cells so they are always visible and always reachable.
+## Cells for buried traps: the same seeded scatter as chests, with its own
+## spacing rule.
+##
+## Shares `_scatter_cells` with `get_chest_cells` rather than copying it —
+## the two differ only in how far apart their results must sit, and a copy would
+## drift the moment either one's candidate filter changed.
+##
+## Traps are deliberately NOT kept off roads and bridges. A mine on the only
+## bridge is the whole point of a mine; the walkability filter inside
+## `_scatter_cells` already keeps them out of water and off occupied cells.
+func get_trap_cells(reserved: Array[Vector2i], count: int, rng: RandomNumberGenerator) -> Array[Vector2i]:
+	return _scatter_cells(reserved, count, rng, GameConfig.HIDDEN_TRAP_MIN_SPACING)
+
+
 func get_chest_cells(reserved: Array[Vector2i], count: int, rng: RandomNumberGenerator) -> Array[Vector2i]:
+	# Chests kept 4 apart so one unit cannot sweep three in a single move.
+	return _scatter_cells(reserved, count, rng, 4)
+
+
+## Seeded scatter shared by chests and traps: pick `count` free cells at random,
+## rejecting any pick that lands within `min_spacing` (Manhattan) of one already
+## chosen. Draws without replacement, so it terminates even when spacing makes
+## the target count unreachable — it returns fewer cells rather than looping.
+func _scatter_cells(reserved: Array[Vector2i], count: int,
+		rng: RandomNumberGenerator, min_spacing: int) -> Array[Vector2i]:
 	var taken: Dictionary = {}
 	for c in reserved:
 		taken[c] = true
@@ -432,10 +456,9 @@ func get_chest_cells(reserved: Array[Vector2i], count: int, rng: RandomNumberGen
 		var idx: int = rng.randi_range(0, candidates.size() - 1)
 		var pick: Vector2i = candidates[idx]
 		candidates.remove_at(idx)
-		# Keep chests apart so one unit cannot sweep three in a single move.
 		var too_close := false
 		for other in cells:
-			if absi(other.x - pick.x) + absi(other.y - pick.y) < 4:
+			if absi(other.x - pick.x) + absi(other.y - pick.y) < min_spacing:
 				too_close = true
 				break
 		if not too_close:

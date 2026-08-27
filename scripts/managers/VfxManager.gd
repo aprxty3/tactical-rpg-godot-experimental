@@ -32,6 +32,10 @@ const FX_DIR: String = "res://assets/effects/Particle FX/"
 ## nine 192px frames — the layout is verified, not assumed.
 const EXPLOSION_SHEET: String = "res://assets/effects/Explosion/Explosions.png"
 const EXPLOSION_FRAMES: int = 9
+## 896x128 sheet — seven 128px frames. The same sheet `Fire` uses for a burning
+## cell, reused here for the flame that erupts at the instant of ignition.
+const FIRE_SHEET: String = "res://assets/effects/Fire/Fire.png"
+const FIRE_FRAMES: int = 7
 
 ## One table describing every effect, rather than one function per effect. Adding
 ## a new burst is a row here plus a call — not another near-copy of the spawn
@@ -67,6 +71,34 @@ const EFFECTS: Dictionary = {
 		"speed": Vector2(150.0, 300.0), "spread": 180.0, "scale": 0.75,
 		"gravity": 240.0, "tint": Color(1.0, 0.72, 0.30),
 	},
+	# Fire_01/02/03 are sprite SHEETS (8/10/12 frames of 64px), not single
+	# images. Drawn as flat textures — which is all this manager could do before
+	# — every particle showed the whole filmstrip at once, which is why the
+	# explosion read as orange grit instead of fire. `hframes` switches the
+	# particle onto the flipbook path so each one plays the flame animation.
+	#
+	# Negative gravity because flame rises; the previous effects all used
+	# positive gravity, which is right for debris and wrong for fire.
+	"flame": {
+		"texture": "Fire_02.png", "hframes": 10, "count": 18, "lifetime": 0.8,
+		"speed": Vector2(55.0, 120.0), "spread": 26.0, "scale": 1.6,
+		"gravity": -170.0, "tint": Color(1.0, 0.38, 0.10), "additive": true,
+	},
+	# The blast's own fireball: faster, wider, gone sooner.
+	"fireball": {
+		"texture": "Fire_03.png", "hframes": 12, "count": 20, "lifetime": 0.6,
+		"speed": Vector2(110.0, 240.0), "spread": 180.0, "scale": 1.8,
+		"gravity": -70.0, "tint": Color(1.0, 0.32, 0.08), "additive": true,
+		"anim_speed": 0.7,
+	},
+	# Embers thrown clear of the blast — small, sparse, and the one fire effect
+	# that falls, so the scene is not uniformly rising.
+	"ember": {
+		"texture": "Fire_01.png", "hframes": 8, "count": 14, "lifetime": 0.9,
+		"speed": Vector2(140.0, 290.0), "spread": 180.0, "scale": 0.5,
+		"gravity": 190.0, "tint": Color(1.0, 0.26, 0.05), "additive": true,
+		"anim_speed": 0.65,
+	},
 	"ambush": {
 		"texture": "Dust_01.png", "count": 12, "lifetime": 0.5,
 		"speed": Vector2(40.0, 90.0), "spread": 120.0, "scale": 0.4,
@@ -85,6 +117,8 @@ func _ready() -> void:
 	EventBus.unit_deserted.connect(_on_unit_deserted)
 	EventBus.hazard_detonated.connect(_on_hazard_detonated)
 	EventBus.ambush_triggered.connect(_on_ambush_triggered)
+	EventBus.fire_ignited.connect(_on_fire_ignited)
+	EventBus.trap_sprung.connect(_on_trap_sprung)
 
 
 func setup(grid_mgr: GridManager, cam: TacticalCamera, container: Node2D) -> void:
@@ -132,14 +166,44 @@ func _on_unit_deserted(unit: Node) -> void:
 
 
 func _on_hazard_detonated(cell: Vector2i, _radius: int, chain_index: int) -> void:
-	# Fireball then debris: the flipbook sells the blast, the particles sell what
-	# it threw. Both live here rather than one here and one in MapObjectManager,
-	# which owns map objects and has no business owning visuals.
+	# Four layers, because an explosion is not one shape: the flipbook is the
+	# blast front, the fireball is burning gas, the debris is what it threw, and
+	# the embers are what lands afterwards. Previously only the first and third
+	# existed, so the blast read as a puff of orange dust.
+	#
+	# All of it lives here rather than half here and half in MapObjectManager,
+	# which owns map objects and their rules, not their pyrotechnics.
 	flipbook_at_cell(cell, EXPLOSION_SHEET, EXPLOSION_FRAMES, 0.45, 110.0)
+	burst_at_cell(cell, "fireball")
 	burst_at_cell(cell, "explosion")
+	burst_at_cell(cell, "ember")
 	# Later links in a chain shake less, otherwise a five-keg chain reaction
 	# rattles the screen for a solid second.
 	shake(9.0 / float(chain_index + 1), 0.35)
+
+
+## A cell caught alight. `Fire` draws the steady burn that follows; this is the
+## moment of ignition, which the steady loop cannot express because it starts
+## mid-cycle at whatever frame the tween happens to be on.
+func _on_fire_ignited(cell: Vector2i) -> void:
+	flipbook_at_cell(cell, FIRE_SHEET, FIRE_FRAMES, 0.5, 86.0)
+	burst_at_cell(cell, "flame")
+
+
+## A hidden trap went off. Same vocabulary as a keg — it is the same kind of
+## event — but the shake is fixed rather than chain-scaled, and every cell in
+## the footprint erupts, so a 3x2 trap reads as a wall of fire instead of one
+## bang with fire appearing beside it.
+func _on_trap_sprung(cells: Array) -> void:
+	if cells.is_empty():
+		return
+	var origin: Vector2i = cells[0]
+	flipbook_at_cell(origin, EXPLOSION_SHEET, EXPLOSION_FRAMES, 0.45, 130.0)
+	burst_at_cell(origin, "ember")
+	for cell in cells:
+		burst_at_cell(cell, "fireball")
+		burst_at_cell(cell, "flame")
+	shake(11.0, 0.45)
 
 
 func _on_ambush_triggered(_ambusher: Node, target: Node) -> void:
@@ -199,6 +263,42 @@ func burst_at_position(world_pos: Vector2, effect_id: String) -> CPUParticles2D:
 	ramp.set_color(0, tint)
 	ramp.set_color(1, Color(tint.r, tint.g, tint.b, 0.0))
 	particles.color_ramp = ramp
+
+	# Sheet-animated particles. The frame layout lives on a CanvasItemMaterial,
+	# not on the particle node, so without this the whole strip is drawn as one
+	# squashed image. anim_speed 1.0 means exactly one pass through the sheet
+	# over the particle's lifetime — looping would restart a flame that is
+	# already fading out.
+	if spec.has("hframes"):
+		var mat := CanvasItemMaterial.new()
+		mat.particles_animation = true
+		mat.particles_anim_h_frames = int(spec["hframes"])
+		mat.particles_anim_v_frames = 1
+		mat.particles_anim_loop = false
+		# NOTE on tints for additive rows: an additive tint is not the colour you
+		# see, it is the colour ADDED to the ground behind it. Over this game's
+		# grass a warm orange sums into pale yellow, so the fire rows carry
+		# deliberately green-starved tints that only look right once added.
+		#
+		# Fire emits light, so overlapping flames must ADD rather than occlude.
+		# On the default mix blend the nearest particle simply hides the ones
+		# behind it and a cluster reads as opaque orange rubble; additive makes
+		# the overlap brighten, which is what the eye recognises as flame.
+		# Opt-in per effect: dust and debris are lit, not luminous, and would
+		# turn into white smears.
+		if bool(spec.get("additive", false)):
+			mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		particles.material = mat
+		# How far through the sheet a particle gets before it dies. 1.0 plays the
+		# whole strip, which on these sheets ends in smoke frames — fine for a
+		# steady flame, wrong for a blast, where the dark tail reads as rubble
+		# rather than fire. Below 1.0 the particle expires while still luminous.
+		var anim_speed: float = float(spec.get("anim_speed", 1.0))
+		particles.anim_speed_min = anim_speed
+		particles.anim_speed_max = anim_speed
+		# Stagger the starting frame so sixteen flames are not the same flame.
+		particles.anim_offset_min = 0.0
+		particles.anim_offset_max = 0.4
 
 	effect_container.add_child(particles)
 	particles.emitting = true

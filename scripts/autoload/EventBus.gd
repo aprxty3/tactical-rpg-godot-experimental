@@ -91,6 +91,10 @@ signal vision_updated(faction_id: int)
 @warning_ignore("unused_signal")
 signal hazard_detonated(cell: Vector2i, radius: int, chain_index: int)
 @warning_ignore("unused_signal")
+## A hidden trap detonated. Carries every cell in its footprint, origin first,
+## so a listener can light the whole blast without re-deriving its shape.
+signal trap_sprung(cells: Array)
+
 signal fire_ignited(cell: Vector2i)
 @warning_ignore("unused_signal")
 signal fire_extinguished(cell: Vector2i, scorched: bool)

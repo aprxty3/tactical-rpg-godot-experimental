@@ -242,9 +242,10 @@ unmodified build before being touched):
   (`GridManager.is_unit_moving`) plus a `_turn_running` re-entrancy guard.
 
 ## Milestone 5: AI Enhancements, Campaign & Polish
-Status: 🟡 In progress — AI, Visual Polish, Mount System and Audio shipped 2026-08-25; Full Campaign deferred
+Status: 🟡 In progress — AI, Visual Polish, Mount System and Audio shipped 2026-08-25;
+fire VFX, hit glitch and hidden traps added 2026-08-27; Full Campaign deferred
 
-**Verified**: `scenes/test_milestone5.tscn` — 88 integration checks, all passing.
+**Verified**: `scenes/test_milestone5.tscn` — 128 integration checks, all passing.
 Every earlier suite (Milestone 4, battlefield, combat, all-units, upgrade,
 village, undead) still passes unchanged.
 
@@ -291,6 +292,47 @@ village, undead) still passes unchanged.
         explosion implementation instead of two in different managers.
       *(Palette-swap shaders for faction colouring are no longer planned —
       superseded by baked per-faction art, see Milestone 3 §3.)*
+- [x] **Fire VFX, hit glitch & hidden traps** *(2026-08-27)*: a correction pass
+      on the Visual Polish item above, plus one new hazard.
+      - **The fire never animated.** `Fire_01/02/03.png` are sprite SHEETS of
+        8/10/12 frames, and `VfxManager` was assigning them as flat textures —
+        so every particle drew the whole filmstrip at once. That is why an
+        exploding keg read as orange grit rather than fire. Fixed by routing
+        sheet-backed effects through a `CanvasItemMaterial` with
+        `particles_animation`, with the frame count asserted against the real
+        image so a wrong number cannot silently return the old look.
+      - **Additive blending, with tints compensated for grass.** Fire emits
+        light, so overlapping flames must add rather than occlude. The catch:
+        an additive tint is the colour *added to the ground behind it*, and the
+        first warm-orange attempt summed into pale yellow over this map's grass.
+        The fire rows now carry deliberately green-starved tints that only look
+        correct once added. Verified by screenshot against a grass backdrop —
+        the same effects judged over black looked fine and were not.
+      - **`anim_speed` per effect**: these sheets end in smoke frames. A steady
+        flame should reach them; a blast should expire while still luminous.
+      - **Explosions are four layers** (blast front, fireball, debris, embers)
+        where they were two, and igniting a cell now gets its own flame burst —
+        `Fire`'s steady loop starts mid-cycle and cannot express the moment of
+        ignition.
+      - **Hit feedback is a red glitch, not a fade.** The old `tween_property`
+        ramp to red and back reads as "tinted", not "struck"; the eye needs a
+        discontinuity. Now five hard `tween_callback` cuts alternating a blown
+        red against a dark frame while the sprite jumps sideways. A second hit
+        mid-glitch kills the first tween — two racing tweens are how a sprite
+        gets stranded tinted and offset. Jitters `sprite.position`, never
+        `sprite.offset`, which carries the baked 38 px render metric.
+      - **Hidden traps** (`scripts/mapobjects/Trap.gd`): the only MapObject that
+        draws nothing at all. No sprite, no adjacency tell, no reveal mechanic —
+        and the AI walks the same blind map, which is the only thing that makes
+        an invisible hazard fair. Seeded scatter via `MapBuilder._scatter_cells`
+        (shared with chests, differing only in spacing), kept
+        `HIDDEN_TRAP_MIN_SPACING` apart so one step can never set off two.
+      - **A trap's blast is a fixed 3x2 rectangle**, not a keg's Manhattan
+        radius, and it ignites *every* flammable cell in the footprint rather
+        than rolling against terrain flammability. Deliberately not routed
+        through `detonate_at`: a keg chains into neighbouring kegs and a trap
+        chains into nothing, and merging them would thread a shape flag and a
+        chain flag through every call to save six lines.
 - [x] **Mount System** *(2026-08-25)*: both halves.
       - **Eight-way facing from five sheets.** Only Lancer ships directional art
         (`Lancer_{Up|UpRight|Right|DownRight|Down}_Attack.png`, ×5 factions) and

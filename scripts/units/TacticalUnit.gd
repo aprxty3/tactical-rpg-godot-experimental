@@ -324,12 +324,61 @@ func heal(amount: int) -> void:
 		EventBus.unit_healed.emit(self, actual_healed)
 
 
+## Red glitch on taking a hit.
+##
+## A smooth fade to red and back reads as "tinted", not as "struck" — the eye
+## needs a discontinuity to register impact. So this is a hard-cut flicker:
+## `tween_callback` steps rather than `tween_property` interpolation, alternating
+## a blown-out red against a dimmed frame while the sprite jumps sideways. The
+## horizontal jump is what sells it as a glitch rather than a flash.
+##
+## Jitters `sprite.position`, never `sprite.offset` — `offset` carries the baked
+## `UnitData.sprite_offset` that normalises every unit to 38 px, so writing to it
+## would fight the render-metric pass and leave units misaligned.
+const GLITCH_STEPS: Array[Dictionary] = [
+	{"tint": Color(2.20, 0.30, 0.30), "shift": 4.0},
+	{"tint": Color(0.35, 0.05, 0.05), "shift": -3.0},
+	{"tint": Color(2.00, 0.45, 0.45), "shift": -5.0},
+	{"tint": Color(1.00, 0.20, 0.20), "shift": 3.0},
+	{"tint": Color(1.80, 0.55, 0.55), "shift": 2.0},
+]
+const GLITCH_STEP_TIME: float = 0.035
+
+var _glitch_tween: Tween
+
+
 func _flash_damage() -> void:
 	if not sprite:
 		return
-	var t = create_tween()
-	t.tween_property(sprite, "modulate", Color(2.0, 0.4, 0.4), 0.08)
-	t.tween_property(sprite, "modulate", Color.WHITE, 0.12)
+
+	# A unit can be hit twice in one frame — a blast plus the fire it started.
+	# Without killing the previous tween the second glitch races the first, and
+	# whichever finishes last leaves the sprite tinted and shifted for good.
+	if _glitch_tween and _glitch_tween.is_valid():
+		_glitch_tween.kill()
+		_restore_sprite()
+
+	_glitch_tween = create_tween()
+	for step in GLITCH_STEPS:
+		_glitch_tween.tween_callback(_apply_glitch_step.bind(step["tint"], step["shift"]))
+		_glitch_tween.tween_interval(GLITCH_STEP_TIME)
+	_glitch_tween.tween_callback(_restore_sprite)
+
+
+func _apply_glitch_step(tint: Color, shift: float) -> void:
+	if not is_instance_valid(sprite):
+		return
+	sprite.modulate = tint
+	sprite.position = Vector2(shift, 0.0)
+
+
+## Always the last step, and also called before a re-entrant glitch starts, so
+## the sprite can never be left mid-glitch.
+func _restore_sprite() -> void:
+	if not is_instance_valid(sprite):
+		return
+	sprite.modulate = Color.WHITE
+	sprite.position = Vector2.ZERO
 
 
 func _show_floating_indicator(text: String, color: Color) -> void:

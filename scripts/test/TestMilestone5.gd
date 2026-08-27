@@ -23,6 +23,7 @@ var ai: AIManager
 var vfx: VfxManager
 var camera: TacticalCamera
 var units_root: Node2D
+var objects: MapObjectManager
 
 
 func _ready() -> void:
@@ -42,6 +43,7 @@ func _ready() -> void:
 	vfx = main.get_node("VfxManager")
 	camera = main.get_node("Camera2D")
 	units_root = main.get_node("Units")
+	objects = main.get_node("MapObjectManager")
 
 	# Freeze the scene's own input handling. Turns advancing mid-run would move
 	# the map's units between assertions and make failures irreproducible; the
@@ -56,6 +58,9 @@ func _ready() -> void:
 	_test_threat_and_retreat()
 	_test_recruit_composition()
 	await _test_vfx()
+	await _test_fire_vfx()
+	_test_hidden_traps()
+	await _test_damage_glitch()
 	_test_camera_shake()
 	_test_mount_system()
 	_test_directional_facing()
@@ -499,6 +504,203 @@ func _test_audio() -> void:
 ## Build a bare unit from a resource. Deliberately not the .tscn: these tests
 ## care about data and rules, and instancing the full prefab would drag in
 ## per-faction scene wiring that has nothing to do with what is being checked.
+# ==============================================================================
+# 3b. FIRE VFX
+# ==============================================================================
+
+func _test_fire_vfx() -> void:
+	print("\n[3b] Fire VFX")
+
+	# The flame rows are useless unless `hframes` matches the real sheet. A wrong
+	# count does not error — it silently plays part of a frame, which is exactly
+	# the "orange grit" look this pass set out to fix, so assert against the
+	# actual image rather than trusting the table.
+	var sheets := {"flame": "Fire_02.png", "fireball": "Fire_03.png", "ember": "Fire_01.png"}
+	for fx_id in sheets:
+		var spec: Dictionary = VfxManager.EFFECTS[fx_id]
+		_check(spec.has("hframes"), "'%s' is declared as an animated sheet" % fx_id)
+		var tex: Texture2D = load(VfxManager.FX_DIR + str(sheets[fx_id])) as Texture2D
+		if is_instance_valid(tex):
+			var real_frames: int = tex.get_width() / tex.get_height()
+			_check(int(spec["hframes"]) == real_frames,
+				"'%s' hframes matches the sheet (%d)" % [fx_id, real_frames])
+
+	# Flame rises. Every pre-existing effect used positive (falling) gravity,
+	# which is right for debris and wrong for fire.
+	_check(float(VfxManager.EFFECTS["flame"]["gravity"]) < 0.0, "flame rises rather than falls")
+	_check(float(VfxManager.EFFECTS["ember"]["gravity"]) > 0.0, "embers fall")
+
+	var burst := vfx.burst_at_position(Vector2(400, 400), "flame")
+	_check(is_instance_valid(burst), "a flame burst spawns")
+	if is_instance_valid(burst):
+		var mat := burst.material as CanvasItemMaterial
+		_check(is_instance_valid(mat), "the flame burst carries a CanvasItemMaterial")
+		if is_instance_valid(mat):
+			# Without this the sheet is drawn as one squashed image; the frame
+			# layout lives on the material, not on the particle node.
+			_check(mat.particles_animation, "sheet animation is enabled on the material")
+			_check(mat.particles_anim_h_frames == 10, "the material knows the frame count")
+			_check(not mat.particles_anim_loop, "the flame does not loop back while fading")
+		_check(burst.anim_speed_max > 0.0, "particles advance through the sheet")
+
+	# A plain effect must NOT get a material — otherwise every dust puff pays for
+	# a material it does not use.
+	var dust := vfx.burst_at_position(Vector2(400, 400), "impact")
+	if is_instance_valid(dust):
+		_check(dust.material == null, "a non-animated effect gets no material")
+
+	await get_tree().process_frame
+
+
+# ==============================================================================
+# 3c. HIDDEN TRAPS
+# ==============================================================================
+
+func _test_hidden_traps() -> void:
+	print("\n[3c] Hidden traps")
+
+	var origin := Vector2i(10, 10)
+	var trap := objects.spawn_trap(origin)
+	_check(is_instance_valid(trap), "a trap spawns")
+	if not is_instance_valid(trap):
+		return
+
+	# The whole point: it draws nothing. A faint sprite would be a tell.
+	var visuals: int = 0
+	for child in trap.get_children():
+		if child is Sprite2D or child is AnimatedSprite2D:
+			visuals += 1
+	_check(visuals == 0, "the trap renders nothing at all")
+
+	# --- footprint shape ---
+	var cells := objects.trap_blast_cells(origin)
+	_check(cells.size() == 6, "the footprint is 3x2 = 6 cells (got %d)" % cells.size())
+	_check(cells[0] == origin, "the origin is first, so a listener can centre on it")
+
+	var xs: Array[int] = []
+	var ys: Array[int] = []
+	for c in cells:
+		if not xs.has(c.x):
+			xs.append(c.x)
+		if not ys.has(c.y):
+			ys.append(c.y)
+	_check(xs.size() == 3, "three columns wide")
+	_check(ys.size() == 2, "two rows tall")
+	# The unit that stepped on the mine is in the LOWER row, so the blast reads
+	# as erupting upward out of the cell rather than swallowing the one behind.
+	_check(origin.y == ys.max(), "the trap's own row is the lower of the two")
+
+	# --- clipping at the map edge ---
+	var edge := objects.trap_blast_cells(Vector2i(10, 0))
+	_check(edge.size() == 3, "a footprint at the top edge clips to 3 cells (got %d)" % edge.size())
+	for c in edge:
+		_check(grid.is_within_bounds(c), "clipped footprint stays on the map")
+		break
+
+	# --- damage across the whole footprint ---
+	var inside_lower := _spawn("res://resources/units/pawn_red.tres", 1, origin)
+	var inside_upper := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(origin.x + 1, origin.y - 1))
+	var outside := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(origin.x, origin.y - 4))
+	var hp_lower: int = inside_lower.current_health
+	var hp_upper: int = inside_upper.current_health
+	var hp_outside: int = outside.current_health
+
+	var expected_fires: int = 0
+	if GameConfig.HIDDEN_TRAP_IGNITE_ALL:
+		for c in cells:
+			if objects._is_flammable(c) and not objects.has_fire_at(c):
+				expected_fires += 1
+	var fires_before: int = _count_fires()
+
+	# `seen.assign(c)`, not `seen = c`: GDScript lambdas capture locals BY VALUE,
+	# so rebinding the name inside the lambda updates the lambda's own copy and
+	# the outer array stays empty. Array is a reference type, so mutating the
+	# captured one reaches the array this scope is holding.
+	var seen: Array = []
+	EventBus.trap_sprung.connect(func(c): seen.assign(c), CONNECT_ONE_SHOT)
+	objects.spring_trap_at(origin)
+
+	_check(inside_lower.current_health < hp_lower, "the unit standing on it is hit")
+	# This is the assertion that proves 3x2 rather than a single cell: the upper
+	# row is a tile the old radius-1 blast would also have covered, so it is the
+	# corner that distinguishes the two.
+	_check(inside_upper.current_health < hp_upper, "a unit in the upper row is hit too")
+	_check(outside.current_health == hp_outside, "a unit outside the footprint is untouched")
+	_check(inside_lower.current_health == hp_lower - GameConfig.HIDDEN_TRAP_DAMAGE,
+		"damage is TRUE damage, unreduced by defense")
+	_check(seen.size() == 6, "trap_sprung carries the whole footprint")
+	_check(seen.size() > 0 and seen[0] == origin, "trap_sprung leads with the origin")
+
+	_check(_count_fires() - fires_before == expected_fires,
+		"every flammable cell in the footprint caught (%d)" % expected_fires)
+
+	# One-shot: the mine is gone, so walking back over it does nothing.
+	_check(trap.is_spent(), "the trap is spent after firing")
+	var hp_after: int = inside_lower.current_health
+	trap.spring()
+	_check(inside_lower.current_health == hp_after, "a spent trap cannot fire twice")
+
+	_despawn([inside_lower, inside_upper, outside])
+
+	# --- placement ---
+	var placed: Array = get_tree().get_nodes_in_group("traps")
+	var live: Array[Vector2i] = []
+	for t in placed:
+		if is_instance_valid(t) and not t.is_spent():
+			live.append(t.grid_position)
+	_check(live.size() >= 2, "the map is seeded with traps (%d live)" % live.size())
+	var min_gap: int = 9999
+	for i in range(live.size()):
+		for j in range(i + 1, live.size()):
+			min_gap = mini(min_gap, absi(live[i].x - live[j].x) + absi(live[i].y - live[j].y))
+	if live.size() >= 2:
+		# Without spacing, one step could set off two mines and delete a unit
+		# with no counterplay at all.
+		_check(min_gap >= GameConfig.HIDDEN_TRAP_MIN_SPACING,
+			"traps are spaced at least %d apart (closest %d)" % [GameConfig.HIDDEN_TRAP_MIN_SPACING, min_gap])
+
+
+func _count_fires() -> int:
+	var n: int = 0
+	for obj in get_tree().get_nodes_in_group("map_objects"):
+		if obj is Fire and is_instance_valid(obj) and not obj.is_spent():
+			n += 1
+	return n
+
+
+# ==============================================================================
+# 3d. DAMAGE GLITCH
+# ==============================================================================
+
+func _test_damage_glitch() -> void:
+	print("\n[3d] Red glitch on hit")
+
+	var victim := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(12, 12))
+	var base_modulate: Color = victim.sprite.modulate
+	var base_offset: Vector2 = victim.sprite.offset
+
+	victim.take_damage(1, "true")
+	await get_tree().process_frame
+	_check(victim.sprite.modulate != base_modulate, "the sprite is tinted mid-glitch")
+	_check(victim.sprite.modulate.r > victim.sprite.modulate.g, "the tint is red, not white")
+
+	# Hit again mid-glitch. Two live tweens racing is how a sprite gets stranded
+	# tinted and shifted, so the second hit must kill the first.
+	victim.take_damage(1, "true")
+	await get_tree().process_frame
+
+	var total: float = float(TacticalUnit.GLITCH_STEPS.size()) * TacticalUnit.GLITCH_STEP_TIME + 0.15
+	await get_tree().create_timer(total).timeout
+
+	_check(victim.sprite.modulate.is_equal_approx(Color.WHITE), "the tint is fully restored")
+	_check(victim.sprite.position.is_zero_approx(), "the sprite returns to its exact position")
+	# offset carries the baked 38px render metric; jittering it would misalign
+	# the unit permanently.
+	_check(victim.sprite.offset.is_equal_approx(base_offset), "the baked render offset is untouched")
+
+	_despawn([victim])
+
+
 func _spawn(res_path: String, faction: int, cell: Vector2i) -> TacticalUnit:
 	var unit := TacticalUnit.new()
 	var spr := Sprite2D.new()

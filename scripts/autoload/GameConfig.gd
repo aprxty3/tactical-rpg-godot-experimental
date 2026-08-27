@@ -246,6 +246,28 @@ const FIRE_SPREAD_MULT: float = 1.0
 ## firestorm behind it.
 const BLAST_IGNITION_MULT: float = 3.0
 
+# === Hidden Traps ===
+## Buried mines: invisible until stepped on, scattered at match start.
+##
+## Named HIDDEN_* throughout because `PANDORA_TRAP_DAMAGE` already exists and is
+## a different thing entirely — that one is a Pandora chest outcome, punishing a
+## unit that chose to open something. These punish a unit for walking.
+##
+## Damage sits below a keg's 45: a keg is visible and can be played around, a
+## buried mine cannot, and an unavoidable hit should not also be the biggest.
+const HIDDEN_TRAP_DAMAGE: int = 32          # TRUE damage, ignores defense
+## Blast footprint in cells, width x height. An even height cannot be centred on
+## the trap's row; the extra row goes above it, so the plume reads as rising out
+## of the cell that was stepped on.
+const HIDDEN_TRAP_BLAST_SIZE: Vector2i = Vector2i(3, 2)
+## Every cell in the footprint that can burn, does. A keg's ignition is a roll
+## against terrain flammability; a mine is incendiary by design.
+const HIDDEN_TRAP_IGNITE_ALL: bool = true
+## How many are buried per match.
+const HIDDEN_TRAP_COUNT: int = 6
+## Kept this far apart (Manhattan), so one step can never set off two.
+const HIDDEN_TRAP_MIN_SPACING: int = 5
+
 # === Enemy AI Tuning ===
 ## What each building is worth as an objective. The AI divides these by the real
 ## path cost of reaching them, so a Gold Mine two roads away outranks a Village

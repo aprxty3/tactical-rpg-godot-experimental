@@ -15,6 +15,9 @@ class_name MapObjectManager
 @export var random_seed: int = 0
 ## How many chests to scatter when populate() is called.
 @export var chest_count: int = 5
+## Buried traps per match. Zero disables them entirely, which is what the
+## focused older test scenes want.
+@export var trap_count: int = GameConfig.HIDDEN_TRAP_COUNT
 ## Upper bound on barrels placed at bridge mouths.
 @export var barrel_count: int = 6
 
@@ -115,6 +118,11 @@ func populate(map_builder: MapBuilder, reserved: Array[Vector2i]) -> void:
 		claimed.append(cell)
 	for cell in map_builder.get_chest_cells(claimed, chest_count, _rng):
 		spawn_chest(cell)
+		claimed.append(cell)
+	# Traps last: they are invisible, so anything that must be seen has already
+	# claimed its cell and a mine can never end up hidden under a chest.
+	for cell in map_builder.get_trap_cells(claimed, trap_count, _rng):
+		spawn_trap(cell)
 
 
 func spawn_barrel(cell: Vector2i) -> Barrel:
@@ -123,6 +131,10 @@ func spawn_barrel(cell: Vector2i) -> Barrel:
 
 func spawn_chest(cell: Vector2i) -> Chest:
 	return _spawn(Chest.new(), cell) as Chest
+
+
+func spawn_trap(cell: Vector2i) -> Trap:
+	return _spawn(Trap.new(), cell) as Trap
 
 
 ## Set a cell alight. No-op if it is already burning.
@@ -224,6 +236,65 @@ func _apply_blast(cell: Vector2i, chain_index: int) -> void:
 			victim.take_damage(GameConfig.BARREL_DAMAGE, "true")
 		if _is_flammable(target) and _rng.randf() < _flammability(target) * GameConfig.BLAST_IGNITION_MULT:
 			ignite(target)
+
+
+## Fire the buried trap at `origin`: a 3x2 wall of blast and flame.
+##
+## Deliberately NOT routed through `detonate_at`. A keg's blast is a Manhattan
+## radius that chains into neighbouring kegs; a trap is a fixed rectangle that
+## chains into nothing — `HIDDEN_TRAP_MIN_SPACING` guarantees no second trap is
+## close enough to reach. Forcing both through one function would mean a
+## rectangle/radius flag and a chain flag threaded through every call, to save
+## about six lines.
+func spring_trap_at(origin: Vector2i) -> void:
+	# Consume first, exactly as `detonate_at` does for barrels: the blast can
+	# damage the unit standing on the trap, and a re-entrant spring during that
+	# must find the trap already spent.
+	for obj in objects_at(origin):
+		if obj is Trap:
+			obj.consume(0.05)
+
+	var footprint: Array[Vector2i] = trap_blast_cells(origin)
+	# Origin first — VfxManager centres the blast flipbook on cells[0].
+	EventBus.trap_sprung.emit(footprint)
+
+	for cell in footprint:
+		var victim: TacticalUnit = unit_at(cell)
+		if is_instance_valid(victim):
+			# TRUE damage, like a keg: buried powder does not care about armour.
+			victim.take_damage(GameConfig.HIDDEN_TRAP_DAMAGE, "true")
+			victim.adjust_morale(GameConfig.MORALE_AMBUSHED)
+		# A mine is incendiary by design, so every cell that CAN burn does —
+		# no flammability roll, unlike a keg's chancy ignition.
+		if GameConfig.HIDDEN_TRAP_IGNITE_ALL and _is_flammable(cell):
+			ignite(cell)
+
+
+## The 3x2 footprint centred on `origin`, clipped to the map.
+##
+## Width 3 centres cleanly (origin +/- 1). Height 2 cannot be centred on a single
+## row, so the extra row goes ABOVE the origin: the unit that stepped on the mine
+## is always in the lower row, and the blast reads as erupting upward out of it
+## rather than swallowing the cell behind.
+##
+## `origin` is always element 0, which is what lets a listener centre a single
+## blast sprite without re-deriving the shape.
+func trap_blast_cells(origin: Vector2i) -> Array[Vector2i]:
+	var size: Vector2i = GameConfig.HIDDEN_TRAP_BLAST_SIZE
+	var half_w: int = (size.x - 1) / 2
+	var cells: Array[Vector2i] = []
+	if is_instance_valid(grid_manager) and grid_manager.is_within_bounds(origin):
+		cells.append(origin)
+
+	for dy in range(-(size.y - 1), 1):
+		for dx in range(-half_w, half_w + 1):
+			var cell := Vector2i(origin.x + dx, origin.y + dy)
+			if cell == origin:
+				continue
+			if is_instance_valid(grid_manager) and not grid_manager.is_within_bounds(cell):
+				continue
+			cells.append(cell)
+	return cells
 
 
 ## Cells holding an unspent barrel within `radius` of `cell`.

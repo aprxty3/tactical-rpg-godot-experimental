@@ -12,6 +12,98 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+## 📅 Fire VFX, Hit Glitch & Hidden Traps (2026-08-27)
+
+A correction pass on Milestone 5's Visual Polish, plus one new hazard.
+`scenes/test_milestone5.tscn` grew from 88 to **128 checks**, all passing; every
+earlier suite (Milestone 4, battlefield, combat, upgrade, village, undead,
+all-units) still passes unchanged.
+
+### 🔥 The fire never actually animated
+`assets/effects/Particle FX/Fire_01|02|03.png` are sprite **sheets** of 8, 10 and
+12 frames. `VfxManager` assigned them as flat textures, so every particle drew
+the entire filmstrip at once — which is why a detonating powder keg read as
+orange grit instead of fire.
+
+- Sheet-backed effects now go through a `CanvasItemMaterial` with
+  `particles_animation`, `particles_anim_h_frames` and `particles_anim_loop = false`.
+- The test asserts each row's `hframes` against the real image dimensions. A
+  wrong count does not error — it silently plays part of a frame, i.e. exactly
+  the bug being fixed — so trusting the table was not enough.
+- Plain effects deliberately get **no** material: dust and debris are lit, not
+  luminous, and would pay for a material they never use.
+
+### 💡 Additive blending, and why the tints look wrong in isolation
+Fire emits light, so overlapping flames must **add** rather than occlude; on the
+default mix blend the nearest particle simply hides the ones behind it and a
+cluster reads as opaque rubble.
+
+The subtlety: an additive tint is not the colour you see, it is the colour
+**added to whatever is behind it**. A warm `Color(1.0, 0.80, 0.42)` looked right
+over black and summed into pale yellow over this map's grass. The fire rows now
+carry green-starved tints (`Color(1.0, 0.38, 0.10)` and friends) that only look
+correct once added. Caught by screenshotting against a grass backdrop — judged
+over black, the wrong version passed.
+
+- New per-effect `anim_speed`: these sheets end in smoke frames. A steady flame
+  should reach them; a blast should expire while still luminous (0.65–0.7).
+- Explosions are now four layers — blast front, fireball, debris, embers — where
+  they were two.
+- `fire_ignited` gets its own flame burst. `Fire`'s steady loop starts at
+  whatever frame its tween happens to be on and cannot express ignition.
+
+### ⚡ Hit feedback is a glitch, not a fade
+`TacticalUnit._flash_damage()` tweened smoothly to red and back, which reads as
+"tinted" rather than "struck" — the eye needs a discontinuity to register
+impact. Replaced with five hard `tween_callback` cuts alternating a blown-out red
+against a dark frame while the sprite jumps sideways.
+
+- A second hit mid-glitch kills the first tween. Two live tweens racing is how a
+  sprite ends up stranded tinted and offset, and a unit *can* be hit twice in one
+  frame — a blast plus the fire it started.
+- Jitters `sprite.position`, never `sprite.offset`: `offset` carries the baked
+  `UnitData.sprite_offset` that normalises every unit to 38 px, so writing to it
+  would fight the render-metric pass and misalign the unit permanently.
+
+### 💣 Hidden traps (`scripts/mapobjects/Trap.gd`)
+The only `MapObject` that renders nothing at all. `Chest` and `Barrel` are
+landmarks you route around; a trap exists to punish a route that looked safe, so
+drawing it even faintly would defeat it. No sprite, no adjacency tell, no reveal
+mechanic — and **the AI walks the same blind map**, which is the only thing that
+makes an invisible hazard fair.
+
+- Placement reuses `MapBuilder._scatter_cells`, extracted from the existing chest
+  scatter — the two differ only in spacing, and a copy would drift the moment
+  either one's candidate filter changed.
+- `HIDDEN_TRAP_MIN_SPACING` keeps traps apart so one step can never set off two.
+- Traps are scattered **last**, after everything visible has claimed its cell, so
+  a mine can never end up hidden under a chest.
+- Named `HIDDEN_TRAP_*` because `PANDORA_TRAP_DAMAGE` already exists and is a
+  different thing: that one punishes a unit for opening something, these punish
+  it for walking.
+
+### 🧨 The 3x2 blast
+`spring_trap_at()` is deliberately **not** routed through `detonate_at()`. A keg's
+blast is a Manhattan radius that chains into neighbouring kegs; a trap is a fixed
+rectangle that chains into nothing. Merging them would mean threading a
+shape flag and a chain flag through every call to save about six lines.
+
+- Width 3 centres cleanly; height 2 cannot, so the extra row goes **above** the
+  origin — the unit that stepped on the mine is always in the lower row and the
+  blast reads as erupting upward out of it.
+- Every flammable cell in the footprint catches, with no flammability roll: a
+  keg's ignition is chancy, a mine is incendiary by design.
+- `EventBus.trap_sprung(cells)` carries the whole footprint with the origin
+  first, so `VfxManager` can centre the blast sprite without re-deriving the
+  shape.
+
+### 🐛 Found while testing
+- **GDScript lambdas capture locals by value.** A test capturing the signal
+  payload with `func(c): seen = c` updated the lambda's own copy and left the
+  outer array empty. `seen.assign(c)` works because `Array` is a reference type.
+  Two checks failed on this before it was understood; the product code was
+  correct throughout.
+
 ## 📅 Milestone 5 — Advanced AI, Visual Polish, Mount System & Audio (2026-08-25)
 
 Four of Milestone 5's five items. **Full Campaign is deliberately deferred**: it
