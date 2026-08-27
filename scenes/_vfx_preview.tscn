@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://ba548v4jahgqk"]
+
+[ext_resource type="Script" uid="uid://dxumfffto0ytn" path="res://scripts/managers/VfxManager.gd" id="1_vfx"]
+
+[sub_resource type="GDScript" id="GDScript_prev2"]
+script/source = "extends Node2D
+## Throwaway harness. Delete when done.
+
+func _ready() -> void:
+	var vfx: VfxManager = $VfxManager
+	vfx.setup(null, null, $Vfx)
+	loop(vfx)
+
+func loop(vfx: VfxManager) -> void:
+	while is_inside_tree():
+		# Death marker (skull sheet) — left.
+		vfx.flipbook_at_position(Vector2(260, 400), VfxManager.DEATH_SHEET,
+			VfxManager.DEATH_HFRAMES * VfxManager.DEATH_VFRAMES, 1.9, 72.0,
+			VfxManager.DEATH_VFRAMES)
+		# Keg blast, exactly as _on_hazard_detonated fires it — centre.
+		vfx.flipbook_at_position(Vector2(700, 400), VfxManager.EXPLOSION_SHEET,
+			VfxManager.EXPLOSION_FRAMES, 0.45, 110.0)
+		vfx.burst_at_position(Vector2(700, 400), \"fireball\")
+		vfx.burst_at_position(Vector2(700, 400), \"flame\")
+		vfx.burst_at_position(Vector2(700, 400), \"ember\")
+		# Ordinary hit dust — right, to confirm it is no longer a wide smear.
+		vfx.burst_at_position(Vector2(1150, 400), \"impact\")
+		await get_tree().create_timer(0.45).timeout
+"
+
+[node name="VfxPreview" type="Node2D" unique_id=510800995]
+script = SubResource("GDScript_prev2")
+
+[node name="BG" type="ColorRect" parent="." unique_id=1293674844]
+offset_right = 1400.0
+offset_bottom = 800.0
+color = Color(0.36, 0.51, 0.26, 1)
+
+[node name="Vfx" type="Node2D" parent="." unique_id=1540273956]
+
+[node name="VfxManager" type="Node" parent="." unique_id=590692328]
+script = ExtResource("1_vfx")
