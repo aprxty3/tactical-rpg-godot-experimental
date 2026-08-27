@@ -12,6 +12,61 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+## 📅 VFX Correction Pass 2 — Sheets, Keg Fire & Death Marker (2026-08-27)
+
+Three faults found by watching gameplay recordings rather than by running the
+tests. `scenes/test_milestone5.tscn` grew from 128 to **157 checks**, all passing.
+
+### 🎞️ Every particle asset is a sheet — not just the fire ones
+All eight files in `assets/effects/Particle FX/` are filmstrips of 8-12 frames.
+The previous pass fixed only the three named `Fire_*`, because those were the
+ones reported. `impact`, `crit`, `death`, `desert`, `explosion` and `ambush` were
+still assigned flat, so each particle stretched an entire filmstrip across the
+screen: a kill painted a red band six tiles wide, a keg a brown one across ten.
+
+The test now iterates the **whole** `EFFECTS` table and asserts each row's
+`hframes` against the real image's dimensions. A new row that forgets the field
+fails instead of silently smearing.
+
+### 🔥 A keg left no fire in the one place kegs actually sit
+`_apply_blast` ignited only cells passing a flammability roll. Kegs are placed at
+BRIDGE and ROAD chokepoints from `MapBuilder`'s own bridge analysis, and both
+terrains are `flammable: 0.00` — so the only place a keg could realistically be
+shot was the only place its blast could never leave a fire.
+
+- A blast now ignites every cell it touches, with no roll. Terrain flammability
+  still governs where fire **spreads on its own** (`spread_fire_from`), which is
+  what that number was always for.
+- Water is refused inside `ignite()` rather than by each caller, since callers no
+  longer ask permission.
+- Fire still burns `FIRE_LIFETIME_TICKS = 3` rounds, now asserted end to end.
+- The trap's own `_is_flammable` guard was removed as redundant.
+
+### 💀 Death spawned an explosion
+`_on_unit_died` fired a red `Dust_02` burst. A spray of red debris is the
+vocabulary of ordnance, not of a sword to the chest.
+
+Deaths now play `assets/characters/dead/Dead.png` — a 7x2, 14-frame skull that
+drops in, bounces, settles and sinks away. It shipped with the project and had
+never been referenced by any script.
+
+- The particle burst is gone entirely; the shake drops from 4.0 to 1.2 so a kill
+  reads as a thump rather than as ordnance.
+- `flipbook_at_cell` gained a `vframes` parameter and a `flipbook_at_position`
+  sibling. Grid sheets need the row count for scale — a frame is
+  `texture_height / vframes` tall — and a dying unit is mid-animation between
+  cells, so snapping its marker to a cell centre would place it where the unit
+  no longer is.
+- The keg blast is fire-only now (blast front, fireball, flame, embers); the
+  debris row that turned it into a brown cloud was dropped.
+
+### 🐛 Found while testing
+- A test that cleared the effect container with `free()` tripped
+  `Lambda capture at index 0 was freed`: `burst_at_position` schedules its own
+  deferred free through a lambda holding the particle node. Rewritten to
+  snapshot the pre-existing children and inspect only what the death added —
+  the error was self-inflicted by the test, not a fault in the effect.
+
 ## 📅 Fire VFX, Hit Glitch & Hidden Traps (2026-08-27)
 
 A correction pass on Milestone 5's Visual Polish, plus one new hazard.

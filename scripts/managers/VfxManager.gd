@@ -36,6 +36,12 @@ const EXPLOSION_FRAMES: int = 9
 ## cell, reused here for the flame that erupts at the instant of ignition.
 const FIRE_SHEET: String = "res://assets/effects/Fire/Fire.png"
 const FIRE_FRAMES: int = 7
+## 896x256 — a 7x2 grid of 128px frames: a skull drops in, bounces, settles, then
+## sinks away. It shipped with the project and had never been used. This is what
+## a death looks like now; a red particle burst read as an explosion.
+const DEATH_SHEET: String = "res://assets/characters/dead/Dead.png"
+const DEATH_HFRAMES: int = 7
+const DEATH_VFRAMES: int = 2
 
 ## One table describing every effect, rather than one function per effect. Adding
 ## a new burst is a row here plus a call — not another near-copy of the spawn
@@ -45,29 +51,29 @@ const FIRE_FRAMES: int = 7
 ## Godot's screen axis, so a value above zero makes debris settle.
 const EFFECTS: Dictionary = {
 	"impact": {
-		"texture": "Dust_01.png", "count": 14, "lifetime": 0.40,
+		"texture": "Dust_01.png", "hframes": 8, "count": 14, "lifetime": 0.40,
 		"speed": Vector2(70.0, 150.0), "spread": 180.0, "scale": 0.45,
 		"gravity": 320.0, "tint": Color(1.0, 0.94, 0.78),
 	},
 	"crit": {
-		"texture": "Explosion_01.png", "count": 18, "lifetime": 0.45,
+		"texture": "Explosion_01.png", "hframes": 8, "count": 18, "lifetime": 0.45,
 		"speed": Vector2(110.0, 220.0), "spread": 180.0, "scale": 0.55,
 		"gravity": 180.0, "tint": Color(1.0, 0.82, 0.45),
 	},
 	"death": {
-		"texture": "Dust_02.png", "count": 22, "lifetime": 0.70,
+		"texture": "Dust_02.png", "hframes": 10, "count": 22, "lifetime": 0.70,
 		"speed": Vector2(50.0, 130.0), "spread": 180.0, "scale": 0.6,
 		"gravity": 210.0, "tint": Color(0.95, 0.35, 0.32),
 	},
 	# Desertion is a rout, not a kill: pale, slow and drifting upward, so the
 	# player can tell "I lost a unit" from "I broke one" without reading the log.
 	"desert": {
-		"texture": "Dust_02.png", "count": 16, "lifetime": 0.85,
+		"texture": "Dust_02.png", "hframes": 10, "count": 16, "lifetime": 0.85,
 		"speed": Vector2(30.0, 70.0), "spread": 60.0, "scale": 0.5,
 		"gravity": -90.0, "tint": Color(0.72, 0.74, 0.80),
 	},
 	"explosion": {
-		"texture": "Explosion_02.png", "count": 28, "lifetime": 0.55,
+		"texture": "Explosion_02.png", "hframes": 10, "count": 28, "lifetime": 0.55,
 		"speed": Vector2(150.0, 300.0), "spread": 180.0, "scale": 0.75,
 		"gravity": 240.0, "tint": Color(1.0, 0.72, 0.30),
 	},
@@ -100,7 +106,7 @@ const EFFECTS: Dictionary = {
 		"anim_speed": 0.65,
 	},
 	"ambush": {
-		"texture": "Dust_01.png", "count": 12, "lifetime": 0.5,
+		"texture": "Dust_01.png", "hframes": 8, "count": 12, "lifetime": 0.5,
 		"speed": Vector2(40.0, 90.0), "spread": 120.0, "scale": 0.4,
 		"gravity": -40.0, "tint": Color(0.55, 0.85, 0.55),
 	},
@@ -154,10 +160,17 @@ func _on_combat_resolved(result: Dictionary) -> void:
 	shake(clampf(float(damage) / float(max_hp), 0.0, 1.0) * 6.0, 0.22)
 
 
+## A unit died. No particle burst: a spray of red debris is the vocabulary of an
+## explosion, and a sword to the chest is not one. The skull sheet lands, settles
+## and sinks instead — a marker, which is what a death should leave behind.
+##
+## The shake drops from 4.0 to 1.2 for the same reason. A kill should register as
+## a thump, not as ordnance going off.
 func _on_unit_died(unit: Node, _cause: String) -> void:
 	if is_instance_valid(unit):
-		burst_at_position(unit.global_position, "death")
-		shake(4.0, 0.25)
+		flipbook_at_position(unit.global_position, DEATH_SHEET,
+			DEATH_HFRAMES * DEATH_VFRAMES, 1.9, 72.0, DEATH_VFRAMES)
+		shake(1.2, 0.18)
 
 
 func _on_unit_deserted(unit: Node) -> void:
@@ -166,16 +179,15 @@ func _on_unit_deserted(unit: Node) -> void:
 
 
 func _on_hazard_detonated(cell: Vector2i, _radius: int, chain_index: int) -> void:
-	# Four layers, because an explosion is not one shape: the flipbook is the
-	# blast front, the fireball is burning gas, the debris is what it threw, and
-	# the embers are what lands afterwards. Previously only the first and third
-	# existed, so the blast read as a puff of orange dust.
+	# Fire only — no debris row. A powder keg going off should read as ignition,
+	# and the dust layer that used to sit here made it a brown cloud instead.
+	# Blast front, burning gas, the flame it leaves standing, and embers.
 	#
 	# All of it lives here rather than half here and half in MapObjectManager,
 	# which owns map objects and their rules, not their pyrotechnics.
 	flipbook_at_cell(cell, EXPLOSION_SHEET, EXPLOSION_FRAMES, 0.45, 110.0)
 	burst_at_cell(cell, "fireball")
-	burst_at_cell(cell, "explosion")
+	burst_at_cell(cell, "flame")
 	burst_at_cell(cell, "ember")
 	# Later links in a chain shake less, otherwise a five-keg chain reaction
 	# rattles the screen for a solid second.
@@ -316,22 +328,39 @@ func burst_at_position(world_pos: Vector2, effect_id: String) -> CPUParticles2D:
 ## (debris). `display_height` scales the sheet to a readable size on a 64 px
 ## tile regardless of the source resolution.
 func flipbook_at_cell(cell: Vector2i, sheet_path: String, frames: int,
-		duration: float, display_height: float) -> Sprite2D:
-	if not effects_enabled or not is_instance_valid(grid_manager):
+		duration: float, display_height: float, vframes: int = 1) -> Sprite2D:
+	if not is_instance_valid(grid_manager):
+		return null
+	return flipbook_at_position(grid_manager.grid_to_world(cell), sheet_path,
+		frames, duration, display_height, vframes)
+
+
+## Same, at a world position — a dying unit is mid-animation between cells, so
+## snapping its marker to a cell centre would place it where it no longer is.
+##
+## `vframes` supports grid sheets (the death skull is 7x2). Sprite2D.frame walks
+## a grid in row-major order, so the tween target is still a single frame count;
+## only the scale maths needs the row count, since a frame is
+## texture_height / vframes tall, not texture_height.
+func flipbook_at_position(world_pos: Vector2, sheet_path: String, frames: int,
+		duration: float, display_height: float, vframes: int = 1) -> Sprite2D:
+	if not effects_enabled:
 		return null
 	if not is_instance_valid(effect_container):
 		return null
 
 	var texture: Texture2D = _texture_for_path(sheet_path)
-	if not is_instance_valid(texture) or frames <= 0:
+	if not is_instance_valid(texture) or frames <= 0 or vframes <= 0:
 		return null
 
 	var sprite := Sprite2D.new()
 	sprite.texture = texture
-	sprite.hframes = frames
+	sprite.vframes = vframes
+	sprite.hframes = int(ceil(float(frames) / float(vframes)))
 	sprite.frame = 0
-	sprite.scale = Vector2.ONE * (display_height / float(texture.get_height()))
-	sprite.position = grid_manager.grid_to_world(cell)
+	var frame_height: float = float(texture.get_height()) / float(vframes)
+	sprite.scale = Vector2.ONE * (display_height / maxf(1.0, frame_height))
+	sprite.position = world_pos
 	effect_container.add_child(sprite)
 
 	# tween_method rather than an AnimationPlayer: this is one throwaway node

@@ -245,7 +245,7 @@ unmodified build before being touched):
 Status: 🟡 In progress — AI, Visual Polish, Mount System and Audio shipped 2026-08-25;
 fire VFX, hit glitch and hidden traps added 2026-08-27; Full Campaign deferred
 
-**Verified**: `scenes/test_milestone5.tscn` — 128 integration checks, all passing.
+**Verified**: `scenes/test_milestone5.tscn` — 157 integration checks, all passing.
 Every earlier suite (Milestone 4, battlefield, combat, all-units, upgrade,
 village, undead) still passes unchanged.
 
@@ -333,6 +333,31 @@ village, undead) still passes unchanged.
         through `detonate_at`: a keg chains into neighbouring kegs and a trap
         chains into nothing, and merging them would thread a shape flag and a
         chain flag through every call to save six lines.
+- [x] **VFX correction pass 2** *(2026-08-27, from gameplay recordings)*: three
+      faults the first pass missed, found by watching the game rather than the
+      tests.
+      - **Every particle asset is a sheet, not just the fire ones.** All eight
+        files in `assets/effects/Particle FX/` are filmstrips (8-12 frames), and
+        pass 1 only fixed the three named `Fire_*`. `impact`, `crit`, `death`,
+        `desert`, `explosion` and `ambush` were still drawing whole filmstrips
+        flat — which is why a kill painted a red band six tiles wide and a keg
+        painted a brown one across ten. The test now asserts `hframes` over the
+        **whole** table against real image dimensions, so a new row that forgets
+        it fails rather than silently smearing.
+      - **A keg left no fire where kegs actually are.** Ignition rolled against
+        terrain flammability, but kegs are placed at BRIDGE and ROAD
+        chokepoints and both are `flammable: 0.00` — so the one place a keg
+        could be shot was the one place its blast could never start a fire. A
+        blast now ignites unconditionally; terrain flammability still governs
+        where fire *spreads on its own*, which is that roll's real job. Water is
+        refused inside `ignite()` itself, since callers no longer ask.
+      - **Death spawned an explosion.** A red particle spray is the vocabulary
+        of ordnance, not of a sword. Deaths now play `assets/characters/dead/
+        Dead.png` — a 7x2, 14-frame skull that drops, bounces, settles and
+        sinks. It shipped with the project and had never been used. The burst is
+        gone entirely and the shake drops 4.0 -> 1.2.
+      - The keg blast is fire-only now (blast front, fireball, flame, embers);
+        the debris row that made it a brown cloud was removed.
 - [x] **Mount System** *(2026-08-25)*: both halves.
       - **Eight-way facing from five sheets.** Only Lancer ships directional art
         (`Lancer_{Up|UpRight|Right|DownRight|Down}_Attack.png`, ×5 factions) and

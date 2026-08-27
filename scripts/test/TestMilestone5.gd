@@ -59,7 +59,9 @@ func _ready() -> void:
 	_test_recruit_composition()
 	await _test_vfx()
 	await _test_fire_vfx()
+	_test_death_marker()
 	_test_hidden_traps()
+	_test_barrel_leaves_fire()
 	await _test_damage_glitch()
 	_test_camera_shake()
 	_test_mount_system()
@@ -511,22 +513,22 @@ func _test_audio() -> void:
 func _test_fire_vfx() -> void:
 	print("\n[3b] Fire VFX")
 
-	# The flame rows are useless unless `hframes` matches the real sheet. A wrong
-	# count does not error — it silently plays part of a frame, which is exactly
-	# the "orange grit" look this pass set out to fix, so assert against the
-	# actual image rather than trusting the table.
-	var sheets := {"flame": "Fire_02.png", "fireball": "Fire_03.png", "ember": "Fire_01.png"}
-	for fx_id in sheets:
+	# EVERY texture in assets/effects/Particle FX/ is a sprite sheet — all eight
+	# of them. Drawn flat, a particle shows the whole filmstrip stretched into a
+	# wide smear, which is what made a death read as an explosion and a keg read
+	# as a brown cloud. So the assertion is over the whole table, not just the
+	# rows that happen to be fire: a new row that forgets `hframes` fails here.
+	for fx_id in VfxManager.EFFECTS:
 		var spec: Dictionary = VfxManager.EFFECTS[fx_id]
-		_check(spec.has("hframes"), "'%s' is declared as an animated sheet" % fx_id)
-		var tex: Texture2D = load(VfxManager.FX_DIR + str(sheets[fx_id])) as Texture2D
-		if is_instance_valid(tex):
+		_check(spec.has("hframes"), "'%s' declares its sheet frame count" % fx_id)
+		var tex: Texture2D = load(VfxManager.FX_DIR + str(spec["texture"])) as Texture2D
+		if is_instance_valid(tex) and spec.has("hframes"):
 			var real_frames: int = tex.get_width() / tex.get_height()
 			_check(int(spec["hframes"]) == real_frames,
-				"'%s' hframes matches the sheet (%d)" % [fx_id, real_frames])
+				"'%s' hframes matches the real sheet (%d)" % [fx_id, real_frames])
 
-	# Flame rises. Every pre-existing effect used positive (falling) gravity,
-	# which is right for debris and wrong for fire.
+	# Flame rises, embers fall. Every effect used to fall, which is right for
+	# debris and wrong for fire.
 	_check(float(VfxManager.EFFECTS["flame"]["gravity"]) < 0.0, "flame rises rather than falls")
 	_check(float(VfxManager.EFFECTS["ember"]["gravity"]) > 0.0, "embers fall")
 
@@ -534,22 +536,86 @@ func _test_fire_vfx() -> void:
 	_check(is_instance_valid(burst), "a flame burst spawns")
 	if is_instance_valid(burst):
 		var mat := burst.material as CanvasItemMaterial
-		_check(is_instance_valid(mat), "the flame burst carries a CanvasItemMaterial")
+		_check(is_instance_valid(mat), "the burst carries a CanvasItemMaterial")
 		if is_instance_valid(mat):
-			# Without this the sheet is drawn as one squashed image; the frame
-			# layout lives on the material, not on the particle node.
 			_check(mat.particles_animation, "sheet animation is enabled on the material")
 			_check(mat.particles_anim_h_frames == 10, "the material knows the frame count")
 			_check(not mat.particles_anim_loop, "the flame does not loop back while fading")
+			# Fire adds light; dust does not. Getting this wrong turns debris
+			# into white smears.
+			_check(mat.blend_mode == CanvasItemMaterial.BLEND_MODE_ADD, "fire blends additively")
 		_check(burst.anim_speed_max > 0.0, "particles advance through the sheet")
 
-	# A plain effect must NOT get a material — otherwise every dust puff pays for
-	# a material it does not use.
 	var dust := vfx.burst_at_position(Vector2(400, 400), "impact")
 	if is_instance_valid(dust):
-		_check(dust.material == null, "a non-animated effect gets no material")
+		var dmat := dust.material as CanvasItemMaterial
+		_check(is_instance_valid(dmat) and dmat.particles_animation,
+			"dust is sheet-animated too, not just fire")
+		if is_instance_valid(dmat):
+			_check(dmat.blend_mode != CanvasItemMaterial.BLEND_MODE_ADD,
+				"dust does NOT add light")
 
 	await get_tree().process_frame
+
+
+# ==============================================================================
+# 3b2. DEATH MARKER
+# ==============================================================================
+
+func _test_death_marker() -> void:
+	print("\n[3b2] Death leaves a marker, not a blast")
+
+	var container: Node2D = main.get_node_or_null("Vfx")
+	_check(is_instance_valid(container), "the effect container exists")
+	if not is_instance_valid(container):
+		return
+
+	# Snapshot rather than clear. `burst_at_position` schedules a deferred free
+	# through a lambda that captures the particle node, so calling free() on the
+	# container's children here kills a node the pending lambda still holds and
+	# the engine logs "Lambda capture was freed" — a self-inflicted error in the
+	# test, not a fault in the effect.
+	var pre_existing: Dictionary = {}
+	for child in container.get_children():
+		pre_existing[child] = true
+
+	var victim := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(14, 14))
+	victim.current_health = 1
+	victim.take_damage(999, "true")
+
+	var particles: int = 0
+	var markers: int = 0
+	var fresh: Array = []
+	for child in container.get_children():
+		if pre_existing.has(child):
+			continue
+		fresh.append(child)
+		if child is CPUParticles2D:
+			particles += 1
+		elif child is Sprite2D:
+			markers += 1
+
+	# The whole point of the change: a kill spawns a marker sprite and NO
+	# particle spray. A red burst is the vocabulary of an explosion.
+	_check(markers >= 1, "a death marker sprite is spawned")
+	_check(particles == 0, "no particle burst on death (got %d)" % particles)
+
+	for child in fresh:
+		if child is Sprite2D:
+			var spr: Sprite2D = child
+			# 7x2 grid: the skull drops, bounces, settles and sinks.
+			_check(spr.vframes == VfxManager.DEATH_VFRAMES, "the marker reads the sheet's 2 rows")
+			_check(spr.hframes == VfxManager.DEATH_HFRAMES, "the marker reads the sheet's 7 columns")
+			# A grid sheet's frame is texture_height / vframes tall. Scaling by
+			# the full texture height would render it at half size.
+			var tex: Texture2D = spr.texture
+			if is_instance_valid(tex):
+				var frame_h: float = float(tex.get_height()) / float(spr.vframes)
+				_check(is_equal_approx(spr.scale.x, 72.0 / frame_h),
+					"the marker is scaled by frame height, not sheet height")
+			break
+
+	_despawn([victim])
 
 
 # ==============================================================================
@@ -608,7 +674,7 @@ func _test_hidden_traps() -> void:
 	var expected_fires: int = 0
 	if GameConfig.HIDDEN_TRAP_IGNITE_ALL:
 		for c in cells:
-			if objects._is_flammable(c) and not objects.has_fire_at(c):
+			if grid.get_terrain(c) != GameConfig.TerrainType.WATER and not objects.has_fire_at(c):
 				expected_fires += 1
 	var fires_before: int = _count_fires()
 
@@ -632,7 +698,7 @@ func _test_hidden_traps() -> void:
 	_check(seen.size() > 0 and seen[0] == origin, "trap_sprung leads with the origin")
 
 	_check(_count_fires() - fires_before == expected_fires,
-		"every flammable cell in the footprint caught (%d)" % expected_fires)
+		"every non-water cell in the footprint caught (%d)" % expected_fires)
 
 	# One-shot: the mine is gone, so walking back over it does nothing.
 	_check(trap.is_spent(), "the trap is spent after firing")
@@ -658,6 +724,68 @@ func _test_hidden_traps() -> void:
 		# with no counterplay at all.
 		_check(min_gap >= GameConfig.HIDDEN_TRAP_MIN_SPACING,
 			"traps are spaced at least %d apart (closest %d)" % [GameConfig.HIDDEN_TRAP_MIN_SPACING, min_gap])
+
+
+# ==============================================================================
+# 3c2. BARREL BLAST LEAVES FIRE
+# ==============================================================================
+
+func _test_barrel_leaves_fire() -> void:
+	print("\n[3c2] A keg leaves fire behind")
+
+	# Kegs are parked at bridge and road chokepoints, and both are
+	# `flammable: 0.00`. The old rule rolled against terrain flammability, so the
+	# one place a keg could actually be shot was the one place its blast could
+	# never leave a fire — which is exactly what the recording showed.
+	var bridge: Vector2i = _find_terrain(GameConfig.TerrainType.BRIDGE)
+	var road: Vector2i = _find_terrain(GameConfig.TerrainType.ROAD)
+	var origin: Vector2i = bridge if bridge != Vector2i(-1, -1) else road
+	_check(origin != Vector2i(-1, -1), "found an unflammable chokepoint to test on")
+	if origin == Vector2i(-1, -1):
+		return
+
+	_check(GameConfig.terrain_rule(grid.get_terrain(origin), "flammable") == 0.0,
+		"the test cell really is unflammable (the old rule's blind spot)")
+
+	var before: int = _count_fires()
+	var barrel := objects.spawn_barrel(origin)
+	_check(is_instance_valid(barrel), "a keg spawns on the chokepoint")
+	barrel.detonate()
+
+	var lit: int = _count_fires() - before
+	_check(lit > 0, "the blast leaves fire on unflammable ground (%d cells)" % lit)
+	_check(objects.has_fire_at(origin), "the keg's own cell is burning")
+
+	# Water is the one floor that holds: a blast reaching across a river must not
+	# set the river alight.
+	var water: Vector2i = _find_terrain(GameConfig.TerrainType.WATER)
+	if water != Vector2i(-1, -1):
+		_check(objects.ignite(water) == null, "water cannot be set alight")
+
+	# Three rounds, then out — the lifetime the fire mechanic already promised.
+	_check(GameConfig.FIRE_LIFETIME_TICKS == 3, "fire burns for 3 rounds")
+	var fire: Fire = null
+	for obj in objects.objects_at(origin):
+		if obj is Fire:
+			fire = obj
+			break
+	if is_instance_valid(fire):
+		_check(fire.ticks_remaining == GameConfig.FIRE_LIFETIME_TICKS,
+			"a fresh fire starts with its full lifetime")
+		for i in range(GameConfig.FIRE_LIFETIME_TICKS):
+			fire.on_round_tick()
+		_check(fire.is_spent(), "the fire burns out after exactly 3 ticks")
+
+
+## First cell of a given terrain type, or (-1,-1). Scans rather than hardcoding a
+## coordinate so the test survives a map regeneration.
+func _find_terrain(kind: GameConfig.TerrainType) -> Vector2i:
+	for x in range(grid.grid_size.x):
+		for y in range(grid.grid_size.y):
+			var cell := Vector2i(x, y)
+			if grid.get_terrain(cell) == kind and not objects.has_fire_at(cell):
+				return cell
+	return Vector2i(-1, -1)
 
 
 func _count_fires() -> int:

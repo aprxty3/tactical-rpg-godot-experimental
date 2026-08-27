@@ -143,6 +143,11 @@ func ignite(cell: Vector2i) -> Fire:
 		return null
 	if not grid_manager.is_within_bounds(cell):
 		return null
+	# Water is the one place fire cannot stand. This guard lives here rather than
+	# in each caller because callers now ignite unconditionally — a blast no
+	# longer asks terrain for permission, so the floor has to be held here.
+	if grid_manager.get_terrain(cell) == GameConfig.TerrainType.WATER:
+		return null
 	return _spawn(Fire.new(), cell) as Fire
 
 
@@ -234,8 +239,14 @@ func _apply_blast(cell: Vector2i, chain_index: int) -> void:
 		if is_instance_valid(victim):
 			# TRUE damage: a keg does not care how good your armour is.
 			victim.take_damage(GameConfig.BARREL_DAMAGE, "true")
-		if _is_flammable(target) and _rng.randf() < _flammability(target) * GameConfig.BLAST_IGNITION_MULT:
-			ignite(target)
+		# Everything the blast touches catches, with no flammability roll.
+		#
+		# That roll used to gate this, and it was the wrong rule for a detonation:
+		# kegs are parked at BRIDGE and ROAD chokepoints, both `flammable: 0.00`,
+		# so the one place a keg can actually be shot was the one place its blast
+		# could never leave a fire. Terrain flammability still governs where fire
+		# SPREADS on its own (`spread_fire_from`) — that is the roll's real job.
+		ignite(target)
 
 
 ## Fire the buried trap at `origin`: a 3x2 wall of blast and flame.
@@ -264,9 +275,10 @@ func spring_trap_at(origin: Vector2i) -> void:
 			# TRUE damage, like a keg: buried powder does not care about armour.
 			victim.take_damage(GameConfig.HIDDEN_TRAP_DAMAGE, "true")
 			victim.adjust_morale(GameConfig.MORALE_AMBUSHED)
-		# A mine is incendiary by design, so every cell that CAN burn does —
-		# no flammability roll, unlike a keg's chancy ignition.
-		if GameConfig.HIDDEN_TRAP_IGNITE_ALL and _is_flammable(cell):
+		# A mine is incendiary by design: every cell in the footprint catches.
+		# `ignite()` itself refuses water and already-burning cells, so there is
+		# no terrain test to repeat here.
+		if GameConfig.HIDDEN_TRAP_IGNITE_ALL:
 			ignite(cell)
 
 
