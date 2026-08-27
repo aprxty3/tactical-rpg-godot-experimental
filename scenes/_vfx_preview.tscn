@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://cix5nsac6oi25"]
+
+[ext_resource type="Script" uid="uid://dxumfffto0ytn" path="res://scripts/managers/VfxManager.gd" id="1_vfx"]
+
+[sub_resource type="GDScript" id="GDScript_prev"]
+script/source = "extends Node2D
+## Throwaway harness: fires the real VfxManager effects on a dark background so
+## a screenshot can confirm the flame sheets actually animate. Delete when done.
+
+func _ready() -> void:
+	var vfx: VfxManager = $VfxManager
+	vfx.setup(null, null, $Vfx)
+	# Re-fire on a loop so a screenshot taken at any moment catches flames.
+	create_timer_loop(vfx)
+
+func create_timer_loop(vfx: VfxManager) -> void:
+	while is_inside_tree():
+		vfx.burst_at_position(Vector2(260, 380), \"flame\")
+		vfx.burst_at_position(Vector2(560, 380), \"fireball\")
+		vfx.burst_at_position(Vector2(860, 380), \"ember\")
+		vfx.burst_at_position(Vector2(1120, 380), \"impact\")
+		await get_tree().create_timer(0.35).timeout
+"
+
+[node name="VfxPreview" type="Node2D" unique_id=1883451477]
+script = SubResource("GDScript_prev")
+
+[node name="BG" type="ColorRect" parent="." unique_id=493682931]
+offset_right = 1400.0
+offset_bottom = 800.0
+color = Color(0.36, 0.51, 0.26, 1)
+
+[node name="Vfx" type="Node2D" parent="." unique_id=647592115]
+
+[node name="VfxManager" type="Node" parent="." unique_id=1175805579]
+script = ExtResource("1_vfx")
