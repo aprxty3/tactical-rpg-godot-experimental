@@ -12,6 +12,121 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+## 📅 Match Bootstrap — Main Menu, Faction Select & Four Armies (2026-08-27)
+
+The game's main scene was `TestGridScene.tscn`, driven by a controller that still
+lived in `scripts/test/`. A test board had been promoted into a product, and
+three separate-looking gaps all came from that one fact: there was no main menu,
+the player could not choose a faction, and only two of the five armies ever took
+the field. This pass builds the layer that was missing underneath all three.
+
+`scenes/test_milestone5.tscn` grew from 177 to **193 checks**, all passing.
+
+### 🎬 The game boots from a menu now
+- **`scenes/ui/MainMenu.tscn`** is the project's `run/main_scene`: Start Game and
+  Quit, nothing else. Settings and Continue each need a system that does not
+  exist yet (a settings store, a save layer), and a button that opens nothing is
+  worse than no button.
+- **`scenes/ui/FactionSelect.tscn`** builds one card per faction from
+  `MatchSetup.participants` rather than authoring four buttons by hand — the
+  participant list is what a campaign chapter will vary, and hand-authored
+  buttons would silently disagree with it. Each card is tinted with its own
+  faction colour so the choice reads at a glance.
+
+### ⚙️ `MatchSetup` — a new autoload for "this match", not "the rules"
+Deliberately separate from `GameConfig`, which is easy to confuse it with:
+GameConfig holds rules that never change while the game runs, MatchSetup holds
+what the player picked and changes every match. It has to be an autoload — the
+choice is made on one screen and consumed on another, and
+`change_scene_to_file()` frees everything in between.
+
+It also answers *"is this faction the computer's?"* as **"a participant that is
+not the player"**, rather than as a list of enemy ids. Adding a fifth army needs
+no change there.
+
+### ⚔️ Four armies where there were two
+The pieces were mostly already in place and unused: `TurnManager.setup_match()`
+has always accepted any number of factions, `EconomyManager` already registered
+all five, and all five castles were already on the map. Three things were
+actually blocking it:
+
+- **`const PLAYER_FACTION`** in the controller. A `const` — which is precisely
+  why the player could never be anything but Blue. Now `player_faction`, read
+  from `MatchSetup`.
+- **`AIManager` was a single node in the scene** with one `ai_faction_id`. It is
+  now created per opponent at runtime, because which factions the computer
+  drives depends on which one the player chose — something a scene file cannot
+  express. `ai_faction_id` is assigned *before* `setup()`, since `setup` builds
+  the tactical evaluator around it; the other order would have each AI scoring
+  the board from the wrong side.
+- **Two hardcoded `== RED_LEGION` tests** stood in for "is it the AI's turn".
+  With three opponents that let the player keep full control through Purple's
+  and Yellow's turns. Both now ask `MatchSetup.is_player()`.
+
+The opening armies were six nodes saved in the scene file, which is a large part
+of why the match could only ever be Blue versus Red — a scene file cannot hold
+"three units for whichever factions happen to be playing". They are mustered in
+code now, ring by ring outward from each faction's own castle, skipping water,
+buildings and occupied cells. That moved a guarantee that used to come free from
+hand-placement onto a search, so the suite checks it: nobody in the river, no two
+units on one cell, every participant at full strength.
+
+Black Coven is deliberately **not** a participant. It holds a castle as a neutral
+prize but fields no troops and takes no turn, and is reserved for the campaign's
+undead track.
+
+### 📁 The match scene left `scripts/test/`
+- `scenes/TestGridScene.tscn` → **`scenes/Match.tscn`**
+- `scripts/test/TestGridController.gd` → **`scripts/game/MatchController.gd`**
+
+Moved with `git mv` so the history follows. Every suite loads the new path. A
+`--import` pass is required after pulling this: Godot resolves the script by UID
+and the cached UID still points at the old location until the project is
+rescanned.
+
+`_setup_tactical_map()` split into `_build_terrain()` and `_finish_map_setup()`,
+because the armies are now placed between the two halves — the river has to exist
+before anyone can be mustered, and the props, fog and camera all need to know
+where both the terrain and the armies ended up.
+
+### 🐛 Three latent bugs that four factions exposed immediately
+None is new; all three were invisible, or self-correcting, while exactly two
+armies played. The third was found by playing the four-faction match rather than
+by running the suite.
+
+- **Any faction's annihilation was read as the player's victory.**
+  `MainHUD._on_defeat_condition_met` ended the match on
+  `faction_id != player_faction_id`. Correct with two armies. With four, the
+  match ended the instant the first opponent fell, handing the player a win over
+  two armies still standing. Victory is now decided solely by
+  `victory_condition_met`, which fires when one army is all that remains.
+- **Retry could never be won.** `TurnManager.setup_match()` cleared `match_over`
+  but not `_is_game_over`, so a retried match advanced turns forever and could
+  never declare a result. There were two latches and only one was being reset.
+- **The resource bar showed whoever was playing, not the player.**
+  `MainHUD._refresh_resources()` was called with the *active* faction. With two
+  armies that self-corrected every time the player's turn came round — which is
+  when a player looks — so it read as harmless. With four, the bar spends three
+  quarters of every round displaying an opponent's treasury, and leaks the exact
+  gold and iron the fog of war is otherwise hiding. The live `_on_gold_changed` /
+  `_on_iron_changed` / `_on_capacity_changed` handlers had the same fault: they
+  compared against `current_faction_id`. All five now use `player_faction_id`.
+  Caught by reading the running HUD, not by a test — the suite ran with the
+  player as the first faction in turn order, where the bug is invisible.
+- `application/config/version` was never set, so the menu's version label
+  rendered as a bare `v`: the key exists in `project.godot` even when blank, so
+  `get_setting`'s default never fires.
+
+### 🧹 Housekeeping
+- `config/name` was still `"war-perang-tactics"` after the repo was renamed.
+- `scenes/_vfx_preview.tscn`, a throwaway harness, had been committed twice.
+  Removed.
+- `GameConfig.faction_title()` — "Blue Kingdom", "Red Legion" — for menus with
+  room for the full name. Only the house word is tabled; the colour still comes
+  from `FACTION_SUFFIX`, so a faction renamed there is renamed everywhere.
+
+---
+
 ## 📅 VFX Correction Pass 2 — Sheets, Keg Fire & Death Marker (2026-08-27)
 
 Three faults found by watching gameplay recordings rather than by running the

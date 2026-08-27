@@ -17,8 +17,8 @@ func _ready() -> void:
 
 
 func _test_map_shape() -> void:
-	var scene: PackedScene = load("res://scenes/TestGridScene.tscn")
-	assert(scene != null, "TestGridScene.tscn loads")
+	var scene: PackedScene = load("res://scenes/Match.tscn")
+	assert(scene != null, "Match.tscn loads")
 	var root: Node2D = scene.instantiate()
 	add_child(root)
 	await get_tree().process_frame

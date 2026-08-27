@@ -5,8 +5,8 @@ func _ready() -> void:
 	print("🧛 [TEST UNDEAD GAMEPLAY] TESTING VAMPIRE & SKELETON TREE...")
 	print("==========================================================")
 
-	var main_scene_res: PackedScene = load("res://scenes/TestGridScene.tscn")
-	assert(main_scene_res != null, "TestGridScene must load successfully")
+	var main_scene_res: PackedScene = load("res://scenes/Match.tscn")
+	assert(main_scene_res != null, "Match scene must load successfully")
 	var main = main_scene_res.instantiate()
 	add_child(main)
 	await get_tree().process_frame

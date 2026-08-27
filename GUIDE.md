@@ -119,8 +119,12 @@ To add a new building (e.g., **Iron Mine** or **Village**):
 ## 🧪 3. How to Run & Test Scenes
 
 ### Via Godot Editor:
-1. Open the scene you want to test (e.g., [`scenes/TestGridScene.tscn`](scenes/TestGridScene.tscn)).
-2. Press **`F6`** (Play Current Scene).
+- **`F5`** runs the project from the main menu ([`scenes/ui/MainMenu.tscn`](scenes/ui/MainMenu.tscn)) —
+  the full path a player takes: menu → faction select → battlefield.
+- **`F6`** plays whichever scene is open. Opening
+  [`scenes/Match.tscn`](scenes/Match.tscn) directly skips the menu and starts a
+  match under whatever [`MatchSetup`](scripts/autoload/MatchSetup.gd) currently
+  holds — Blue Kingdom on a fresh launch. This is what every test suite does.
 
 ### Via Terminal (Headless Mode):
 If you want to test scripts automatically without opening the graphical window:
@@ -128,14 +132,15 @@ If you want to test scripts automatically without opening the graphical window:
 # One-off after generating art: import the new PNGs so the engine can load them
 godot --headless --path . --import
 
-godot --headless --path . scenes/TestGridScene.tscn --quit-after 50
+godot --headless --path . scenes/Match.tscn --quit-after 50
 ```
 If the return code is `0` and there are no red errors, it means the scene compiled and ran normally.
 
 ### The test scenes
 | Scene | Covers |
 |---|---|
-| `scenes/TestGridScene.tscn` | The playable battlefield end to end |
+| `scenes/ui/MainMenu.tscn` | Boot screen — the project's main scene |
+| `scenes/Match.tscn` | The playable battlefield end to end |
 | `scenes/test_all_units.tscn` | Every `.tres` loads with a valid spritesheet & frame layout |
 | `scenes/test_combat_mechanics.tscn` | The six class fighting styles and damage formula |
 | `scenes/test_upgrade_flow.tscn` | Promotion, Field Tax, **promotion visuals**, unit names, baked metrics |

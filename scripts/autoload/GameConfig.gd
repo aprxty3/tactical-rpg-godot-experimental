@@ -104,6 +104,27 @@ static func faction_enemy_name(faction_id: int) -> String:
 	return "%s Enemy" % faction_display_name(faction_id)
 
 
+## The house word each colour rules under. Only the noun lives here — the colour
+## still comes from `FACTION_SUFFIX` through `faction_display_name`, so a faction
+## renamed there is renamed everywhere, which is the whole point of that table.
+const FACTION_HOUSE: Dictionary = {
+	Faction.BLUE_KINGDOM: "Kingdom",
+	Faction.RED_LEGION: "Legion",
+	Faction.PURPLE_SYNDICATE: "Syndicate",
+	Faction.YELLOW_EMPIRE: "Empire",
+	Faction.BLACK_COVEN: "Coven",
+}
+
+
+## "Blue Kingdom", "Red Legion" — the full title, for menus and briefings where
+## there is room for it. The HUD keeps using the short colour name.
+static func faction_title(faction_id: int) -> String:
+	var house: String = str(FACTION_HOUSE.get(faction_id, ""))
+	if house == "":
+		return faction_display_name(faction_id)
+	return "%s %s" % [faction_display_name(faction_id), house]
+
+
 # === Faction Palette-Tint Colors (for generic, non-recolored spritesheets) ===
 const FACTION_TINT_COLORS: Dictionary = {
 	Faction.BLUE_KINGDOM: Color(0.25, 0.55, 1.0),

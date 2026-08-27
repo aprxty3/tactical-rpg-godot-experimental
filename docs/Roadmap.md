@@ -243,9 +243,10 @@ unmodified build before being touched):
 
 ## Milestone 5: AI Enhancements, Campaign & Polish
 Status: 🟡 In progress — AI, Visual Polish, Mount System and Audio shipped 2026-08-25;
-fire VFX, hit glitch and hidden traps added 2026-08-27; Full Campaign deferred
+fire VFX, hit glitch and hidden traps added 2026-08-27; match bootstrap (menu,
+faction select, four armies) added 2026-08-27; Full Campaign still open
 
-**Verified**: `scenes/test_milestone5.tscn` — 157 integration checks, all passing.
+**Verified**: `scenes/test_milestone5.tscn` — 193 integration checks, all passing.
 Every earlier suite (Milestone 4, battlefield, combat, all-units, upgrade,
 village, undead) still passes unchanged.
 
@@ -387,9 +388,66 @@ village, undead) still passes unchanged.
         drop real tracks at the same paths to replace them.
       - Loop mode is forced on the stream at load, because generated WAVs have no
         `.import` loop setting and the score would otherwise play once and stop.
+- [x] **Match bootstrap — main menu, faction select, four armies** *(2026-08-27)*:
+      the layer Full Campaign was standing on air without. Until this pass the
+      project's `run/main_scene` was `TestGridScene.tscn`, driven by a controller
+      that still lived in `scripts/test/` — a test board promoted into a product.
+      Three gaps that looked separate all came from that one fact.
+      - **There was nowhere to boot from.** `scenes/ui/MainMenu.tscn` is the main
+        scene now: Start Game and Quit. Settings and Continue each need a system
+        that does not exist yet, and a button that opens nothing is worse than no
+        button at all.
+      - **The player could not choose a side**, because `PLAYER_FACTION` was a
+        `const`. `scenes/ui/FactionSelect.tscn` builds one card per faction from
+        `MatchSetup.participants` rather than authoring four buttons by hand: the
+        participant list is what a campaign chapter will vary, and hand-authored
+        buttons would silently disagree with it.
+      - **`MatchSetup`**, a new autoload, carries the choice across the scene
+        change — `change_scene_to_file()` frees everything the menu owned before
+        the match is built, so nothing else could survive the trip. Kept separate
+        from `GameConfig` on purpose: that holds rules that never change while
+        the game runs, this holds what the player picked.
+      - **Two armies became four.** Most of the machinery was already there and
+        unused — `TurnManager.setup_match()` has always taken any number of
+        factions, all five castles were already on the map. What actually blocked
+        it: one `AIManager` node in the scene with a single `ai_faction_id`, and
+        two hardcoded `== RED_LEGION` tests standing in for "is it the AI's
+        turn", which with three opponents left the player in full control through
+        Purple's and Yellow's turns. Commanders are built per opponent at
+        runtime; the turn test asks `MatchSetup.is_player()` instead.
+      - **The opening armies were six nodes saved in the scene file** — a large
+        part of why the match could only be Blue versus Red, since a scene file
+        cannot hold "three units for whichever factions happen to be playing".
+        They muster in code now, ring by ring out from each faction's own castle.
+        That turned a guarantee hand-placement gave for free into one a search
+        has to earn, so it is asserted: nobody in the river, no two units on one
+        cell, every participant at full strength.
+      - **Black Coven is deliberately not a participant** — it holds a castle as
+        a neutral prize but fields no troops and takes no turn, reserved for the
+        campaign's undead track.
+      - **Three latent bugs surfaced**, none new, all invisible or
+        self-correcting while exactly two armies played. Any faction's
+        annihilation was read as the player's victory, so a four-army match
+        ended the moment the first opponent fell. `setup_match` cleared
+        `match_over` but not `_is_game_over`, so a retried match ran forever and
+        could never be won a second time. And the HUD's resource bar was
+        refreshed with the *active* faction rather than the player's, which with
+        two armies corrected itself every turn but now spends three quarters of
+        each round showing an opponent's treasury — leaking the very economy the
+        fog of war hides. The last one was found by playing the match, not by
+        the suite, which runs with the player first in turn order where it
+        cannot appear.
+      - `scenes/TestGridScene.tscn` → `scenes/Match.tscn`;
+        `scripts/test/TestGridController.gd` →
+        `scripts/game/MatchController.gd`.
 - [ ] **Full Campaign**: Design a multi-chapter narrative campaign with escalating difficulty and persistent army progression.
-      **Deferred from this pass**: it needs a save/load layer, which does not
-      exist anywhere in the repo yet, and is alone larger than all of Milestone 4.
+      **Still open.** The bootstrap item above cleared its structural
+      prerequisites — there is a menu to enter from, a configurable match, and
+      more than two armies on the field. What remains is **save/load**, which
+      does not exist anywhere in the repo: the only `ConfigFile` use in
+      `scripts/` is `GeminiClient` reading an API key. Persistent army
+      progression is meaningless without it, and it is alone a larger piece of
+      work than anything in Milestone 4.
 
 ## Future Considerations (Post-MVP Backlog)
 Status: 🔮 Backlog

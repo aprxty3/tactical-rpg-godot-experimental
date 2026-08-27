@@ -10,8 +10,9 @@ config_version=5
 
 [application]
 
-config/name="war-perang-tactics"
-run/main_scene="uid://c6g7y7ukmvl1x"
+config/name="Tactical RPG Godot Experimental"
+config/version="0.1.0"
+run/main_scene="res://scenes/ui/MainMenu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -20,6 +21,7 @@ config/icon="res://icon.svg"
 AudioManager="*res://scripts/autoload/AudioManager.gd"
 EventBus="*res://scripts/autoload/EventBus.gd"
 GameConfig="*res://scripts/autoload/GameConfig.gd"
+MatchSetup="*res://scripts/autoload/MatchSetup.gd"
 TurnManager="*res://scripts/autoload/TurnManager.gd"
 GeminiClient="*res://scripts/autoload/GeminiClient.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"

@@ -31,7 +31,7 @@ func _ready() -> void:
 	print("🎯 [TEST MILESTONE 5] Advanced AI · VFX · Mount · Audio")
 	print("==========================================================")
 
-	main = load("res://scenes/TestGridScene.tscn").instantiate()
+	main = load("res://scenes/Match.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -39,7 +39,11 @@ func _ready() -> void:
 	grid = main.get_node("GridManager")
 	combat = main.get_node("CombatResolver")
 	vision = main.get_node("VisionManager")
-	ai = main.get_node("AIManager")
+	# The AI is no longer a node saved in the scene — the match builds one per
+	# opponent, named after the faction it commands. This suite exercises the
+	# evaluator, so any one of them will do; take Red's, which is the opponent
+	# the board was laid out around.
+	ai = main.ai_managers[0] if not main.ai_managers.is_empty() else null
 	vfx = main.get_node("VfxManager")
 	camera = main.get_node("Camera2D")
 	units_root = main.get_node("Units")
@@ -51,6 +55,7 @@ func _ready() -> void:
 	# actually holds the board still.
 	main.set_process_unhandled_input(false)
 
+	await _test_match_bootstrap()
 	_test_damage_preview()
 	_test_objective_scoring()
 	_test_terrain_aware_pathing()
@@ -75,6 +80,114 @@ func _ready() -> void:
 	await _test_match_end_stops_play()
 
 	_report()
+
+
+# ==============================================================================
+# 0. MATCH BOOTSTRAP — the match is configured, not hardcoded
+# ==============================================================================
+
+## Runs before every other section, because it counts the units the scene
+## mustered and the sections below spawn their own into the same container.
+func _test_match_bootstrap() -> void:
+	print("\n[0] The match is configured, not hardcoded")
+
+	# --- what MatchSetup promises -------------------------------------------
+	_check(MatchSetup.participants.size() == 4,
+		"four armies take the field (got %d)" % MatchSetup.participants.size())
+	_check(not (GameConfig.Faction.BLACK_COVEN in MatchSetup.participants),
+		"Black Coven fields no army — it holds a castle as a neutral prize")
+
+	var remembered: int = MatchSetup.player_faction
+	for faction_id in MatchSetup.participants:
+		MatchSetup.set_player_faction(faction_id)
+		var opponents: Array[int] = MatchSetup.ai_factions()
+		var sound: bool = (
+			opponents.size() == MatchSetup.participants.size() - 1
+			and not (faction_id in opponents)
+			and MatchSetup.is_player(faction_id)
+			and not MatchSetup.is_ai(faction_id)
+		)
+		_check(sound, "commanding %s leaves %d opponents, none of them itself"
+			% [GameConfig.faction_title(faction_id), MatchSetup.participants.size() - 1])
+
+	# A faction that never takes a turn must not become the player's, or the
+	# human is handed a match they can sit in but never act in.
+	MatchSetup.set_player_faction(GameConfig.Faction.BLACK_COVEN)
+	_check(MatchSetup.player_faction != GameConfig.Faction.BLACK_COVEN,
+		"a non-participant is refused as the player's faction")
+	MatchSetup.set_player_faction(remembered)
+
+	# --- what the scene actually built --------------------------------------
+	_check(main.ai_managers.size() == MatchSetup.participants.size() - 1,
+		"one AI commander per opponent (got %d)" % main.ai_managers.size())
+
+	var commanded: Dictionary = {}
+	var doubled: bool = false
+	for commander in main.ai_managers:
+		if commanded.has(commander.ai_faction_id):
+			doubled = true
+		commanded[commander.ai_faction_id] = true
+	_check(not commanded.has(main.player_faction),
+		"no AI is driving the player's own army")
+	_check(not doubled, "no faction has two commanders")
+
+	# --- the armies it mustered ---------------------------------------------
+	var per_faction: Dictionary = {}
+	var on_water: int = 0
+	var cells: Dictionary = {}
+	var stacked: int = 0
+	for u in units_root.get_children():
+		if not (u is TacticalUnit):
+			continue
+		per_faction[u.faction_id] = int(per_faction.get(u.faction_id, 0)) + 1
+		if grid.get_terrain(u.grid_position) == GameConfig.TerrainType.WATER:
+			on_water += 1
+		if cells.has(u.grid_position):
+			stacked += 1
+		cells[u.grid_position] = true
+
+	var expected: int = main.STARTING_ROLES.size()
+	var every_army_mustered: bool = true
+	for faction_id in MatchSetup.participants:
+		if int(per_faction.get(faction_id, 0)) != expected:
+			every_army_mustered = false
+	_check(every_army_mustered, "every participant musters %d units (got %s)"
+		% [expected, str(per_faction)])
+
+	# The armies used to be nodes saved in the scene file, hand-placed on known
+	# dry ground. Spawning them in code puts that guarantee on the muster search
+	# instead, so it has to be checked rather than assumed.
+	_check(on_water == 0, "nobody was mustered into the river")
+	_check(stacked == 0, "no two units share a cell")
+
+	_check(TurnManager.faction_order.size() == MatchSetup.participants.size(),
+		"the turn order carries all %d armies" % MatchSetup.participants.size())
+
+	# --- the resource bar belongs to the player, not to whoever is playing ---
+	# It used to be refreshed with the ACTIVE faction. With two armies that
+	# self-corrected every time the player's turn came round; with four it spent
+	# three quarters of each round showing an opponent's treasury, and leaked the
+	# exact gold and iron the fog of war is otherwise hiding.
+	var hud = main.main_hud
+	var eco = main.economy_manager
+	if is_instance_valid(hud) and is_instance_valid(eco):
+		var enemy: int = MatchSetup.ai_factions()[0]
+		# Drive the two treasuries apart, or the check passes on a coincidence.
+		eco.collect_income(enemy, 777, 3)
+		await get_tree().process_frame
+		var mine: int = eco.get_gold(main.player_faction)
+		_check(eco.get_gold(enemy) != mine, "the two treasuries differ, so the check can fail")
+
+		# The HUD's own handler, called directly: emitting `turn_started` would
+		# wake that faction's AI and move units out from under later sections.
+		hud.call("_on_turn_started", enemy)
+		_check(hud.gold_label.text == "💰 Gold: %d" % mine,
+			"an enemy turn still shows the player's gold (%s)" % hud.gold_label.text)
+		_check(hud.iron_label.text == "⛏️ Iron: %d" % eco.get_iron(main.player_faction),
+			"and the player's iron (%s)" % hud.iron_label.text)
+
+		hud.call("_on_turn_started", main.player_faction)
+		await get_tree().process_frame
 
 
 # ==============================================================================
@@ -959,6 +1072,18 @@ func _test_match_end_stops_play() -> void:
 	_check(hud.has_method("is_match_over"), "the HUD exposes is_match_over()")
 	_check(not hud.is_match_over(), "a running match is not over")
 
+	# A THIRD party being annihilated is not the player's victory. The old rule
+	# read "some faction was defeated and it was not me" as a win, which with
+	# four armies ended the match the moment the first opponent fell — handing
+	# the player a victory over two armies still standing.
+	var bystander: int = GameConfig.Faction.PURPLE_SYNDICATE
+	if bystander == hud.player_faction_id:
+		bystander = GameConfig.Faction.YELLOW_EMPIRE
+	EventBus.defeat_condition_met.emit(bystander, "test")
+	await get_tree().process_frame
+	_check(not hud.is_match_over(),
+		"another faction's annihilation does not end the player's match")
+
 	var turns_before: int = TurnManager.turn_number
 	EventBus.victory_condition_met.emit(GameConfig.Faction.BLUE_KINGDOM, "test")
 	await get_tree().process_frame
@@ -976,6 +1101,11 @@ func _test_match_end_stops_play() -> void:
 	# so setup_match must clear the latch or the rebuilt board never advances.
 	TurnManager.setup_match([0, 1], null)
 	_check(not TurnManager.match_over, "setup_match clears the latch for Retry")
+	# There are two latches, and Retry used to clear only this one's sibling.
+	# The retried match then ran forever: turns advanced, but victory could
+	# never be declared a second time.
+	_check(not bool(TurnManager.get("_is_game_over")),
+		"setup_match clears the victory latch too")
 
 
 func _spawn(res_path: String, faction: int, cell: Vector2i) -> TacticalUnit:

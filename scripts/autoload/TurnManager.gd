@@ -51,6 +51,10 @@ func setup_match(factions: Array[int], eco_manager: Node) -> void:
 	# clearing the latch here, Retry would rebuild the board and then refuse to
 	# advance a single turn, because end_turn() would still see a finished match.
 	match_over = false
+	# The same reasoning applies to the victory latch. Retry cleared
+	# `match_over` so turns advance again, but left this one set — so the
+	# retried match ran forever and could never be won a second time.
+	_is_game_over = false
 
 	# Initialize empty unit arrays for each faction
 	for faction_id in faction_order:

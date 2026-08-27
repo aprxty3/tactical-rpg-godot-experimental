@@ -1,9 +1,21 @@
 extends Node2D
+class_name MatchController
+## The battlefield. Wires the managers, builds the map, musters the armies and
+## turns player input into commands.
+##
+## Was `TestGridController` in `scripts/test/` — a test board that had been
+## promoted into the product. Moving it here is not cosmetic: while it lived
+## under `test/`, the player's faction was a `const` and the opponent was
+## hardcoded to Red, because nothing about it had to answer to a player.
+##
+## ⚠️ Still doing too much: dependency wiring, map construction, input handling,
+## selection state, the player's commands and the highlight overlay are six
+## concerns in one file. Splitting them is the next pass; this one only moved
+## what the four-faction work forced it to move.
 
 @onready var grid_manager: GridManager = $GridManager
 @onready var combat_resolver: CombatResolver = $CombatResolver
 @onready var economy_manager: Node = $EconomyManager
-@onready var ai_manager: AIManager = $AIManager
 @onready var unit_container: Node2D = $Units
 @onready var building_container: Node2D = $Buildings
 @onready var main_hud: CanvasLayer = $MainHUD
@@ -18,9 +30,27 @@ extends Node2D
 @onready var map_object_manager: MapObjectManager = $MapObjectManager
 @onready var map_object_container: Node2D = $MapObjects
 
+## How long each AI waits between its own actions, so its turn reads as
+## deliberate rather than instantaneous. One knob covering every AI on the
+## field — with three opponents instead of one it is the single largest lever
+## on how long a full round takes to watch.
+@export var ai_action_delay: float = 0.4
+
+## The roles each army musters with. Same three for everyone, so no faction
+## opens with an advantage that was never designed.
+const STARTING_ROLES: Array[String] = ["Pawn", "Warrior", "Archer"]
+
 ## The faction the human is playing. Everything view-side (fog, surrender
 ## prompts, input gating) is written from this faction's perspective.
-const PLAYER_FACTION: int = GameConfig.Faction.BLUE_KINGDOM
+##
+## Filled from `MatchSetup` in `_ready`. It used to be a `const`, which is
+## precisely why the player could never be anything but Blue.
+var player_faction: int = GameConfig.Faction.BLUE_KINGDOM
+
+## One commander per enemy faction, built in `_ready`. These cannot be authored
+## in the scene: which factions the computer drives depends on which one the
+## player chose, and that is not known until the faction screen has been through.
+var ai_managers: Array[AIManager] = []
 
 var selected_unit: TacticalUnit = null
 var selected_building: Building = null
@@ -56,51 +86,61 @@ func _ready() -> void:
 	if main_hud.has_signal("surrender_choice_made"):
 		main_hud.surrender_choice_made.connect(_on_surrender_choice_made)
 
-	# 1. Register every faction that owns something on the map. Only Blue and
-	# Red take turns for now, but the other three hold castles the players can
-	# capture, and captured buildings need a treasury to pay into.
-	economy_manager.register_faction(GameConfig.Faction.BLUE_KINGDOM, 200, 6)
-	economy_manager.register_faction(GameConfig.Faction.RED_LEGION, 200, 6)
-	economy_manager.register_faction(GameConfig.Faction.PURPLE_SYNDICATE, 100, 2)
-	economy_manager.register_faction(GameConfig.Faction.YELLOW_EMPIRE, 100, 2)
-	economy_manager.register_faction(GameConfig.Faction.BLACK_COVEN, 100, 2)
+	# 1. Whose match is this? MatchSetup is an autoload for exactly this reason:
+	#    the choice is made on the faction screen and `change_scene_to_file`
+	#    frees everything that screen owned before this scene is built.
+	player_faction = MatchSetup.player_faction
 
-	# 2. Wire the Milestone 4 managers. Each takes its dependencies through
+	# 2. Register every faction that owns something on the map. Participants
+	#    field armies and need a war chest; the rest take no turn but still hold
+	#    a castle, and a captured building needs a treasury to pay into.
+	for faction_id in MatchSetup.participants:
+		economy_manager.register_faction(faction_id, 200, 6)
+	for faction_id in GameConfig.FACTION_SUFFIX.keys():
+		if not faction_id in MatchSetup.participants:
+			economy_manager.register_faction(faction_id, 100, 2)
+
+	# 3. Wire the Milestone 4 managers. Each takes its dependencies through
 	#    setup() rather than reaching for node paths, so the same managers drop
 	#    into the focused test scenes unchanged.
-	morale_manager.human_faction_id = PLAYER_FACTION
+	morale_manager.human_faction_id = player_faction
 	morale_manager.setup(grid_manager, economy_manager)
-	vision_manager.observer_faction_id = PLAYER_FACTION
+	vision_manager.observer_faction_id = player_faction
 	combat_resolver.setup(grid_manager)
 	map_object_manager.setup(grid_manager, economy_manager, map_object_container, unit_container)
+	main_hud.player_faction_id = player_faction
 
-	if ai_manager:
-		# combat_resolver last: it is what lets the AI score a swing with the same
-		# damage formula the player's attacks resolve through.
-		ai_manager.setup(grid_manager, economy_manager, vision_manager,
-			map_object_manager, combat_resolver)
+	# 4. Terrain first, armies second, everything that reads them third. The
+	#    armies used to be nodes sitting in the scene file, so this order never
+	#    came up; spawning them in code means the river has to exist before
+	#    anyone is placed, or a starting unit lands in the water.
+	_build_terrain()
+	_spawn_starting_armies()
+	_finish_map_setup()
 
-	# 3. Setup match dengan EconomyManager terinjeksi
-	TurnManager.setup_match(
-		[GameConfig.Faction.BLUE_KINGDOM, GameConfig.Faction.RED_LEGION],
-		economy_manager,
-	)
+	# 5. One commander per opponent. Before `start_turn`, because each hooks
+	#    `turn_started` in its own `_ready` and would otherwise miss the first.
+	_spawn_ai_commanders()
 
-	# 4. Paint the battlefield and hand its impassable cells to GridManager
-	_setup_tactical_map()
+	# 6. Turn order is the participant list itself — TurnManager has always
+	#    handled any number of factions; it was only ever called with two.
+	TurnManager.setup_match(MatchSetup.participants, economy_manager)
 
-	# Init HUD
 	main_hud.initialize(economy_manager, grid_manager)
 
 	TurnManager.start_turn()
 	queue_redraw()
 
 
-## Build the 30x20 battlefield: rivers, bridges, roads, shoreline and props.
+## Paint the 30x20 battlefield: rivers, bridges, roads and shoreline.
 ## MapBuilder owns the layout; GridManager stays the only authority on what is
 ## walkable, so water is registered as blocked terrain rather than being
 ## inferred from tile ids at query time.
-func _setup_tactical_map() -> void:
+##
+## Split from the rest of map construction because the armies are placed between
+## the two halves: this half decides where the water is, and nothing can be
+## mustered until that is known.
+func _build_terrain() -> void:
 	if not map_builder:
 		return
 
@@ -112,6 +152,13 @@ func _setup_tactical_map() -> void:
 		get_node_or_null("TileMapLayer_Bridge"),
 	)
 	grid_manager.set_terrain_blocked_cells(blocked)
+
+
+## Props, hazards, fog and camera — everything that has to know where the
+## terrain and the armies both ended up.
+func _finish_map_setup() -> void:
+	if not map_builder:
+		return
 
 	# Units carry only a pixel position from the scene file; GridManager fills in
 	# their grid_position, and it defers that to the end of the frame. Both the
@@ -154,9 +201,117 @@ func _setup_tactical_map() -> void:
 func _player_start_focus() -> Vector2:
 	for bld in get_tree().get_nodes_in_group("buildings"):
 		if bld is Building and bld.building_type == Building.BuildingType.CASTLE \
-				and bld.faction_id == GameConfig.Faction.BLUE_KINGDOM:
+				and bld.faction_id == player_faction:
 			return bld.global_position
 	return grid_manager.get_map_pixel_size() * 0.5
+
+
+# ==============================================================================
+# ARMIES — mustered in code, because the number of them is no longer fixed
+# ==============================================================================
+
+## How far from its castle an army will look for somewhere to stand before it
+## gives up. Four rings is already 80 cells; needing more than that means the
+## castle was walled in by water and the map is the problem, not the search.
+const MUSTER_MAX_RADIUS: int = 4
+
+
+## Place each participant's opening three units around its own castle.
+##
+## These used to be six nodes saved into the scene file, which is why the match
+## was Blue versus Red and could not be anything else: a scene file cannot hold
+## "three units for whichever factions happen to be playing".
+func _spawn_starting_armies() -> void:
+	for faction_id in MatchSetup.participants:
+		var castle: Building = _castle_of(faction_id)
+		if castle == null:
+			push_warning("MatchController: %s has no castle; it musters nothing."
+				% GameConfig.faction_title(faction_id))
+			continue
+
+		var cells: Array[Vector2i] = _muster_cells(castle.grid_position, STARTING_ROLES.size())
+		if cells.size() < STARTING_ROLES.size():
+			push_warning("MatchController: only %d of %d muster cells free near %s's castle."
+				% [cells.size(), STARTING_ROLES.size(), GameConfig.faction_title(faction_id)])
+
+		for i in range(mini(cells.size(), STARTING_ROLES.size())):
+			_spawn_unit(STARTING_ROLES[i], faction_id, cells[i])
+
+
+func _castle_of(faction_id: int) -> Building:
+	for bld in get_tree().get_nodes_in_group("buildings"):
+		if bld is Building and bld.building_type == Building.BuildingType.CASTLE \
+				and bld.faction_id == faction_id:
+			return bld
+	return null
+
+
+## Free cells around a castle, searched ring by ring so the army forms up tight
+## against its own keep rather than strung out across the map.
+func _muster_cells(origin: Vector2i, count: int) -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+	var radius: int = 1
+	while found.size() < count and radius <= MUSTER_MAX_RADIUS:
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				# The ring only. Everything inside it was already offered by a
+				# smaller radius, and re-walking it would just cost time.
+				if absi(dx) != radius and absi(dy) != radius:
+					continue
+				var cell: Vector2i = origin + Vector2i(dx, dy)
+				if found.has(cell):
+					continue
+				# A building's own cell is walkable as far as the grid is
+				# concerned, but standing the opening army on top of the gold
+				# mine next door reads as a bug.
+				if not grid_manager.is_cell_walkable(cell):
+					continue
+				if grid_manager.get_building_at(cell) != null:
+					continue
+				found.append(cell)
+				if found.size() == count:
+					return found
+		radius += 1
+	return found
+
+
+## Instance one unit scene and hand it to the grid.
+##
+## `faction_id` is assigned before `add_child`, so the unit is already the right
+## colour when its own `_ready` builds the health bar from it.
+func _spawn_unit(role: String, faction_id: int, cell: Vector2i) -> TacticalUnit:
+	var suffix: String = GameConfig.faction_display_name(faction_id)
+	var path: String = "res://scenes/units/TacticalUnit_%s_%s.tscn" % [role, suffix]
+	if not ResourceLoader.exists(path):
+		push_warning("MatchController: no scene at %s" % path)
+		return null
+
+	var scene: PackedScene = load(path)
+	var unit: TacticalUnit = scene.instantiate()
+	unit.name = "%s_%s" % [suffix, role]
+	unit.faction_id = faction_id
+	unit_container.add_child(unit)
+	grid_manager.register_unit(unit, cell)
+	return unit
+
+
+## One AI per opponent.
+##
+## `ai_faction_id` is set before `setup()` and not after: `setup` builds the
+## tactical evaluator around that id, so an AI configured the other way round
+## would spend the match scoring the board from the wrong side.
+func _spawn_ai_commanders() -> void:
+	for faction_id in MatchSetup.ai_factions():
+		var ai := AIManager.new()
+		ai.name = "AI_%s" % GameConfig.faction_display_name(faction_id)
+		ai.ai_faction_id = faction_id
+		ai.action_delay = ai_action_delay
+		add_child(ai)
+		# combat_resolver last: it is what lets the AI score a swing with the
+		# same damage formula the player's attacks resolve through.
+		ai.setup(grid_manager, economy_manager, vision_manager,
+			map_object_manager, combat_resolver)
+		ai_managers.append(ai)
 
 
 func _update_hud_text(text: String) -> void:
@@ -188,7 +343,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_tree().quit()
 		return
 
-	if TurnManager.get_current_faction() == GameConfig.Faction.RED_LEGION:
+	# Asked as "is it my turn" rather than "is it Red's turn". The old test named
+	# one specific opponent, so with three of them the player kept full control
+	# through Purple's and Yellow's turns.
+	if not MatchSetup.is_player(TurnManager.get_current_faction()):
 		return
 
 	# `not event.echo` on every discrete command below: a held key auto-repeats
@@ -244,7 +402,7 @@ func end_turn() -> void:
 
 
 func _on_turn_started(faction_id: int) -> void:
-	if faction_id == GameConfig.Faction.RED_LEGION:
+	if not MatchSetup.is_player(faction_id):
 		_deselect_all()
 	else:
 		# Player turn logic setup handled via EventBus to HUD natively
@@ -301,7 +459,7 @@ func _handle_cell_click(cell: Vector2i) -> void:
 func _is_unit_visible(unit: TacticalUnit) -> bool:
 	if not is_instance_valid(vision_manager):
 		return true
-	return vision_manager.can_see_unit(PLAYER_FACTION, unit)
+	return vision_manager.can_see_unit(player_faction, unit)
 
 
 ## Detonate a keg on `cell` if one is there. Costs the selected unit its action.
@@ -474,7 +632,9 @@ func _deselect_all() -> void:
 
 
 func _on_unit_move_completed(unit: TacticalUnit, _from_cell: Vector2i, _to_cell: Vector2i) -> void:
-	if unit.faction_id == 0:
+	# `== 0` was Blue's id written as a bare number. It kept the camera
+	# reselecting Blue units for a player commanding Yellow.
+	if unit.faction_id == player_faction:
 		_select_unit(unit)
 	queue_redraw()
 

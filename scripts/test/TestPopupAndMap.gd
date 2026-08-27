@@ -3,7 +3,7 @@ extends Node2D
 func _ready() -> void:
 	print("--- Running End Turn Confirmation & Map Generation Test ---")
 	
-	var scene: PackedScene = load("res://scenes/TestGridScene.tscn")
+	var scene: PackedScene = load("res://scenes/Match.tscn")
 	var main_scene = scene.instantiate()
 	add_child(main_scene)
 	

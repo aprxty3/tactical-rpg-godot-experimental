@@ -85,7 +85,12 @@ separate Music/SFX buses, a polyphonic SFX pool, crossfade and combat ducking.
    ```
    The 66 derived spritesheets under `assets/characters/generated/` have no `.import`
    files until Godot has seen them once.
-3. Open [`scenes/TestGridScene.tscn`](scenes/TestGridScene.tscn) and press **`F6`**.
+3. Press **`F5`** to run the project. It opens on the main menu — *Start Game*,
+   then pick which of the four armies you command.
+
+   To skip the menu and drop straight onto the battlefield, open
+   [`scenes/Match.tscn`](scenes/Match.tscn) and press **`F6`**; it plays Blue
+   Kingdom, the default in [`MatchSetup`](scripts/autoload/MatchSetup.gd).
 
 ### Controls
 

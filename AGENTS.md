@@ -63,7 +63,7 @@ Before ending your turn or reporting a task as complete, the AI Agent MUST perfo
    - Run the full suite via `test_run(verbose=True)` on `godot-ai` MCP server (`battlefield`, `combat`, `economy`, `units` in `tests/`).
    - Run the headless engine check:
      ```bash
-     godot --headless --path . scenes/TestGridScene.tscn --quit-after 50
+     godot --headless --path . scenes/Match.tscn --quit-after 50
      ```
    - Ensure the output yields **Exit Code 0** with no `SCRIPT ERROR` or `Compile Error` messages.
 2. **Update CHANGELOG.md**: Document all new features, refactors, and bug fixes under the current date.

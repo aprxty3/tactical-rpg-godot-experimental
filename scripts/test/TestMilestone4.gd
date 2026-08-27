@@ -25,7 +25,7 @@ func _ready() -> void:
 	print("🎯 [TEST MILESTONE 4] Terrain · Morale · Surrender · Fog · Hazards · Pandora")
 	print("==========================================================")
 
-	main = load("res://scenes/TestGridScene.tscn").instantiate()
+	main = load("res://scenes/Match.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
 	await get_tree().process_frame

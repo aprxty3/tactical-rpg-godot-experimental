@@ -74,7 +74,7 @@ godot --headless --editor --quit-after 50
   2. `TileMapLayer_Ground` (z_index: -3)
   3. `TileMapLayer_Path` (z_index: -2)
   4. `TileMapLayer_Bridge` (z_index: -1)
-- **Grid Highlights**: Drawn in `TestGridController._draw()` with **`z_index = 2`** to ensure full visibility above terrain.
+- **Grid Highlights**: Drawn in `MatchController._draw()` with **`z_index = 2`** to ensure full visibility above terrain.
 - **Passability Authority**: `MapBuilder.gd` paints terrain tiles and returns blocked cells. **`GridManager.set_terrain_blocked_cells()` is the sole authority on walkability**. Never infer walkability from tile IDs at query time.
 - **Auto-Bridges**: 8 bridge tiles automatically spawn where roads cross river columns (columns 10 and 19).
 

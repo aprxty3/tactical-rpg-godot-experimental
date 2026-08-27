@@ -276,7 +276,7 @@ func _on_map_event_triggered(event_type: String, _position: Vector2i, result: Di
 func initialize(eco_mgr: Node, grid_mgr: Node = null) -> void:
 	economy_manager = eco_mgr
 	grid_manager = grid_mgr
-	_refresh_resources(TurnManager.get_current_faction())
+	_refresh_resources(player_faction_id)
 	_refresh_turn_label()
 
 func _on_turn_started(faction_id: int) -> void:
@@ -291,7 +291,12 @@ func _on_turn_started(faction_id: int) -> void:
 		_update_context_text("🔵 YOUR TURN (%s)\nSelect unit or Castle." %
 			GameConfig.faction_display_name(faction_id).to_upper())
 		end_turn_btn.disabled = false
-	_refresh_resources(faction_id)
+	# The player's OWN treasury, never the faction whose turn it is. Passing
+	# `faction_id` here put an opponent's gold, iron and troop capacity in the
+	# player's resource bar for the whole of that opponent's turn — with three
+	# of them, three quarters of every round — and leaked exactly the economy
+	# the fog of war is otherwise hiding.
+	_refresh_resources(player_faction_id)
 	_refresh_turn_label()
 
 func _on_phase_changed(_new_phase: int) -> void:
@@ -307,15 +312,15 @@ func _refresh_resources(faction_id: int) -> void:
 	cap_label.text = "👥 Troop Cap: %d/%d" % [used_cap, max_cap]
 
 func _on_gold_changed(faction_id: int, new_amount: int) -> void:
-	if faction_id == current_faction_id:
+	if faction_id == player_faction_id:
 		gold_label.text = "💰 Gold: %d" % new_amount
 
 func _on_iron_changed(faction_id: int, new_amount: int) -> void:
-	if faction_id == current_faction_id:
+	if faction_id == player_faction_id:
 		iron_label.text = "⛏️ Iron: %d" % new_amount
 
 func _on_capacity_changed(faction_id: int, used: int, max_cap: int) -> void:
-	if faction_id == current_faction_id:
+	if faction_id == player_faction_id:
 		cap_label.text = "👥 Troop Cap: %d/%d" % [used, max_cap]
 
 func _refresh_turn_label() -> void:
@@ -414,7 +419,13 @@ func _on_victory_condition_met(faction_id: int, _condition: String) -> void:
 
 
 func _on_defeat_condition_met(faction_id: int, _condition: String) -> void:
-	_end_match(faction_id != player_faction_id)
+	# Only the player's OWN annihilation ends the match here. With more than two
+	# armies on the field somebody else is still standing, so reading "another
+	# faction died" as "you won" declared victory the moment the first of three
+	# opponents was wiped out. Winning is decided solely by
+	# `victory_condition_met`, which fires when one army is all that is left.
+	if faction_id == player_faction_id:
+		_end_match(false)
 
 
 func _end_match(player_won: bool) -> void:
