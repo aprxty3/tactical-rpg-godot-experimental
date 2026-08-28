@@ -12,6 +12,248 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+## 📅 Wandering Encounters, Castle Garrisons & the Turn Banner (2026-08-29)
+
+The Black Castle sat in the middle of the map for four milestones holding
+nothing. It is a den now: six creatures guard it, they raid rather than
+conquer, and clearing them is what makes the keep in the centre of the board
+worth walking to.
+
+`scenes/test_milestone5.tscn` grew from **277 to 308 checks**, all passing.
+Nine other suites: zero failures.
+
+### 👹 Six monsters out of art that was never referenced
+`assets/characters/enemy_animations/` had been in the repo since the start and
+**no line of code had ever loaded it** — idle, movement, attack, death and
+take-damage strips for three creatures. `scripts_dev/generate_monsters.py`
+composes idle + movement into the same 6x2 sheet layout every other derived
+unit uses, then rotates the garment palette to turn three bodies into six:
+
+| | Body | HP / ATK / DEF / MOV |
+|---|---|---|
+| **Ghoul** | skeleton1, green | 38 / 14 / 2 / **4** |
+| **Bone Stalker** | skeleton1, pale | 30 / 12 / 1 / **6** — the scout |
+| **Grave Warden** | skeleton2, steel | **70** / 20 / **12** / 3 — the wall |
+| **Plague Wraith** | skeleton2, violet | 40 / 22 / 3 / 3, **range 2** |
+| **Blood Fiend** | vampire, crimson | 62 / **26** / 8 / 4 |
+| **Dread Warden** | vampire, gold | **140 / 34 / 16** / 3, **range 2** — the boss |
+
+They are deliberately *not* tuned against faction units of the same tier. A
+monster costs nothing to field and never recruits; its job is to make the
+centre of the map cost something, not to be a fair fight.
+
+### 🚫 A rule shaped as a negative — `Building.claim_for()`
+Three callers used to imply their own answer to "who may take what" by simply
+calling `capture()`. There is now one function that answers it, returning
+`CAPTURE`, `RAZE` or `NOTHING`:
+
+- A **marauder cannot claim** a castle, a gold mine or an iron mine. It holds
+  no ground, so those are scenery to it.
+- A **held village it BURNS** rather than flying a flag over. A *neutral*
+  village it leaves alone — an unclaimed house is nobody's supply line, and
+  razing neutral ground would just strip the map.
+- **Armies can claim the den.** Clearing it is the whole point of the
+  encounter, and nothing extra guards that: the boss stands on the keep's own
+  cell and a unit cannot end its move on an occupied one, so "kill the guardian
+  first" is enforced by the board rather than by a rule.
+
+`EventBus.building_destroyed` had been a `pass` in `EconomyManager` with a note
+saying it depended on the node structure. It stopped being hypothetical the
+moment a village could burn: without it an army kept the +2 troop capacity of a
+village that no longer existed, permanently, because nothing else ever
+decrements that count.
+
+### 🕯️ `EncounterManager` — a turn, but not an army
+Its own manager rather than an `AIManager` with four flags. An `AIManager`
+plays to win: it recruits, banks gold, and values every building by what it
+yields. None of that applies to a den. The *judgement* is still shared —
+`AITacticalEvaluator` picks targets and scores swings here exactly as it does
+for the armies, so a ghoul attacks through the same damage rules the player
+attacks through.
+
+Two rules shape it:
+- **The leash.** No monster steps further than 11 cells from the den, enforced
+  when a step is *chosen* rather than corrected afterwards — so a monster is
+  never out of bounds even for a frame.
+- **The boss never moves.** It swings at whatever comes into reach and is
+  otherwise furniture. Killing it stops reinforcements: whatever is still
+  standing stays, but the den stops being a source, so the centre can finally
+  be cleared for good instead of bleeding a ghoul every third round.
+
+### ⚖️ `contenders` split from `faction_order` in TurnManager
+The monsters needed a turn without becoming a fifth contender. With one list a
+den of ghouls counted as a surviving faction, "last one standing" was never
+reached, and **a won match simply never ended**. `faction_order` is who takes a
+turn; `contenders` is who can win or lose. `setup_match()` takes the marauders
+as a third, defaulting-to-empty argument, so every existing two-argument caller
+keeps the behaviour it had.
+
+Two smaller consequences of the same split:
+- **Monsters take no prisoners.** Refused in `MoraleManager.begin_surrender()`
+  rather than at the branches below it, because both of those assume a captor
+  with a treasury and a roster. A ghoul reaching `resolve_surrender` would press
+  a captured knight into the undead ranks — a fine mechanic, and emphatically
+  not this one.
+- **An occupied building is not an objective this turn.** `get_path_cells()`
+  temporarily un-solids both ends of a route so AStar can find one, so a keep
+  with a boss parked on it still scored as reachable. Every army would march on
+  the most valuable building on the board, fail the final step, and queue up
+  outside it for the rest of the match. General rule, not a monster one.
+
+### 🏰 A castle heals its garrison 40%
+Villages resupplied at 20% since 2026-08-28; a castle now does double. It is
+the one building whose loss ends the match, so the ground worth defending
+hardest should also be the ground worth retreating to — and it gives the trip
+to a castle for a promotion a second reason to exist. Both rates run through
+one per-type table in the upkeep sweep rather than a test for `HOUSE`.
+
+### 🎬 Retry goes to the faction screen; Quit goes to the menu
+`reload_current_scene()` replayed the match with the army the player had just
+lost with — the one choice a defeat argues against. Retry now returns to the
+faction screen (which also re-rolls the board), and the button that used to
+quit the application outright is **Main Menu**. Both unpause the tree first:
+`paused` belongs to the `SceneTree`, not to the scene hanging off it, so
+leaving it set carries the freeze into the menu and every button there does
+nothing.
+
+### 💣 Buried mines: 6 → 14
+Six on a 30x20 board is one mine per hundred cells, and play-testing found what
+that arithmetic predicts — whole matches passed without one going off. Minimum
+spacing drops 5 → 4: the blast is 3x2, so four cells still leaves a gap no
+single detonation can bridge, and fourteen at spacing five would have the
+scatter quietly return fewer than asked.
+
+### 🟣 The turn banner was blue for everyone
+A literal `🔵` in the format string told a player commanding the Purple
+Syndicate, every single turn, that they were blue. The pip comes off the
+faction now. The monsters' turn reads **"🕯️ THE BLACK CASTLE STIRS…"** rather
+than naming a fifth enemy — they are not an army, and announcing them as one
+invites the player to count five opponents and wonder why one never recruits,
+never expands and cannot be beaten for the win.
+
+### 🧪 Two test failures worth recording
+- **"the turn order carries all 4 armies"** went red, and it was right
+  literally: turn order now carries five. The premise was stale, not the code.
+  Its replacement is *stricter* — it asserts `contenders` separately, so it
+  would fail if the marauders were ever folded back into the victory check,
+  which is the exact bug the split exists to prevent.
+- A **new check failed for a reason unrelated to what it tested**: it handed a
+  gold mine to the same faction it then asked whether that faction wanted it.
+  An army never marches on ground it already holds.
+
+---
+
+## 📅 God Nodes Split, Mines That Trigger, Fair Random Boards (2026-08-28)
+
+Three passes in one day, in this order: break up the files that had grown into
+god nodes, fix a hazard that could not be met, and make the board different
+every match without making it unfair.
+
+`scenes/test_milestone5.tscn` grew from **193 to 277 checks**, all passing.
+
+### 🧩 Five god nodes became ten collaborators
+`MatchController`, `MainHUD`, `TacticalUnit` and `MapObjectManager` had each
+accumulated several jobs. Nothing about their behaviour changed; what changed is
+that each extracted piece can now be exercised on a bare grid, without building
+a match around it.
+
+| New | Out of | Job |
+|---|---|---|
+| `ArmyMuster` | MatchController | Castle lookup, the ring search for standing room, unit instancing |
+| `GridOverlay` | MatchController | The highlight layer |
+| `PandoraTable` | MapObjectManager | What comes out of a chest |
+| `UnitOverlay` | TacticalUnit | HP bar, morale strip, floating damage text |
+| `ModalOverlay` | MainHUD | The dimmed blocking-panel skeleton both dialogs hand-built |
+| `GameOverModal` · `SurrenderModal` · `UnitChoicePopup` | MainHUD | One dialog each |
+
+`ModalOverlay` is the clearest case: two dialogs had independently built the
+same seven-node skeleton — full-rect ColorRect, centred PanelContainer,
+MarginContainer with four identical margins, VBoxContainer. `MOUSE_FILTER_STOP`
+is the load-bearing detail in it, not decoration: a modal that lets clicks
+through is cosmetic, and it is also why these are Controls rather than
+`PopupPanel`s — a PopupPanel is dismissable by clicking outside, and neither of
+these dialogs has a valid "no answer" outcome.
+
+`GridOverlay` keeps no copy of what is selected. The controller stays the single
+owner of that, so the two can never fall out of step.
+
+### 💥 A buried mine you could walk over
+Traps only fired when a unit **ended its move** on one. Six cells out of roughly
+five hundred, and only the destination counted — so in practice they were
+scattered onto the map and never met. A mine you can stride over on your way
+past is not a mine.
+
+New `EventBus.unit_path_walked(unit, path)` carries the whole route, emitted
+**before** `unit_move_completed`, so a hazard the unit crossed has already
+resolved by the time anything reacts to where it ended up — a mine that killed
+the walker must not then be told the walker completed its move. The handler
+re-checks `is_instance_valid(unit)` at every cell, because the rest of a route
+belongs to a unit that may no longer exist.
+
+Only traps trigger this way. A chest is opened by stopping to open it, and a
+powder keg is a landmark you can see and route around; both stay
+destination-only on purpose.
+
+### 🎲 A different board every match, provably fair
+`ResourceScatter` rolls a fresh mine-and-village layout each match. The rule
+that makes it fair is structural: **it never places one building, only an orbit
+of four** — a cell and its three mirror images.
+
+Symmetry alone is not proof, because the terrain underneath is only *almost*
+symmetric. So every candidate orbit is measured with a real Dijkstra sweep from
+all four castles and **rejected unless the four distances tie exactly**. Not a
+tolerance — a tolerance is how a map ends up with one army a turn ahead every
+single match. If no measured-fair layout is found, the authored layout in the
+scene file stands: a failure here costs variety, never fairness.
+
+**Fuzzing found a real ordering bug that one run never would.** The first 24
+rolls came out with 6 lopsided — one army reaching the iron two moves before
+another. The cause was order: forests were planted *after* the scatter measured,
+and forest costs 2 MP. Props are now dressed before the roll, so it measures the
+terrain that will actually exist. Re-run: **60 of 60 rolls, spread 0.**
+
+Reach bands per type were added in the same pass. Without them the roll was fair
+but shapeless — one layout threw both village orbits 13 steps out, which is
+perfectly fair and still a bad map. Villages now land 3–8, gold 3–11, iron 9–14,
+keeping iron the contested centre prize.
+
+### 🏘️ A village resupplies whoever holds it
+20% of **maximum** health per upkeep to any unit standing on one of its own
+villages — a hero on 20/100 leaves on 40/100, not 24/100. Villages were worth
+taking for the troop capacity and worth nothing afterwards; this makes them
+worth standing in, and gives a mauled army somewhere to pull back *to* instead
+of only forward to die.
+
+Ordered deliberately: the village feeds **before** the starvation check, so
+holding one softens an over-capacity turn without cancelling it.
+
+### 🔒 The troop ceiling now binds every way a unit can arrive
+Recruiting always checked it. **Nothing else did.** There are three doors into
+the roster and only one of them ever asked:
+
+| Door | Before | After |
+|---|---|---|
+| Recruit at a castle | ✅ refused | ✅ + the message now names the unit's weight |
+| **Claim a prisoner** | ❌ straight through | ✅ |
+| **Chest mercenary** | ❌ straight through | ✅ |
+
+The rule lives once, in `EconomyManager.has_capacity_for()`. The prisoner door
+leaked in a specific way: the AI asks before it chooses, but the human is asked
+by a *dialog*, and a dialog can be answered "capture" by an army with no room.
+The Capture button is now greyed out with the reason written on it, and an
+impossible claim reaching `resolve_surrender` is downgraded to a ransom —
+enforced there because it is the single point every claim passes through.
+
+### 🧪 A test that had been passing by luck
+`TestMilestone4`'s fog check went red, and the engine was right. It put an enemy
+in a forest and asserted it was invisible from a distance — but a leftover Blue
+unit from an earlier section was standing one cell from that forest and could
+see straight in, exactly as the *next* assertion required. The premise had never
+been established; it passed until the forest moved. The test now picks a forest
+that nothing is watching.
+
+---
+
 ## 📅 Match Bootstrap — Main Menu, Faction Select & Four Armies (2026-08-27)
 
 The game's main scene was `TestGridScene.tscn`, driven by a controller that still

@@ -117,11 +117,23 @@ Handles logic for calculating field tax and checking troop capacities:
 - `get_total_used_capacity(faction_id) -> int`
 
 ### TurnManager Upkeep Phase Sequence:
-1. Inject Gold & Iron from controlled mines.
-2. Check `get_total_used_capacity()` vs `Max_Capacity`.
-3. If Used > Max:
+1. **One sweep of the faction's holdings** answers two questions at once: what
+   they earn, and which of their cells resupply a unit standing on them. Each
+   `Building` reports its own yield via `get_income()`, so a new building type
+   is paid without this loop knowing it exists.
+2. **Garrison healing**, from `GARRISON_HEAL_BY_TYPE`: a unit on one of its
+   **own** villages recovers 20% of `max_health`, on its own castle 40%.
+   Rounded up and floored at 1, capped by `TacticalUnit.heal()`.
+3. Inject Gold & Iron from the holdings swept in step 1.
+4. Check `get_total_used_capacity()` vs `Max_Capacity`.
+5. If Used > Max:
    - Trigger `execute_starvation()`.
    - Reverse loop through active units.
    - Apply 15 True Damage (type: "starvation").
    - If HP <= 0, `queue_free()` (Unit Desertion).
-4. Reset action points & movement points for surviving units.
+6. Reset action points & movement points for surviving units.
+
+> **Why healing precedes starvation.** Holdings feed first and the logistics
+> check still gets the last word, so standing in a village or a keep *softens*
+> an over-capacity turn without cancelling it. Both rules stay live at once,
+> which is the point of having both.

@@ -35,6 +35,12 @@ The battlefield is dotted with strategic nodes that factions must capture to sus
 *   **Village**: 
     *   Yield: **+2 Troop Capacity**, plus **+10 Gold per turn**.
     *   Utility: Expands the maximum number of units a faction can deploy simultaneously on the board.
+    *   **Garrison**: a unit standing on a village *its own faction holds* recovers **20% of its maximum health** each Upkeep. Villages were worth taking for the capacity and worth nothing afterwards; this makes them worth standing in, and gives a mauled army somewhere to fall back *to* rather than only forward.
+    *   **Vulnerable**: a village is the one building a marauder can affect, and it **burns** it rather than capturing it — the capacity goes with it (see `Terrain_and_Buildings.md`).
+
+> **Castles heal 40%** — double a village, and the only other building that
+> resupplies at all. A castle is the one holding whose loss ends the match, so
+> the ground worth defending hardest is also the ground worth retreating to.
 
 ---
 
