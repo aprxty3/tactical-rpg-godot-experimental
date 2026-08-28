@@ -214,8 +214,13 @@ func path_cost_between(from_cell: Vector2i, to_cell: Vector2i) -> int:
 func score_objective(unit: TacticalUnit, building: Building) -> float:
 	if not is_instance_valid(unit) or not is_instance_valid(building):
 		return -INF
-	if building.faction_id == _faction_id:
-		return -INF  # already ours; nothing to take
+	# Building answers "what would ending a move here get me". Anything but a
+	# capture is worth nothing to march on: already ours, or — since the Black
+	# Coven's keep arrived — ground no army is allowed to take at all. Without
+	# this the AI would score the monster den as its top objective and feed
+	# units into it one at a time, forever, capturing nothing.
+	if building.claim_for(_faction_id) != Building.Claim.CAPTURE:
+		return -INF
 
 	var value: float = float(
 		GameConfig.AI_OBJECTIVE_VALUE.get(building.get_type_string(), 10.0)

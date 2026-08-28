@@ -13,6 +13,18 @@ enum BuildingType {
 	TOWER
 }
 
+## What ending a move on this building does for the arriving faction.
+enum Claim {
+	NOTHING,   ## Walked over. No flag changes, nothing burns.
+	CAPTURE,   ## Flag changes to the arriving faction.
+	RAZE,      ## Burned off the map entirely.
+}
+
+## The only building type a marauder can affect, and it destroys rather than
+## takes it. Lives here rather than in GameConfig because it is keyed on
+## `BuildingType`, and a rule keyed on an enum belongs beside that enum.
+const MARAUDER_RAZES: Array[BuildingType] = [BuildingType.HOUSE]
+
 ## Folder name of each faction's hand-painted building set.
 const FACTION_ART_DIR: Dictionary = {
 	GameConfig.Faction.BLUE_KINGDOM: "Blue",
@@ -91,6 +103,47 @@ func get_type_string() -> String:
 		BuildingType.TOWER:
 			return "tower"
 	return "unknown"
+
+
+## What `faction_id` gets for ending a move here.
+##
+## The single place the "who may take what" question is answered, because three
+## callers used to imply their own answer by simply calling `capture()`: the
+## move handler, the AI's objective scoring, and the tests. Monsters raid rather
+## than conquer — they hold no ground, so a keep or a mine is just scenery to
+## them, and a village is something to burn.
+func claim_for(arriving_faction_id: int) -> Claim:
+	if faction_id == arriving_faction_id:
+		return Claim.NOTHING
+	if GameConfig.is_marauder(arriving_faction_id):
+		# A marauder cannot burn what nobody holds: an unclaimed village is not
+		# a supply line, and razing neutral ground would just strip the map.
+		if building_type in MARAUDER_RAZES and faction_id != GameConfig.Faction.NEUTRAL:
+			return Claim.RAZE
+		return Claim.NOTHING
+	# Nobody takes a marauder's ground either — the Black Castle is a den, not a
+	# prize, and letting an army capture it would hand them the monsters' keep
+	# while the monsters were still standing on it.
+	if GameConfig.is_marauder(faction_id):
+		return Claim.NOTHING
+	return Claim.CAPTURE
+
+
+## Burn this building off the map.
+##
+## Emits before freeing, and frees at the end of the frame, so every listener
+## still gets a valid node to read the owner and type off. `remove_from_group`
+## is not optional: `get_nodes_in_group("buildings")` is how income, capacity,
+## victory and the AI all find buildings, and a queued-but-not-yet-freed node
+## would keep paying its owner for one more turn.
+func raze() -> void:
+	remove_from_group("buildings")
+	# `building_destroyed` only. `resource_node_captured` would have been the
+	# lazy way to make the economy notice, but it means "this now belongs to
+	# someone", and it would have credited a village to faction NEUTRAL — a
+	# faction with no treasury and no troops to give capacity to.
+	EventBus.building_destroyed.emit(self)
+	queue_free()
 
 
 ## Capture the building for a new faction

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/monsters/ghoul/ghoul.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Ghoul"
+unit_class = "Undead"
+tier = 1
+description = "Starved dead that swarms anything straying near the black keep."
+max_health = 38
+attack_power = 14
+defense_power = 2
+movement_points = 4
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 0
+recruit_cost_iron = 0
+capacity_weight = 1
+vision_range = 4
+spritesheet = ExtResource("2_tex")
+hframes = 6
+vframes = 2
+sprite_scale = 2.375
+sprite_offset = Vector2(0.0, 0.0)

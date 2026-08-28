@@ -219,6 +219,17 @@ func begin_surrender(unit: TacticalUnit, captor_faction_id: int) -> void:
 	if not is_instance_valid(unit) or _pending.has(unit):
 		return
 
+	# Monsters take no prisoners and collect no ransom. Surrendering to them is
+	# not an outcome the game has, so the unit simply does not break: it fights
+	# where it stands and dies or survives on the combat rules alone.
+	#
+	# Refused HERE rather than at the two branches below because both of them
+	# assume a captor with a treasury and a roster — an army. Letting a ghoul
+	# reach `resolve_surrender` would press a captured knight into the undead
+	# ranks, which is a fine mechanic and emphatically not this one.
+	if GameConfig.is_marauder(captor_faction_id):
+		return
+
 	unit.pending_surrender = true
 	_pending[unit] = captor_faction_id
 	EventBus.surrender_triggered.emit(unit)

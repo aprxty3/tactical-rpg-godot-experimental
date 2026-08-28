@@ -82,6 +82,7 @@ func _ready() -> void:
 	_test_resource_roll()
 	_test_village_garrison()
 	await _test_troop_ceiling()
+	await _test_black_castle_encounters()
 	# LAST: this one latches match_over and re-runs setup_match, which would
 	# pull the board out from under anything that ran after it.
 	await _test_match_end_stops_play()
@@ -101,8 +102,11 @@ func _test_match_bootstrap() -> void:
 	# --- what MatchSetup promises -------------------------------------------
 	_check(MatchSetup.participants.size() == 4,
 		"four armies take the field (got %d)" % MatchSetup.participants.size())
+	# It fields monsters, but never an army: no economy, no recruitment, no
+	# claim on the victory check. `participants` is the list all three follow
+	# from, which is why this asserts on that list rather than on unit count.
 	_check(not (GameConfig.Faction.BLACK_COVEN in MatchSetup.participants),
-		"Black Coven fields no army — it holds a castle as a neutral prize")
+		"Black Coven fields no army — its castle is a den, not a contender")
 
 	var remembered: int = MatchSetup.player_faction
 	for faction_id in MatchSetup.participants:
@@ -167,8 +171,20 @@ func _test_match_bootstrap() -> void:
 	_check(on_water == 0, "nobody was mustered into the river")
 	_check(stacked == 0, "no two units share a cell")
 
-	_check(TurnManager.faction_order.size() == MatchSetup.participants.size(),
-		"the turn order carries all %d armies" % MatchSetup.participants.size())
+	# Two lists, deliberately different lengths. `contenders` is who can win the
+	# match; `faction_order` is who gets a turn, which since the Black Coven's
+	# monsters arrived is strictly more. Checking only the second — as this did
+	# — would pass just as happily if the marauders had been quietly folded into
+	# the victory check, which is the exact bug the split exists to prevent.
+	_check(TurnManager.contenders.size() == MatchSetup.participants.size(),
+		"only the %d armies can win the match" % MatchSetup.participants.size())
+	_check(TurnManager.faction_order.size()
+			== MatchSetup.participants.size() + MatchSetup.marauders.size(),
+		"the turn order carries the %d armies plus %d marauder(s)"
+			% [MatchSetup.participants.size(), MatchSetup.marauders.size()])
+	for marauder in MatchSetup.marauders:
+		_check(not marauder in TurnManager.contenders,
+			"%s takes a turn but cannot win" % GameConfig.faction_title(marauder))
 
 	# --- the resource bar belongs to the player, not to whoever is playing ---
 	# It used to be refreshed with the ACTIVE faction. With two armies that
@@ -1717,9 +1733,54 @@ func _test_village_garrison() -> void:
 	_check(garrison.current_health == wounded,
 		"a village flying another flag supplies nobody (%d)" % garrison.current_health)
 
+	# --- and a castle resupplies harder than a village ----------------------
+	# Two rates through one code path: the upkeep sweep reads a per-type table
+	# rather than testing for HOUSE, so this is the check that the table is
+	# actually consulted and not just declared.
+	village.capture(faction)
+	var keep: Building = null
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if b is Building and b.building_type == Building.BuildingType.CASTLE \
+				and b.faction_id == faction:
+			keep = b
+			break
+	if keep != null:
+		var warded: TacticalUnit = _enlist(_spawn("res://resources/units/pawn_%s.tres"
+			% GameConfig.FACTION_SUFFIX[faction], faction, keep.grid_position))
+		var keep_expected: int = maxi(1, int(ceil(
+			maximum * GameConfig.CASTLE_GARRISON_HEAL_RATIO)))
+		warded.current_health = wounded
+		garrison.current_health = wounded
+		TurnManager._execute_upkeep()
+		_check(warded.current_health == wounded + keep_expected,
+			"a castle garrison recovers %d%% of its maximum (%d -> %d)"
+			% [int(GameConfig.CASTLE_GARRISON_HEAL_RATIO * 100.0), wounded,
+				warded.current_health])
+		_check(warded.current_health > garrison.current_health,
+			"the keep out-heals the village (%d vs %d)"
+			% [warded.current_health, garrison.current_health])
+		_discharge([warded])
+	else:
+		_check(false, "the player has a castle to garrison")
+
 	_discharge([garrison, control])
 	village.capture(owner_before)
 	TurnManager.current_faction_index = index_before
+
+
+## A walkable, unoccupied cell touching `cell`, falling back to a wider ring.
+## Used to stand a unit beside a specific building rather than wherever the
+## map-wide scan happens to land first.
+func _free_neighbour_of(cell: Vector2i) -> Vector2i:
+	for radius in range(1, 4):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if absi(dx) != radius and absi(dy) != radius:
+					continue
+				var candidate: Vector2i = cell + Vector2i(dx, dy)
+				if grid.is_cell_walkable(candidate) and grid.get_building_at(candidate) == null:
+					return candidate
+	return _open_cell_away_from(cell)
 
 
 ## Somewhere open that is not the given cell and holds no building — for the
@@ -1915,6 +1976,174 @@ func _walk_cost(from: Vector2i, to: Vector2i) -> int:
 				dist[nxt] = nd
 				frontier.append(nxt)
 	return -1
+
+
+# ==============================================================================
+# 14. THE BLACK CASTLE KEEPS A GARRISON
+# ==============================================================================
+
+## Monsters raid; they do not conquer.
+##
+## The rule they exist to test is a negative one, and negatives are what quietly
+## stop holding: a marauder that CAN claim a gold mine breaks nothing loudly, it
+## just hands the centre of the map to a faction with no economy and no turn
+## worth taking. So most of this section asserts what does NOT happen.
+func _test_black_castle_encounters() -> void:
+	print("\n[14] The Black Castle keeps a garrison")
+
+	var monsters: int = GameConfig.Faction.BLACK_COVEN
+	var army: int = MatchSetup.participants[0]
+
+	# --- the roster exists and is six creatures, one of them the boss --------
+	_check(GameConfig.ENCOUNTER_ROSTER.size() == 5,
+		"five wandering encounters are defined (got %d)" % GameConfig.ENCOUNTER_ROSTER.size())
+	var all_load: bool = ResourceLoader.exists(GameConfig.ENCOUNTER_BOSS)
+	var distinct: Dictionary = {}
+	for path in GameConfig.ENCOUNTER_ROSTER + [GameConfig.ENCOUNTER_BOSS]:
+		if not ResourceLoader.exists(path):
+			all_load = false
+			continue
+		var data: UnitData = load(path) as UnitData
+		if not is_instance_valid(data) or not is_instance_valid(data.spritesheet):
+			all_load = false
+			continue
+		distinct[data.unit_name] = true
+	_check(all_load, "every encounter resource loads and carries art")
+	_check(distinct.size() == 6, "the six encounters are all different creatures (got %d)"
+		% distinct.size())
+
+	# The undead feel no fear, which is what keeps them off the morale system
+	# entirely — a ghoul that could be talked into surrendering would be a
+	# prisoner the player has capacity for and the monsters do not.
+	var boss_data: UnitData = load(GameConfig.ENCOUNTER_BOSS) as UnitData
+	_check(is_instance_valid(boss_data) and boss_data.is_morale_immune(),
+		"the boss is morale-immune, like everything else undead")
+
+	# --- what a marauder may and may not take -------------------------------
+	var den: Building = null
+	var mine: Building = null
+	var village: Building = null
+	var keep: Building = null
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if not (b is Building):
+			continue
+		if b.building_type == Building.BuildingType.CASTLE and b.faction_id == monsters:
+			den = b
+		elif b.building_type == Building.BuildingType.CASTLE and b.faction_id == army:
+			keep = b
+		elif b.building_type == Building.BuildingType.GOLD_MINE and mine == null:
+			mine = b
+		elif b.building_type == Building.BuildingType.HOUSE and village == null:
+			village = b
+
+	if den == null or mine == null or village == null or keep == null:
+		_check(false, "the map has a den, a mine, a village and an army castle")
+		return
+
+	var mine_owner: int = mine.faction_id
+	var village_owner: int = village.faction_id
+	# The mine goes to a RIVAL, not to `army`. Both questions below are asked
+	# about it — "can a monster take this" and "would our army march on it" —
+	# and an army never marches on ground it already holds, so handing it to
+	# `army` would make the control check fail for a reason unrelated to
+	# monsters.
+	mine.capture(MatchSetup.participants[1])
+	village.capture(army)
+
+	_check(keep.claim_for(monsters) == Building.Claim.NOTHING,
+		"a monster cannot claim an army's castle")
+	_check(mine.claim_for(monsters) == Building.Claim.NOTHING,
+		"a monster cannot claim a gold mine")
+	_check(village.claim_for(monsters) == Building.Claim.RAZE,
+		"a monster BURNS a held village rather than taking it")
+	_check(den.claim_for(army) == Building.Claim.NOTHING,
+		"an army cannot capture the den either — it is not a prize")
+	_check(village.claim_for(army) == Building.Claim.NOTHING,
+		"nobody re-claims what they already hold")
+
+	# A neutral village is nobody's supply line, so there is nothing to deny.
+	village.capture(GameConfig.Faction.NEUTRAL)
+	_check(village.claim_for(monsters) == Building.Claim.NOTHING,
+		"an unclaimed village is not worth burning")
+	village.capture(army)
+
+	# --- the AI is not lured into a den it can never take --------------------
+	# Without this the monster keep scores as the highest-value objective on the
+	# board (a castle, dead centre, near everything) and each army feeds units
+	# into it one at a time for the rest of the match.
+	# Stood next to the mine so the control check measures the claim rule and
+	# not whether a corner of the map happens to have a route to the middle.
+	var scout: TacticalUnit = _enlist(_spawn("res://resources/units/pawn_%s.tres"
+		% GameConfig.FACTION_SUFFIX[army], army, _free_neighbour_of(mine.grid_position)))
+	var judge := AITacticalEvaluator.new(grid, main.combat_resolver, null, army)
+	_check(judge.score_objective(scout, den) == -INF,
+		"the den scores as no objective at all for an army")
+	_check(judge.score_objective(scout, mine) > -INF,
+		"a real objective still scores (control)")
+
+	# --- razing actually costs the owner its capacity -----------------------
+	var economy: Node = main.economy_manager
+	var cap_before: int = economy.get_max_capacity(army)
+	village.raze()
+	await get_tree().process_frame
+	var cap_after: int = economy.get_max_capacity(army)
+	_check(cap_after == cap_before - GameConfig.VILLAGE_CAPACITY_BONUS,
+		"burning a village takes its %d troop capacity back (%d -> %d)"
+		% [GameConfig.VILLAGE_CAPACITY_BONUS, cap_before, cap_after])
+	_check(not is_instance_valid(village) or not village.is_in_group("buildings"),
+		"a razed village stops paying its owner income")
+
+	# --- monsters take no prisoners -----------------------------------------
+	var morale = main.morale_manager
+	if is_instance_valid(morale):
+		morale.begin_surrender(scout, monsters)
+		_check(not scout.pending_surrender,
+			"a unit cannot surrender to a monster — there is nobody to surrender to")
+
+	# --- the garrison is real, and it is on its leash -----------------------
+	var den_units: Array = TurnManager.get_faction_units(monsters)
+	_check(den_units.size() >= GameConfig.ENCOUNTER_INITIAL,
+		"the den garrisons at least %d creatures (got %d)"
+		% [GameConfig.ENCOUNTER_INITIAL, den_units.size()])
+
+	var encounters = main.encounter_manager
+	if is_instance_valid(encounters):
+		_check(encounters.den_cell == den.grid_position,
+			"the den anchors on the Black Castle at %s" % str(den.grid_position))
+
+		var all_leashed: bool = true
+		for m in den_units:
+			if not is_instance_valid(m):
+				continue
+			if not encounters._within_leash(m.grid_position):
+				all_leashed = false
+		_check(all_leashed, "every monster spawns inside the %d-cell leash"
+			% GameConfig.ENCOUNTER_LEASH)
+
+		# The leash is enforced when a step is CHOSEN, not corrected after the
+		# fact — so a monster ordered at a target beyond it must stop at the
+		# boundary rather than walk out and be dragged back.
+		var far: Vector2i = Vector2i(
+			clampi(den.grid_position.x + GameConfig.ENCOUNTER_LEASH * 2, 0, grid.grid_size.x - 1),
+			den.grid_position.y)
+		var runner: TacticalUnit = null
+		for m in den_units:
+			if is_instance_valid(m) and m != encounters._boss:
+				runner = m
+				break
+		if runner != null:
+			var step: Vector2i = encounters._step_towards(runner, far)
+			_check(encounters._within_leash(step),
+				"chasing a target beyond the leash still stops inside it (%s)" % str(step))
+		else:
+			_check(false, "the den has a wanderer to test the leash with")
+	else:
+		_check(false, "the match built an EncounterManager")
+
+	_discharge([scout])
+	mine.capture(mine_owner)
+	if is_instance_valid(village):
+		village.capture(village_owner)
 
 
 func _check(condition: bool, message: String) -> void:

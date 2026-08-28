@@ -60,7 +60,13 @@ var player_faction: int = GameConfig.Faction.BLUE_KINGDOM
 ## One commander per enemy faction, built in `_ready`. These cannot be authored
 ## in the scene: which factions the computer drives depends on which one the
 ## player chose, and that is not known until the faction screen has been through.
+
 var ai_managers: Array[AIManager] = []
+
+## The Black Castle's garrison. Built in code for the same reason the AI
+## commanders are: it needs the finished board to find its keep, and the scene
+## file cannot hold "whatever the map ended up looking like".
+var encounter_manager: EncounterManager
 
 var selected_unit: TacticalUnit = null
 var selected_building: Building = null
@@ -149,9 +155,16 @@ func _ready() -> void:
 	#    `turn_started` in its own `_ready` and would otherwise miss the first.
 	_spawn_ai_commanders()
 
-	# 6. Turn order is the participant list itself — TurnManager has always
-	#    handled any number of factions; it was only ever called with two.
-	TurnManager.setup_match(MatchSetup.participants, economy_manager)
+	# 6. Turn order is the participant list plus the marauders. The two are
+	#    passed separately because only the first can win: a den of monsters
+	#    takes a turn but must never count as a surviving faction, or "last one
+	#    standing" is never reached and a won match simply never ends.
+	TurnManager.setup_match(MatchSetup.participants, economy_manager, MatchSetup.marauders)
+
+	# 7. The monsters, after setup_match so their spawn lands on a roster that
+	#    already has a bucket for them, and before start_turn so the boss is on
+	#    the keep by the time anyone can look at it.
+	_spawn_encounters()
 
 	main_hud.initialize(economy_manager, grid_manager)
 
@@ -310,6 +323,23 @@ func _spawn_ai_commanders() -> void:
 		ai.setup(grid_manager, economy_manager, vision_manager,
 			map_object_manager, combat_resolver)
 		ai_managers.append(ai)
+
+
+## Stand up the Black Castle's garrison.
+##
+## Skipped entirely when the map has no Black Castle or the match fields no
+## marauders — `EncounterManager` warns and does nothing in that case, and the
+## focused test scenes have neither.
+func _spawn_encounters() -> void:
+	if MatchSetup.marauders.is_empty():
+		return
+	encounter_manager = EncounterManager.new()
+	encounter_manager.name = "EncounterManager"
+	encounter_manager.faction_id = MatchSetup.marauders[0]
+	encounter_manager.action_delay = ai_action_delay
+	add_child(encounter_manager)
+	encounter_manager.setup(grid_manager, unit_container, combat_resolver)
+	encounter_manager.garrison()
 
 
 func _update_hud_text(text: String) -> void:

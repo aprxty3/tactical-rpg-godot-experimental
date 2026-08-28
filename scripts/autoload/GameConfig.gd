@@ -77,6 +77,12 @@ const HOUSE_GOLD_INCOME: int = 10
 ## capacity and worth nothing afterwards; this makes them worth standing in, and
 ## gives a mauled army somewhere to pull back to instead of only forward to die.
 const VILLAGE_GARRISON_HEAL_RATIO: float = 0.20
+## A castle is a proper garrison, not a farmhouse: standing in one of your own
+## keeps recovers this fraction of MAXIMUM health each upkeep. Double a village's
+## rate on purpose — a castle is the one building whose loss ends the match, so
+## the ground worth defending hardest should also be the ground worth retreating
+## to. It also gives the promotion trip to a castle a second reason to exist.
+const CASTLE_GARRISON_HEAL_RATIO: float = 0.40
 const FIELD_TAX_MULTIPLIER: int = 2       # 200% cost for field upgrades
 const STARVATION_DAMAGE: int = 15         # True damage per overcap turn
 
@@ -139,6 +145,55 @@ const FACTION_TINT_COLORS: Dictionary = {
 	Faction.YELLOW_EMPIRE: Color(0.95, 0.8, 0.15),
 	Faction.BLACK_COVEN: Color(0.35, 0.32, 0.4),
 }
+
+# === Wandering Encounters (Black Coven) ===
+## Factions that raid rather than conquer.
+##
+## A marauder holds no ground: it cannot claim a castle or a mine, and a village
+## it reaches is burned rather than flown a new flag. It also sits outside the
+## victory check — it is a hazard of the map, like a minefield that walks, not a
+## fifth contender the winner has to outlast.
+##
+## Written as a list rather than `faction_id == BLACK_COVEN` so a second
+## encounter faction (bandits, a rival coven) needs no new branches downstream.
+const MARAUDER_FACTIONS: Array[int] = [Faction.BLACK_COVEN]
+
+
+## Does this faction raid instead of conquering?
+static func is_marauder(faction_id: int) -> bool:
+	return faction_id in MARAUDER_FACTIONS
+
+## What a marauder does to each building type is Building's own business and
+## lives there, next to the enum it is keyed on — see `Building.claim_for`.
+
+## The garrison that holds the Black Castle, in spawn order. The last entry is
+## the boss and is treated as such — one only, planted on the keep itself, and
+## it never steps off it.
+const ENCOUNTER_ROSTER: Array[String] = [
+	"res://resources/units/ghoul_black.tres",
+	"res://resources/units/bonestalker_black.tres",
+	"res://resources/units/gravewarden_black.tres",
+	"res://resources/units/plaguewraith_black.tres",
+	"res://resources/units/bloodfiend_black.tres",
+]
+const ENCOUNTER_BOSS: String = "res://resources/units/dreadwarden_black.tres"
+
+## How far from the Black Castle a monster will chase, in Manhattan cells.
+##
+## Eleven covers the centre lanes and the inner ring of villages on a 30x20
+## board without reaching any starting castle — a leash short enough that a
+## player can choose to stay out of it, long enough that the middle of the map
+## costs something to hold.
+const ENCOUNTER_LEASH: int = 11
+
+## How many monsters (excluding the boss) stand guard at once.
+const ENCOUNTER_MAX_ACTIVE: int = 4
+## How many take the field at match start. Below the cap on purpose: the den
+## reinforcing itself over the first rounds reads as a place that is producing
+## them, rather than a fixed pile of enemies that only ever shrinks.
+const ENCOUNTER_INITIAL: int = 2
+## Rounds between reinforcements while under the cap.
+const ENCOUNTER_SPAWN_INTERVAL: int = 3
 
 # === Map Event Probabilities (Pandora's Box) ===
 const PANDORA_WAR_SPOILS_CHANCE: float = 0.50
@@ -308,9 +363,20 @@ const HIDDEN_TRAP_BLAST_SIZE: Vector2i = Vector2i(3, 2)
 ## against terrain flammability; a mine is incendiary by design.
 const HIDDEN_TRAP_IGNITE_ALL: bool = true
 ## How many are buried per match.
-const HIDDEN_TRAP_COUNT: int = 6
+##
+## Six on a 30x20 board is one mine per hundred cells, and play-testing found
+## what that arithmetic predicts: whole matches went by without a single one
+## going off, so the hazard existed on paper only. Fourteen is one per forty-odd
+## cells — often enough to be a thing you route around, still rare enough that
+## a route is worth planning rather than a coin-flip.
+const HIDDEN_TRAP_COUNT: int = 14
 ## Kept this far apart (Manhattan), so one step can never set off two.
-const HIDDEN_TRAP_MIN_SPACING: int = 5
+##
+## Four, not five: the blast is 3x2, so four cells still leaves a gap no single
+## detonation can bridge, and packing fourteen mines at five would have the
+## scatter quietly return fewer than asked (it draws without replacement and
+## gives up rather than looping).
+const HIDDEN_TRAP_MIN_SPACING: int = 4
 
 # === Enemy AI Tuning ===
 ## What each building is worth as an objective. The AI divides these by the real

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/monsters/dreadwarden/dreadwarden.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Dread Warden"
+unit_class = "Undead"
+tier = 3
+description = "The thing the Black Castle was built around. It does not leave."
+max_health = 140
+attack_power = 34
+defense_power = 16
+movement_points = 3
+attack_range_min = 1
+attack_range_max = 2
+recruit_cost_gold = 0
+recruit_cost_iron = 0
+capacity_weight = 4
+vision_range = 7
+spritesheet = ExtResource("2_tex")
+hframes = 6
+vframes = 2
+sprite_scale = 2.7
+sprite_offset = Vector2(0.5, -1.0)

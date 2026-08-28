@@ -5,8 +5,14 @@ class_name GameOverModal
 ## Built once and re-shown, so a second victory signal cannot stack a second
 ## copy on top of the first.
 
+## Play the same match again. The listener takes this back to the faction
+## screen rather than rebuilding the board in place: a retry is a fresh choice
+## of army, not a rerun of the one that just lost.
 signal retry_pressed
-signal quit_pressed
+## Leave the match for the main menu. Named for where it goes, not for the word
+## on the button — an earlier version quit the application outright, which is a
+## very different thing to offer someone who has just lost a battle.
+signal main_menu_pressed
 
 
 func _init(_overlay_name: String = "GameOverModal", _dim: float = 0.65,
@@ -30,5 +36,5 @@ func present(player_won: bool) -> void:
 	add_text("The enemy castles have fallen." if player_won
 		else "Your forces have been broken.")
 	add_button("🔄  Retry", func(): retry_pressed.emit())
-	add_button("🚪  Quit", func(): quit_pressed.emit())
+	add_button("🏠  Main Menu", func(): main_menu_pressed.emit())
 	show()

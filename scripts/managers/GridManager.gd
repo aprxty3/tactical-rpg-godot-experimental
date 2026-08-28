@@ -455,10 +455,19 @@ func _on_unit_move_tween_finished(unit: Variant, from_cell: Vector2i, to_cell: V
 	_moving_units.erase(unit)
 	unit.play_animation("idle")
 
-	# Check if destination tile has a building to capture
+	# What the destination building is worth to whoever just stepped on it.
+	# Asking rather than capturing outright is what keeps a monster from
+	# flying its flag over a gold mine: the rule lives on Building, and this
+	# handler only carries it out.
 	var building = get_building_at(to_cell)
-	if building and building.faction_id != unit.faction_id:
-		building.capture(unit.faction_id)
+	if building:
+		match building.claim_for(unit.faction_id):
+			Building.Claim.CAPTURE:
+				building.capture(unit.faction_id)
+			Building.Claim.RAZE:
+				building.raze()
+			_:
+				pass
 
 	# The route BEFORE the arrival, so a hazard the unit crossed has already
 	# resolved by the time anything reacts to where it ended up. A mine that

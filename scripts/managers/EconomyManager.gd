@@ -227,7 +227,31 @@ func _on_unit_lifecycle_changed(_arg1 = null, _arg2 = null, _arg3 = null) -> voi
 		EventBus.capacity_changed.emit(fid, used_cap, max_cap)
 
 
-func _on_building_destroyed(_building: Node) -> void:
-	# Handle village destruction reducing capacity
-	# Implementation depends on building node structure
-	pass
+## A building was burned off the map. Only villages carry troop capacity, so
+## only they need unwinding here — but the emit is deliberately not filtered at
+## the source, so a future destructible building type arrives at one handler.
+##
+## This was a `pass` with a note saying it depended on the node structure. It
+## stopped being hypothetical the moment monsters could raze a village: without
+## it, an army kept the +2 capacity of a village that no longer existed, and
+## kept it permanently, because nothing else ever decrements that count.
+func _on_building_destroyed(building: Node) -> void:
+	if not is_instance_valid(building) or not (building is Building):
+		return
+	if building.building_type != Building.BuildingType.HOUSE:
+		return
+
+	var owner_id: int = building.faction_id
+	if not _faction_villages.has(owner_id):
+		return
+	_faction_villages[owner_id] = maxi(0, _faction_villages[owner_id] - 1)
+
+	if Engine.is_editor_hint() or not is_instance_valid(EventBus) \
+			or not EventBus.has_signal("capacity_changed"):
+		return
+	var units: Array = TurnManager.get_faction_units(owner_id) if is_instance_valid(TurnManager) else []
+	# The owner may now be over the ceiling they were exactly at. Announcing it
+	# here means the HUD turns red the moment the smoke clears, rather than
+	# waiting for their next upkeep to tell them they are starving.
+	EventBus.capacity_changed.emit(
+		owner_id, get_used_capacity(owner_id, units), get_max_capacity(owner_id))

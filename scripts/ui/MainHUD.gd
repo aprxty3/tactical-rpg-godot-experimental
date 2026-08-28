@@ -208,7 +208,14 @@ func _on_turn_started(faction_id: int) -> void:
 	# Anyone who is not the player is an enemy, named by their colour. Hardcoding
 	# faction 1 also meant a third faction taking a turn was announced as YOUR
 	# TURN and left the End Turn button live.
-	if faction_id != player_faction_id:
+	if GameConfig.is_marauder(faction_id):
+		# Not "BLACK ENEMY IS PLAYING". The monsters are not a fifth army and
+		# announcing them as one invites the player to count five opponents and
+		# wonder why they never recruit, never expand and cannot be beaten for
+		# the win. Naming the den instead says what is actually taking a turn.
+		_update_context_text("🕯️ THE BLACK CASTLE STIRS...")
+		end_turn_btn.disabled = true
+	elif faction_id != player_faction_id:
 		_update_context_text("⚔️ %s IS PLAYING..." % GameConfig.faction_enemy_name(faction_id).to_upper())
 		end_turn_btn.disabled = true
 	else:
@@ -378,18 +385,42 @@ func _show_game_over_modal(player_won: bool) -> void:
 	if not is_instance_valid(game_over_modal):
 		game_over_modal = GameOverModal.new()
 		game_over_modal.retry_pressed.connect(_on_retry_pressed)
-		game_over_modal.quit_pressed.connect(func(): get_tree().quit())
+		game_over_modal.main_menu_pressed.connect(_on_main_menu_pressed)
 		add_child(game_over_modal)
 	game_over_modal.present(player_won)
 
 
-## Restart the match by reloading the scene.
+## Where each result-screen button goes. Both are full scene changes rather
+## than an in-place reset: the board, the economy, the fog, the scattered
+## hazards and every unit's state all come from scene construction, so a
+## hand-written reset would have to rediscover each of them and would drift the
+## moment a new system was added.
+const FACTION_SELECT_SCENE: String = "res://scenes/ui/FactionSelect.tscn"
+const MENU_SCENE: String = "res://scenes/ui/MainMenu.tscn"
+
+
+## Retry — back to the faction screen, not a reload of this same board.
 ##
-## `reload_current_scene` rather than resetting managers by hand: the board, the
-## economy, the fog, the scattered chests and traps and every unit's state all
-## come from scene construction, and a hand-written reset would have to
-## rediscover each of them and would drift the moment a new system was added.
+## `reload_current_scene` would have replayed the match with the army the player
+## just lost with, which is the one choice a defeat argues against. Going through
+## the faction screen also re-rolls the map, since the board is scattered fresh
+## on every build of the match scene.
 func _on_retry_pressed() -> void:
+	_leave_match(FACTION_SELECT_SCENE)
+
+
+## Main Menu — leave the match entirely. `MainMenu._ready` calls
+## `MatchSetup.reset()`, so the next match starts from the defaults rather than
+## inheriting this one's faction choice.
+func _on_main_menu_pressed() -> void:
+	_leave_match(MENU_SCENE)
+
+
+## Unpause before changing scenes, always. `SceneTree.paused` is a property of
+## the tree, not of the scene hanging off it — leaving it set would carry the
+## freeze into the menu and leave the player looking at a screen whose buttons
+## do nothing.
+func _leave_match(scene_path: String) -> void:
 	_match_over = false
 	get_tree().paused = false
-	get_tree().reload_current_scene()
+	get_tree().change_scene_to_file(scene_path)

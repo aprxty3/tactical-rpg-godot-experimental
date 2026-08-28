@@ -29,6 +29,11 @@ var player_faction: int = GameConfig.Faction.BLUE_KINGDOM
 ## constant so a campaign chapter can field three armies, or five.
 var participants: Array[int] = []
 
+## Factions that take a turn but cannot win — the Black Coven's monsters. Kept
+## beside `participants` rather than folded into it because the two lists answer
+## different questions: who is playing, and who is merely on the board.
+var marauders: Array[int] = []
+
 ## Seeds the scattered chests, traps and kegs. 0 means "pick one at random on
 ## match start"; a fixed value reproduces a board exactly, which is what the
 ## test suites rely on.
@@ -43,6 +48,7 @@ func _ready() -> void:
 ## menu, so a second match never inherits the first one's choices.
 func reset() -> void:
 	participants.assign(DEFAULT_PARTICIPANTS)
+	marauders.assign(GameConfig.MARAUDER_FACTIONS)
 	player_faction = GameConfig.Faction.BLUE_KINGDOM
 	map_seed = 0
 

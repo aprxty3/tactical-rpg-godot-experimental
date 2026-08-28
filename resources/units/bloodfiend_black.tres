@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/monsters/bloodfiend/bloodfiend.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Blood Fiend"
+unit_class = "Undead"
+tier = 2
+description = "Feeds on what it kills. The reason a wounded unit should not linger."
+max_health = 62
+attack_power = 26
+defense_power = 8
+movement_points = 4
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 0
+recruit_cost_iron = 0
+capacity_weight = 2
+vision_range = 5
+spritesheet = ExtResource("2_tex")
+hframes = 6
+vframes = 2
+sprite_scale = 2.0
+sprite_offset = Vector2(0.5, -1.0)

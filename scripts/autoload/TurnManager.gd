@@ -9,8 +9,17 @@ var current_faction_index: int = 0
 var turn_number: int = 1
 var _is_game_over: bool = false
 
-## Ordered list of faction IDs participating in this match.
+## Ordered list of faction IDs that take a turn, marauders included.
 var faction_order: Array[int] = []
+
+## The subset of `faction_order` that can actually win or lose the match.
+##
+## Split from the turn order because the Black Coven's monsters needed a turn
+## without becoming a fifth contender: with one list, a den of ghouls counted as
+## a surviving faction and no army could ever reach "last one standing", so a
+## won match simply never ended. Marauders move, fight and die on this list's
+## terms and are invisible to the one below.
+var contenders: Array[int] = []
 
 ## Per-faction arrays of active TacticalUnit nodes on the map.
 ## Key: faction_id (int), Value: Array of TacticalUnit nodes.
@@ -41,8 +50,17 @@ func _connect_signals() -> void:
 
 ## Initialize the turn system with participating factions.
 ## Call this when the match/level starts.
-func setup_match(factions: Array[int], eco_manager: Node) -> void:
-	faction_order = factions
+##
+## `marauders` take a turn but sit outside the victory check — see `contenders`.
+## It defaults to empty, so every existing two-argument caller (all the focused
+## test scenes) keeps the behaviour it had: turn order and contenders identical.
+func setup_match(factions: Array[int], eco_manager: Node,
+		marauders: Array[int] = []) -> void:
+	contenders = factions.duplicate()
+	faction_order = factions.duplicate()
+	for faction_id in marauders:
+		if not faction_id in faction_order:
+			faction_order.append(faction_id)
 	economy_manager = eco_manager
 	current_faction_index = 0
 	turn_number = 1
@@ -144,12 +162,16 @@ func _execute_upkeep() -> void:
 	var units := get_faction_units(faction_id)
 
 	# 1. One sweep of this faction's holdings answers two questions: what they
-	#    earn, and which cells are villages their troops can be resupplied on.
-	#    Each Building reports its own yield, so a castle's stipend or a future
+	#    earn, and which of their cells resupply a unit standing on them. Each
+	#    Building reports its own yield, so a castle's stipend or a future
 	#    building type is paid without this loop knowing which types exist.
 	var gold := 0
 	var iron := 0
-	var village_cells: Dictionary = {}
+	## Cell -> fraction of max health healed there. A dictionary of rates rather
+	## than a list of cells because a castle heals harder than a village, and
+	## the alternative — one sweep and one heal pass per building type — grows a
+	## copy of both every time a healing building is added.
+	var heal_cells: Dictionary = {}
 
 	var tree = get_tree()
 	if tree:
@@ -159,13 +181,15 @@ func _execute_upkeep() -> void:
 			var income: Dictionary = bld.get_income()
 			gold += int(income.get("gold", 0))
 			iron += int(income.get("iron", 0))
-			if bld.building_type == Building.BuildingType.HOUSE:
-				village_cells[bld.grid_position] = true
+			var ratio: float = GARRISON_HEAL_BY_TYPE.get(bld.building_type, 0.0)
+			if ratio > 0.0:
+				heal_cells[bld.grid_position] = ratio
 
-	# 2. The villages feed their garrisons FIRST, and starvation still gets the
-	#    last word below: holding a village softens an over-capacity turn without
-	#    cancelling it, which is the point of both rules at once.
-	_heal_village_garrisons(units, village_cells)
+	# 2. The holdings feed their garrisons FIRST, and starvation still gets the
+	#    last word below: standing in a village or a keep softens an
+	#    over-capacity turn without cancelling it, which is the point of both
+	#    rules at once.
+	_heal_garrisons(units, heal_cells)
 
 	if economy_manager:
 		# 3. Income, then the logistics collapse (starvation) check.
@@ -178,14 +202,22 @@ func _execute_upkeep() -> void:
 			unit.reset_for_new_turn()
 
 
-## Resupply every unit standing on one of its OWN villages.
+## Which building types resupply the troops standing on them, and how hard.
+## A type absent from here heals nothing, which is every type not listed.
+const GARRISON_HEAL_BY_TYPE: Dictionary = {
+	Building.BuildingType.HOUSE: GameConfig.VILLAGE_GARRISON_HEAL_RATIO,
+	Building.BuildingType.CASTLE: GameConfig.CASTLE_GARRISON_HEAL_RATIO,
+}
+
+
+## Resupply every unit standing on one of its OWN healing buildings.
 ##
 ## Own, specifically: a building is captured the instant a unit ends its move on
-## it, so "the village you are standing in" and "the village you hold" are the
-## same place in practice — and requiring ownership keeps a unit that was placed
-## onto a neutral house by a test or a chest from quietly drawing rations.
-func _heal_village_garrisons(units: Array, village_cells: Dictionary) -> void:
-	if village_cells.is_empty() or GameConfig.VILLAGE_GARRISON_HEAL_RATIO <= 0.0:
+## it, so "the keep you are standing in" and "the keep you hold" are the same
+## place in practice — and requiring ownership keeps a unit that was placed onto
+## a neutral house by a test or a chest from quietly drawing rations.
+func _heal_garrisons(units: Array, heal_cells: Dictionary) -> void:
+	if heal_cells.is_empty():
 		return
 	for unit in units:
 		if not is_instance_valid(unit) or not (unit is TacticalUnit):
@@ -193,13 +225,13 @@ func _heal_village_garrisons(units: Array, village_cells: Dictionary) -> void:
 		var tactical := unit as TacticalUnit
 		if tactical.current_health <= 0 or not is_instance_valid(tactical.unit_data):
 			continue
-		if not village_cells.has(tactical.grid_position):
+		var ratio: float = heal_cells.get(tactical.grid_position, 0.0)
+		if ratio <= 0.0:
 			continue
 		# Ceil, then floored at 1: a percentage of a small max_health rounds to
 		# nothing, and a village that heals for zero reads as broken rather than
 		# as stingy. `heal` caps at max_health and is a no-op at full health.
-		var amount: int = int(ceil(
-			tactical.unit_data.max_health * GameConfig.VILLAGE_GARRISON_HEAL_RATIO))
+		var amount: int = int(ceil(tactical.unit_data.max_health * ratio))
 		tactical.heal(maxi(1, amount))
 
 
@@ -252,7 +284,8 @@ func _check_victory_conditions(_faction_id: int) -> void:
 	if not tree:
 		return
 		
-	for fac in faction_order:
+	# `contenders`, not `faction_order`: a marauder is scenery for this check.
+	for fac in contenders:
 		var units := get_faction_units(fac)
 		var alive_unit_count := 0
 		for unit in units:

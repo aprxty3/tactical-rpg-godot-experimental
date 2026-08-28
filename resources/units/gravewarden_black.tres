@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/monsters/gravewarden/gravewarden.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Grave Warden"
+unit_class = "Undead"
+tier = 2
+description = "Armoured bones that hold the approach and refuse to fall quickly."
+max_health = 70
+attack_power = 20
+defense_power = 12
+movement_points = 3
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 0
+recruit_cost_iron = 0
+capacity_weight = 2
+vision_range = 4
+spritesheet = ExtResource("2_tex")
+hframes = 6
+vframes = 2
+sprite_scale = 2.1111
+sprite_offset = Vector2(0.5, 0.0)

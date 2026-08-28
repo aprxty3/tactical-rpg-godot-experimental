@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/UnitData.gd" id="1_scr"]
+[ext_resource type="Texture2D" path="res://assets/characters/monsters/bonestalker/bonestalker.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_scr")
+unit_name = "Bone Stalker"
+unit_class = "Undead"
+tier = 1
+description = "A scout of the dead — fast, brittle, and always the first thing seen."
+max_health = 30
+attack_power = 12
+defense_power = 1
+movement_points = 6
+attack_range_min = 1
+attack_range_max = 1
+recruit_cost_gold = 0
+recruit_cost_iron = 0
+capacity_weight = 1
+vision_range = 6
+spritesheet = ExtResource("2_tex")
+hframes = 6
+vframes = 2
+sprite_scale = 2.375
+sprite_offset = Vector2(0.0, 0.0)
