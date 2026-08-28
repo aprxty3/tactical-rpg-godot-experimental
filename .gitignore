@@ -6,6 +6,7 @@
 
 # Exported binaries & templates
 /build/
+/builds/
 /android/
 /ios/
 *.apk

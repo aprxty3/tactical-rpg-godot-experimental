@@ -78,6 +78,31 @@ step 5 — it is why itch.io's SharedArrayBuffer switch can stay off.
 
 ---
 
+## 1.5 The open editor owns `export_presets.cfg`
+
+**Editing this file by hand while the Godot editor is running loses the edit.**
+The editor holds the presets in memory and writes its own copy back to disk the
+moment the Export dialog is touched — silently, with no conflict and no warning.
+
+Hit on 2026-08-29: three presets written to disk came back as one, with
+`exclude_filter=""`. The Gemini-key exclusion in step 2 was the casualty, which
+is the worst possible thing to lose this way, because the export still succeeds
+and looks fine.
+
+Two safe routes, pick one:
+
+- **Edit in the editor**, not on disk — `Export → Resources → Filters to exclude
+  files/folders from project`. What you type there survives, because the editor
+  is the one writing it.
+- **Close the editor first**, then edit the file, then export from the CLI. The
+  headless exporter reads `export_presets.cfg` fresh and never writes to it, so
+  nothing can be clobbered mid-release.
+
+Same mechanism as the editor resurrecting a moved `.tscn`: a running editor
+treats its own memory as the truth and the disk as an output.
+
+---
+
 ## 2. Take the API key out of the build
 
 **Do this before every public export.** `config/gemini_secret.cfg` holds a live
@@ -110,27 +135,51 @@ is blocked by CORS.
 ## 3. Export
 
 ```bash
-godot --headless --path . --export-release "Web"             build/web/index.html
-godot --headless --path . --export-release "Linux"           build/linux/WarPerangTactics.x86_64
-godot --headless --path . --export-release "Windows Desktop" build/windows/WarPerangTactics.exe
+B=../builds
+mkdir -p $B/web $B/linux $B/windows
+godot --headless --path . --export-release "Web"             $B/web/index.html
+godot --headless --path . --export-release "Linux"           $B/linux/WarPerangTactics.x86_64
+godot --headless --path . --export-release "Windows Desktop" $B/windows/WarPerangTactics.exe
 ```
 
-The target directory must already exist — Godot will not create it and fails
-with a bare path error if it is missing.
+The target directory must already exist — Godot will not create it.
 
-`build/` is gitignored. Builds are artefacts of a tag, not repository contents.
+**Export outside the project folder, not into `build/`.** Godot scans `res://`
+on every run, so an output directory inside it gets re-imported as project
+assets: exporting once into `build/web/` produced `index.png.import`,
+`index.icon.png.import` and `index.apple-touch-icon.png.import` sitting next to
+the build, and left the exported icons queued to ship inside the *next* export's
+`.pck`. A filter can paper over that; a path outside `res://` removes the
+possibility.
+
+### What actually has to be excluded, and why the list is not obvious
+
+**`.json` is a Godot resource type.** That single fact is what makes the filter
+load-bearing beyond the API key. `graphify-out/` holds nine knowledge-graph
+snapshots totalling ~5 MB of JSON, and under *Export all resources in the
+project* every one of them shipped — **half the `.pck`**. Measured
+2026-08-29: excluding `graphify-out/*` took the web pack from **10.66 MB to
+5.54 MB** and the string `graphify` from 368 occurrences to 0.
+
+`.cfg` is **not** a resource type, which is why the Gemini secret might have
+stayed out on its own — but "might" is not a security position, and the file is
+named in the filter for that reason.
+
+Dot-directories at the project root (`.claude/`, `.vscode/`, `.git/`) are
+skipped by the exporter and need no filter; this was checked against the built
+pack rather than assumed.
 
 ### What the presets already handle
 
 - **Excluded**: the Gemini secret, `scripts/test/`, `scenes/test_*.tscn`,
   `scripts_dev/`, `docs/`, and every `.md`. Roughly 6 000 lines of test harness
   and prose that a player has no use for.
-- **Kept**: `addons/godot_ai/`. It looks like dead weight, and it nearly is —
-  but `project.godot` registers `_mcp_game_helper` as an autoload pointing into
-  it, so excluding the folder makes the exported game fail on startup with a
-  missing autoload. `game_helper.gd` detects the absent debugger channel and
-  sits idle in a release build, which is why keeping it is safe. To strip it,
-  remove the autoload **first**, then add `addons/godot_ai/*` to the filter.
+- **Kept**: `addons/godot_ai/`, whose compiled `.gdc` files ship. The autoload
+  it registers does **not** — the addon removes itself, logging
+  `MCP | export: stripping autoload/_mcp_game_helper from the exported pack`
+  on every export, including headless CLI ones. So the missing-autoload crash
+  that would normally forbid excluding the folder cannot happen here. It is
+  kept because it costs little in a 5.5 MB pack, not because it must be.
 
 ---
 
@@ -140,18 +189,29 @@ with a bare path error if it is missing.
 misses is indistinguishable from one that worked:
 
 ```bash
-grep -ac "AQ.Ab8RN6" build/web/index.pck build/linux/WarPerangTactics.x86_64
+grep -ac "AQ.Ab8RN6" ../builds/web/index.pck ../builds/linux/WarPerangTactics.x86_64
+strings -a ../builds/web/index.pck | grep -c "gemini_secret"
+strings -a ../builds/web/index.pck | grep -ci graphify    # 0 = the graph stayed out
 ```
 
-Every file must report `0`. A non-zero count means the key shipped — rotate it
+Every count must report `0`. A non-zero count means the key shipped — rotate it
 at [aistudio.google.com](https://aistudio.google.com/apikey) and do not upload.
 
 **The game.** A headless export proves the build exists, not that it runs:
 
 ```bash
-python3 -m http.server 8000 --directory build/web
+python3 -m http.server 8000 --directory ../builds/web
 # then open http://localhost:8000
 ```
+
+The desktop build answers a cheaper question first — does it boot at all:
+
+```bash
+timeout 25 ../builds/linux/WarPerangTactics.x86_64 --headless
+```
+
+Exit **124** is the pass: the timer killed a process that was still running.
+Any other exit code, or any `SCRIPT ERROR` on stdout, is a real failure.
 
 Opening `index.html` as a `file://` URL will **not** work — the browser blocks
 the WebAssembly fetch. It must be served over HTTP, which is also how itch.io
@@ -169,7 +229,21 @@ expected, not a bug.
 ### 5.1 Zip the web build
 
 ```bash
-cd build/web && zip -r ../war-perang-tactics-web-v0.2.0.zip . && cd -
+cd ../builds/web && zip -r ../war-perang-tactics-web-v0.2.0.zip . && cd -
+```
+
+`zip` is not installed on this machine. Python's `zipfile` does the same job and
+makes the root-level layout explicit rather than incidental:
+
+```bash
+python3 -c "
+import zipfile, sys; from pathlib import Path
+web = Path('../builds/web'); out = Path('../builds/war-perang-tactics-web-v0.2.0.zip')
+with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+    for f in sorted(web.rglob('*')):
+        if f.is_file(): z.write(f, f.relative_to(web))
+print(out, out.stat().st_size // 1000, 'kB')
+"
 ```
 
 **`index.html` must sit at the root of the zip, not inside a folder.** This is

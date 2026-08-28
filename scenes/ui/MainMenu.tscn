@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://beqd81vw7pyyf"]
 
-[ext_resource type="Script" path="res://scripts/ui/MainMenu.gd" id="1_menu"]
+[ext_resource type="Script" uid="uid://dvrhpwhjd3jnf" path="res://scripts/ui/MainMenu.gd" id="1_menu"]
 [ext_resource type="PackedScene" path="res://scenes/ui/MenuBackdrop.tscn" id="2_backdrop"]
 
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=113602074]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,9 +12,9 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_menu")
 
-[node name="Backdrop" parent="." instance=ExtResource("2_backdrop")]
+[node name="Backdrop" parent="." unique_id=883162575 instance=ExtResource("2_backdrop")]
 
-[node name="Scrim" type="ColorRect" parent="."]
+[node name="Scrim" type="ColorRect" parent="." unique_id=2048010763]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -24,7 +24,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.058, 0.066, 0.094, 0.38)
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=1124235715]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -32,11 +32,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBox" type="VBoxContainer" parent="Center"]
+[node name="VBox" type="VBoxContainer" parent="Center" unique_id=745489103]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="Center/VBox"]
+[node name="Title" type="Label" parent="Center/VBox" unique_id=1837013720]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.972, 0.953, 0.878, 1)
 theme_override_colors/font_outline_color = Color(0.031, 0.035, 0.051, 0.9)
@@ -45,7 +45,7 @@ theme_override_font_sizes/font_size = 48
 text = "TACTICAL RPG"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="Center/VBox"]
+[node name="Subtitle" type="Label" parent="Center/VBox" unique_id=1457738211]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.796, 0.815, 0.858, 1)
 theme_override_colors/font_outline_color = Color(0.031, 0.035, 0.051, 0.9)
@@ -54,25 +54,25 @@ theme_override_font_sizes/font_size = 16
 text = "Turn-based tactics on a contested field"
 horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="Center/VBox"]
+[node name="Spacer" type="Control" parent="Center/VBox" unique_id=1923114994]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 
-[node name="StartButton" type="Button" parent="Center/VBox"]
+[node name="StartButton" type="Button" parent="Center/VBox" unique_id=1255519406]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(260, 48)
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "Start Game"
 
-[node name="QuitButton" type="Button" parent="Center/VBox"]
+[node name="QuitButton" type="Button" parent="Center/VBox" unique_id=89381092]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(260, 44)
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Quit"
 
-[node name="VersionLabel" type="Label" parent="."]
+[node name="VersionLabel" type="Label" parent="." unique_id=1619900547]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 3
