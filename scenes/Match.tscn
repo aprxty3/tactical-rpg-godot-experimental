@@ -78,53 +78,69 @@ grid_position = Vector2i(26, 16)
 position = Vector2(992, 672)
 grid_position = Vector2i(15, 10)
 
-[node name="GoldMine_1" parent="Buildings" unique_id=467243542 instance=ExtResource("mine_gold")]
-position = Vector2(416, 608)
-grid_position = Vector2i(6, 9)
+[node name="GoldMine_1" parent="Buildings" unique_id=2066987062 instance=ExtResource("mine_gold")]
+position = Vector2(608, 416)
+grid_position = Vector2i(9, 6)
 
-[node name="GoldMine_2" parent="Buildings" unique_id=1529255412 instance=ExtResource("mine_gold")]
-position = Vector2(1504, 672)
-grid_position = Vector2i(23, 10)
+[node name="GoldMine_2" parent="Buildings" unique_id=887232321 instance=ExtResource("mine_gold")]
+position = Vector2(1312, 416)
+grid_position = Vector2i(20, 6)
 
-[node name="GoldMine_3" parent="Buildings" unique_id=1886673108 instance=ExtResource("mine_gold")]
-position = Vector2(992, 160)
-grid_position = Vector2i(15, 2)
+[node name="GoldMine_3" parent="Buildings" unique_id=808032465 instance=ExtResource("mine_gold")]
+position = Vector2(608, 864)
+grid_position = Vector2i(9, 13)
 
-[node name="GoldMine_4" parent="Buildings" unique_id=677408893 instance=ExtResource("mine_gold")]
-position = Vector2(992, 1120)
-grid_position = Vector2i(15, 17)
+[node name="GoldMine_4" parent="Buildings" unique_id=545650056 instance=ExtResource("mine_gold")]
+position = Vector2(1312, 864)
+grid_position = Vector2i(20, 13)
 
-[node name="IronMine_1" parent="Buildings" unique_id=221725735 instance=ExtResource("mine_iron")]
-position = Vector2(352, 416)
-grid_position = Vector2i(5, 6)
+[node name="IronMine_1" parent="Buildings" unique_id=690338082 instance=ExtResource("mine_iron")]
+position = Vector2(864, 416)
+grid_position = Vector2i(13, 6)
 
-[node name="IronMine_2" parent="Buildings" unique_id=1658068792 instance=ExtResource("mine_iron")]
-position = Vector2(1568, 864)
-grid_position = Vector2i(24, 13)
+[node name="IronMine_2" parent="Buildings" unique_id=2101154303 instance=ExtResource("mine_iron")]
+position = Vector2(1056, 416)
+grid_position = Vector2i(16, 6)
 
-[node name="Village_1" parent="Buildings" unique_id=852275913 instance=ExtResource("house")]
-position = Vector2(480, 864)
-grid_position = Vector2i(7, 13)
+[node name="IronMine_3" parent="Buildings" unique_id=1084773141 instance=ExtResource("mine_iron")]
+position = Vector2(864, 864)
+grid_position = Vector2i(13, 13)
 
-[node name="Village_2" parent="Buildings" unique_id=639891191 instance=ExtResource("house")]
-position = Vector2(1440, 416)
-grid_position = Vector2i(22, 6)
+[node name="IronMine_4" parent="Buildings" unique_id=1535843718 instance=ExtResource("mine_iron")]
+position = Vector2(1056, 864)
+grid_position = Vector2i(16, 13)
 
-[node name="Village_3" parent="Buildings" unique_id=563764982 instance=ExtResource("house")]
-position = Vector2(800, 480)
-grid_position = Vector2i(12, 7)
+[node name="Village_1" parent="Buildings" unique_id=1749023136 instance=ExtResource("house")]
+position = Vector2(480, 288)
+grid_position = Vector2i(7, 4)
 
-[node name="Village_4" parent="Buildings" unique_id=232513753 instance=ExtResource("house")]
-position = Vector2(1184, 800)
-grid_position = Vector2i(18, 12)
+[node name="Village_2" parent="Buildings" unique_id=1334981522 instance=ExtResource("house")]
+position = Vector2(1440, 288)
+grid_position = Vector2i(22, 4)
 
-[node name="Village_5" parent="Buildings" unique_id=129556624 instance=ExtResource("house")]
-position = Vector2(544, 1120)
-grid_position = Vector2i(8, 17)
+[node name="Village_3" parent="Buildings" unique_id=1447307585 instance=ExtResource("house")]
+position = Vector2(480, 992)
+grid_position = Vector2i(7, 15)
 
-[node name="Village_6" parent="Buildings" unique_id=528074724 instance=ExtResource("house")]
-position = Vector2(1376, 160)
-grid_position = Vector2i(21, 2)
+[node name="Village_4" parent="Buildings" unique_id=1843466619 instance=ExtResource("house")]
+position = Vector2(1440, 992)
+grid_position = Vector2i(22, 15)
+
+[node name="Village_5" parent="Buildings" unique_id=2101004336 instance=ExtResource("house")]
+position = Vector2(672, 544)
+grid_position = Vector2i(10, 8)
+
+[node name="Village_6" parent="Buildings" unique_id=2144036717 instance=ExtResource("house")]
+position = Vector2(1248, 544)
+grid_position = Vector2i(19, 8)
+
+[node name="Village_7" parent="Buildings" unique_id=575649445 instance=ExtResource("house")]
+position = Vector2(672, 736)
+grid_position = Vector2i(10, 11)
+
+[node name="Village_8" parent="Buildings" unique_id=161661515 instance=ExtResource("house")]
+position = Vector2(1248, 736)
+grid_position = Vector2i(19, 11)
 
 [node name="Units" type="Node2D" parent="." unique_id=944003459]
 

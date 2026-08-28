@@ -52,6 +52,7 @@ var pandora: PandoraTable
 
 func _ready() -> void:
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
+	EventBus.unit_path_walked.connect(_on_unit_path_walked)
 	EventBus.turn_started.connect(_on_turn_started)
 
 
@@ -184,6 +185,32 @@ func _on_unit_move_completed(unit: Node, _from: Vector2i, to: Vector2i) -> void:
 			obj.on_unit_entered(unit)
 
 
+## Hazards that trigger on being CROSSED, not on being stopped on.
+##
+## Only traps. A chest is opened by stopping to open it and a keg is a landmark
+## you can see and route around, so both stay destination-only — but a buried
+## mine that a unit can stride over on its way past is not a mine, and that is
+## exactly why traps were being scattered onto the map and never met: the odds
+## of ending a move on one of six cells out of roughly five hundred are close to
+## nothing.
+##
+## The blast lands at the mine's own cell while the walker finishes at its
+## destination, because the move tween has already run by the time this fires.
+## Interrupting a unit mid-walk would mean GridManager asking this manager where
+## the hazards are, and the grid does not know hazards exist.
+func _on_unit_path_walked(unit: Node, path: Array) -> void:
+	if not (unit is TacticalUnit):
+		return
+	for cell in path:
+		# A mine can kill the walker halfway along the route; the rest of the
+		# path belongs to a unit that no longer exists.
+		if not is_instance_valid(unit):
+			return
+		for obj in objects_at(cell):
+			if obj is Trap and is_instance_valid(obj) and not obj.is_spent():
+				obj.on_unit_entered(unit)
+
+
 ## Hazards act once per ROUND, not once per faction turn — otherwise a fire in a
 ## two-player match would burn twice as fast as its stated lifetime.
 func _on_turn_started(_faction_id: int) -> void:
@@ -266,7 +293,7 @@ func _apply_blast(cell: Vector2i, chain_index: int) -> void:
 ## close enough to reach. Forcing both through one function would mean a
 ## rectangle/radius flag and a chain flag threaded through every call, to save
 ## about six lines.
-func spring_trap_at(origin: Vector2i) -> void:
+func spring_trap_at(origin: Vector2i, trigger: TacticalUnit = null) -> void:
 	# Consume first, exactly as `detonate_at` does for barrels: the blast can
 	# damage the unit standing on the trap, and a re-entrant spring during that
 	# must find the trap already spent.
@@ -278,12 +305,27 @@ func spring_trap_at(origin: Vector2i) -> void:
 	# Origin first — VfxManager centres the blast flipbook on cells[0].
 	EventBus.trap_sprung.emit(footprint)
 
+	# Whoever set it off is hit by definition, wherever the move animation left
+	# them. Damaging only the units STANDING in the footprint made a mine
+	# harmless to the one who trod on it: the walk tween has already run by the
+	# time the trap fires, so the trigger is usually past the blast and takes
+	# nothing. A mine you can walk over and survive is not a mine.
+	var hit: Array = []
+	if is_instance_valid(trigger):
+		hit.append(trigger)
 	for cell in footprint:
 		var victim: TacticalUnit = unit_at(cell)
+		if is_instance_valid(victim) and not hit.has(victim):
+			hit.append(victim)
+
+	for victim in hit:
 		if is_instance_valid(victim):
 			# TRUE damage, like a keg: buried powder does not care about armour.
 			victim.take_damage(GameConfig.HIDDEN_TRAP_DAMAGE, "true")
-			victim.adjust_morale(GameConfig.MORALE_AMBUSHED)
+			if is_instance_valid(victim):
+				victim.adjust_morale(GameConfig.MORALE_AMBUSHED)
+
+	for cell in footprint:
 		# A mine is incendiary by design: every cell in the footprint catches.
 		# `ignite()` itself refuses water and already-burning cells, so there is
 		# no terrain test to repeat here.

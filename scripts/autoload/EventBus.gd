@@ -49,6 +49,14 @@ signal unit_deselected()
 signal unit_move_requested(unit: Node, target_cell: Vector2i)
 @warning_ignore("unused_signal")
 signal unit_move_completed(unit: Node, from_cell: Vector2i, to_cell: Vector2i)
+## Every cell the unit actually crossed, in order, including both ends.
+##
+## Separate from `unit_move_completed` rather than folded into it: that signal
+## has five listeners and one of them is an `await` inside the AI turn loop, so
+## widening its signature would touch the turn machinery to serve one hazard.
+## Anything that must react to being WALKED OVER rather than STOPPED ON listens
+## here — a buried mine you can stride across is not a mine.
+signal unit_path_walked(unit: Node, path: Array)
 @warning_ignore("unused_signal")
 signal unit_attack_requested(attacker: Node, target: Node)
 

@@ -23,16 +23,21 @@ func _ready() -> void:
 	# No _make_sprite() call, deliberately. See the class comment.
 
 
-func on_unit_entered(_unit: TacticalUnit) -> void:
-	spring()
+func on_unit_entered(unit: TacticalUnit) -> void:
+	spring(unit)
 
 
 ## Fire the trap. Idempotent through `_spent`, so a unit that somehow enters
 ## twice in one frame cannot detonate the same mine twice.
-func spring() -> void:
+##
+## `trigger` is carried through to the blast because whoever trod on the mine is
+## hit by definition — by the time this runs their walk animation has finished
+## and they are usually standing clear of the footprint, so a blast that only
+## looked at the footprint left the one who set it off untouched.
+func spring(trigger: TacticalUnit = null) -> void:
 	if _spent:
 		return
 	if is_instance_valid(manager) and manager.has_method("spring_trap_at"):
-		manager.spring_trap_at(grid_position)
+		manager.spring_trap_at(grid_position, trigger)
 	else:
 		consume()

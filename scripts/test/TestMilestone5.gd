@@ -65,7 +65,7 @@ func _ready() -> void:
 	await _test_vfx()
 	await _test_fire_vfx()
 	_test_death_marker()
-	_test_hidden_traps()
+	await _test_hidden_traps()
 	_test_barrel_leaves_fire()
 	await _test_damage_glitch()
 	_test_camera_shake()
@@ -78,6 +78,7 @@ func _ready() -> void:
 	await _test_unit_overlay()
 	_test_hud_dialogs()
 	_test_extracted_collaborators()
+	_test_map_balance()
 	# LAST: this one latches match_over and re-runs setup_match, which would
 	# pull the board out from under anything that ran after it.
 	await _test_match_end_stops_play()
@@ -752,6 +753,29 @@ func _test_hidden_traps() -> void:
 	if not is_instance_valid(trap):
 		return
 
+	# --- WALKED OVER, not stopped on ------------------------------------------
+	# The reason traps were never met in play: `unit_move_completed` reports only
+	# the destination cell, so a unit striding across a mine on its way somewhere
+	# else never touched it. Six mines on ~500 cells made ENDING a move on one
+	# near-impossible. Crossing must arm it.
+	var crosser := _spawn("res://resources/units/pawn_red.tres", 1, Vector2i(10, 14))
+	var crosser_hp: int = crosser.current_health
+	var walk_over := Vector2i(9, 10)
+	var mine := objects.spawn_trap(walk_over)
+	_check(is_instance_valid(mine), "a second mine spawns on the route")
+	# A route that passes THROUGH the mine and ends two cells beyond it.
+	var route: Array[Vector2i] = [
+		Vector2i(9, 12), Vector2i(9, 11), walk_over, Vector2i(9, 9), Vector2i(9, 8),
+	]
+	_check(not walk_over == route[route.size() - 1],
+		"the route ends past the mine, not on it")
+	EventBus.unit_path_walked.emit(crosser, route)
+	await get_tree().process_frame
+	_check(mine.is_spent(), "walking over the mine sets it off")
+	_check(crosser.current_health < crosser_hp,
+		"and the walker takes the blast (%d -> %d)" % [crosser_hp, crosser.current_health])
+	_despawn([crosser])
+
 	# The whole point: it draws nothing. A faint sprite would be a tell.
 	var visuals: int = 0
 	for child in trap.get_children():
@@ -1416,6 +1440,121 @@ func _test_extracted_collaborators() -> void:
 	_check(main.grid_overlay.selected_unit_cell == GridOverlay.NO_CELL,
 		"and deselecting clears it")
 	_despawn([probe])
+
+
+# ==============================================================================
+# 10. MAP BALANCE — four armies on a board that was laid out for two
+# ==============================================================================
+
+## The castles have always been 4-fold symmetric; the resources were not, because
+## the map was authored when only Blue and Red fielded armies. Measured before
+## the fix, in terrain-aware walk cost from each castle to its nearest node:
+## iron was 5 for Purple/Yellow and 12 for Blue/Red, and villages were the
+## mirror of that. Blue — the default player faction — had neither a gold nor an
+## iron mine as its nearest anything.
+##
+## Manhattan distance would pass a map this test should fail, so every distance
+## here is a real Dijkstra walk over the same move costs a unit pays.
+func _test_map_balance() -> void:
+	print("\n[10] Resources are even across all four armies")
+
+	var castles: Dictionary = {}
+	var nodes: Dictionary = {"gold_mine": [], "iron_mine": [], "village": []}
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if not (b is Building):
+			continue
+		if b.building_type == Building.BuildingType.CASTLE:
+			castles[b.faction_id] = b.grid_position
+		else:
+			var kind: String = b.get_type_string()
+			if nodes.has(kind):
+				nodes[kind].append(b.grid_position)
+
+	_check(nodes["gold_mine"].size() == 4, "four gold mines (%d)" % nodes["gold_mine"].size())
+	_check(nodes["iron_mine"].size() == 4, "four iron mines (%d)" % nodes["iron_mine"].size())
+	_check(nodes["village"].size() == 8, "eight villages (%d)" % nodes["village"].size())
+
+	# Every node must be standable. A mine in a river is worth nothing to anyone.
+	var unreachable: int = 0
+	for kind in nodes:
+		for cell in nodes[kind]:
+			if not grid.is_cell_walkable(cell):
+				unreachable += 1
+	_check(unreachable == 0, "every resource sits on ground a unit can stand on")
+
+	for kind in nodes:
+		var lo: int = 99999
+		var hi: int = -1
+		var readout: String = ""
+		for faction_id in MatchSetup.participants:
+			var best: int = 99999
+			for cell in nodes[kind]:
+				var cost: int = _walk_cost(castles.get(faction_id, Vector2i(-1, -1)), cell)
+				if cost >= 0 and cost < best:
+					best = cost
+			readout += "%s=%d " % [GameConfig.faction_display_name(faction_id), best]
+			lo = mini(lo, best)
+			hi = maxi(hi, best)
+		# One MP of slack: the walk crosses generated terrain, so demanding an
+		# exact tie would make this fail on a cosmetic tree.
+		_check(hi - lo <= 1,
+			"%s is within 1 MP for every army (%s spread=%d)" % [kind, readout.strip_edges(), hi - lo])
+
+	# Fairness of DISTANCE is not fairness of SHARE: a map could tie on distance
+	# and still hand one army three mines. Count what is nearest to whom.
+	var share: Dictionary = {}
+	for faction_id in MatchSetup.participants:
+		share[faction_id] = {"gold_mine": 0, "iron_mine": 0, "village": 0}
+	for kind in nodes:
+		for cell in nodes[kind]:
+			var winner: int = -1
+			var best: int = 99999
+			for faction_id in MatchSetup.participants:
+				var cost: int = _walk_cost(castles.get(faction_id, Vector2i(-1, -1)), cell)
+				if cost >= 0 and cost < best:
+					best = cost
+					winner = faction_id
+			if winner >= 0:
+				share[winner][kind] += 1
+
+	var even: bool = true
+	var tally: String = ""
+	for faction_id in MatchSetup.participants:
+		var s: Dictionary = share[faction_id]
+		tally += "%s(%d/%d/%d) " % [GameConfig.faction_display_name(faction_id),
+			s["gold_mine"], s["iron_mine"], s["village"]]
+		if s["gold_mine"] != 1 or s["iron_mine"] != 1 or s["village"] != 2:
+			even = false
+	_check(even, "each army is nearest to exactly 1 gold, 1 iron, 2 villages — %s" % tally.strip_edges())
+
+
+## Terrain-aware Dijkstra, ignoring unit occupancy: this measures the shape of
+## the MAP, not who happens to be standing where on turn one.
+func _walk_cost(from: Vector2i, to: Vector2i) -> int:
+	if from.x < 0 or to.x < 0:
+		return -1
+	var dist: Dictionary = {from: 0}
+	var frontier: Array[Vector2i] = [from]
+	while not frontier.is_empty():
+		var best_i: int = 0
+		for i in range(frontier.size()):
+			if dist[frontier[i]] < dist[frontier[best_i]]:
+				best_i = i
+		var cur: Vector2i = frontier[best_i]
+		frontier.remove_at(best_i)
+		if cur == to:
+			return dist[cur]
+		for d in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			var nxt: Vector2i = cur + d
+			if not grid.is_within_bounds(nxt):
+				continue
+			if grid.get_terrain(nxt) == GameConfig.TerrainType.WATER and nxt != to:
+				continue
+			var nd: int = dist[cur] + grid.get_move_cost(nxt)
+			if not dist.has(nxt) or nd < dist[nxt]:
+				dist[nxt] = nd
+				frontier.append(nxt)
+	return -1
 
 
 func _check(condition: bool, message: String) -> void:
