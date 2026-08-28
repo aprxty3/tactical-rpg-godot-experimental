@@ -121,11 +121,14 @@ func claim_for(arriving_faction_id: int) -> Claim:
 		if building_type in MARAUDER_RAZES and faction_id != GameConfig.Faction.NEUTRAL:
 			return Claim.RAZE
 		return Claim.NOTHING
-	# Nobody takes a marauder's ground either — the Black Castle is a den, not a
-	# prize, and letting an army capture it would hand them the monsters' keep
-	# while the monsters were still standing on it.
-	if GameConfig.is_marauder(faction_id):
-		return Claim.NOTHING
+	# A marauder's ground IS claimable, and the Black Castle is the point of the
+	# whole encounter: clear the den and the keep in the middle of the map is
+	# yours. An earlier version refused this, which made the boss a wall with
+	# nothing behind it.
+	#
+	# Nothing extra guards it, because nothing has to. The boss stands ON the
+	# keep's cell and a unit cannot end its move on an occupied one, so "kill the
+	# guardian first" is enforced by the board rather than by a rule here.
 	return Claim.CAPTURE
 
 

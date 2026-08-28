@@ -137,6 +137,25 @@ static func faction_title(faction_id: int) -> String:
 	return "%s %s" % [faction_display_name(faction_id), house]
 
 
+## The coloured pip the HUD puts in front of "YOUR TURN".
+##
+## It used to be a literal 🔵 in the format string, so a player commanding the
+## Purple Syndicate was told, every single turn, that they were blue. The colour
+## has to come off the faction like every other faction-coloured thing does.
+const FACTION_MARKER: Dictionary = {
+	Faction.BLUE_KINGDOM: "🔵",
+	Faction.RED_LEGION: "🔴",
+	Faction.PURPLE_SYNDICATE: "🟣",
+	Faction.YELLOW_EMPIRE: "🟡",
+	Faction.BLACK_COVEN: "⚫",
+}
+
+
+## The faction's pip, or a neutral one for anything unlisted.
+static func faction_marker(faction_id: int) -> String:
+	return str(FACTION_MARKER.get(faction_id, "⚪"))
+
+
 # === Faction Palette-Tint Colors (for generic, non-recolored spritesheets) ===
 const FACTION_TINT_COLORS: Dictionary = {
 	Faction.BLUE_KINGDOM: Color(0.25, 0.55, 1.0),

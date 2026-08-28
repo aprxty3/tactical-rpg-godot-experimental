@@ -2056,8 +2056,8 @@ func _test_black_castle_encounters() -> void:
 		"a monster cannot claim a gold mine")
 	_check(village.claim_for(monsters) == Building.Claim.RAZE,
 		"a monster BURNS a held village rather than taking it")
-	_check(den.claim_for(army) == Building.Claim.NOTHING,
-		"an army cannot capture the den either — it is not a prize")
+	_check(den.claim_for(army) == Building.Claim.CAPTURE,
+		"an army CAN claim the den — clearing it is the point of the encounter")
 	_check(village.claim_for(army) == Building.Claim.NOTHING,
 		"nobody re-claims what they already hold")
 
@@ -2077,9 +2077,30 @@ func _test_black_castle_encounters() -> void:
 		% GameConfig.FACTION_SUFFIX[army], army, _free_neighbour_of(mine.grid_position)))
 	var judge := AITacticalEvaluator.new(grid, main.combat_resolver, null, army)
 	_check(judge.score_objective(scout, den) == -INF,
-		"the den scores as no objective at all for an army")
+		"the den is not marched on while its boss stands on it")
 	_check(judge.score_objective(scout, mine) > -INF,
 		"a real objective still scores (control)")
+
+	# ...and the reason must be the OCCUPANT, not the ownership — otherwise the
+	# keep stays worthless after the boss falls and the reward never arrives.
+	var guard: TacticalUnit = grid.get_unit_at(den.grid_position)
+	if is_instance_valid(guard):
+		grid.unregister_unit(guard)
+		_check(judge.score_objective(scout, den) > -INF,
+			"once the den is empty the keep becomes a real objective")
+		grid.register_unit(guard, den.grid_position)
+	else:
+		_check(false, "the boss is standing on the den")
+
+	# The same rule holds for any building, which is what makes it a rule rather
+	# than a special case: park a unit on the mine and it stops being somewhere
+	# anyone can march to this turn.
+	var squatter: TacticalUnit = _enlist(_spawn("res://resources/units/pawn_%s.tres"
+		% GameConfig.FACTION_SUFFIX[MatchSetup.participants[1]],
+		MatchSetup.participants[1], mine.grid_position))
+	_check(judge.score_objective(scout, mine) == -INF,
+		"an occupied mine is not an objective either")
+	_discharge([squatter])
 
 	# --- razing actually costs the owner its capacity -----------------------
 	var economy: Node = main.economy_manager
@@ -2099,6 +2120,39 @@ func _test_black_castle_encounters() -> void:
 		morale.begin_surrender(scout, monsters)
 		_check(not scout.pending_surrender,
 			"a unit cannot surrender to a monster — there is nobody to surrender to")
+
+	# --- the turn banner is coloured for whoever is actually playing --------
+	# A literal 🔵 in the format string told a Purple player they were blue,
+	# every turn, for the whole match.
+	var pips: Dictionary = {}
+	for faction_id in MatchSetup.participants:
+		pips[GameConfig.faction_marker(faction_id)] = true
+	_check(pips.size() == MatchSetup.participants.size(),
+		"every army has its own turn marker (got %d for %d armies)"
+		% [pips.size(), MatchSetup.participants.size()])
+	_check(GameConfig.faction_marker(GameConfig.Faction.PURPLE_SYNDICATE) != \
+		GameConfig.faction_marker(GameConfig.Faction.BLUE_KINGDOM),
+		"commanding Purple is not announced in blue")
+
+	# Read the banner the player actually sees, not just the table behind it.
+	# The bug was a hardcoded pip in the format string, and a table can be
+	# perfectly correct while the format string ignores it.
+	var hud_probe = main.main_hud
+	if is_instance_valid(hud_probe) and hud_probe.get("context_label") != null:
+		var was_player: int = hud_probe.player_faction_id
+		var was_text: String = hud_probe.context_label.text
+		for faction_id in MatchSetup.participants:
+			hud_probe.player_faction_id = faction_id
+			hud_probe._on_turn_started(faction_id)
+			var shown: String = hud_probe.context_label.text
+			_check(shown.contains(GameConfig.faction_marker(faction_id))
+					and shown.contains(GameConfig.faction_display_name(faction_id).to_upper()),
+				"%s reads its own turn banner: %s"
+					% [GameConfig.faction_title(faction_id), shown.get_slice("\n", 0)])
+		hud_probe.player_faction_id = was_player
+		hud_probe.context_label.text = was_text
+	else:
+		_check(false, "the HUD exposes its context banner")
 
 	# --- the garrison is real, and it is on its leash -----------------------
 	var den_units: Array = TurnManager.get_faction_units(monsters)

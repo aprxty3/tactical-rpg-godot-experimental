@@ -221,6 +221,17 @@ func score_objective(unit: TacticalUnit, building: Building) -> float:
 	# units into it one at a time, forever, capturing nothing.
 	if building.claim_for(_faction_id) != Building.Claim.CAPTURE:
 		return -INF
+	# Somebody is standing on it. A building is claimed by ENDING a move on its
+	# cell, and an occupied cell cannot be ended on — so this is not something
+	# the unit can take, however much it is worth.
+	#
+	# General rule, not a monster one, but the monsters are what made it matter:
+	# the Black Castle is the most valuable building on the board and its boss
+	# never leaves it, so without this every army marches on a keep none of them
+	# can enter and queues up outside it for the rest of the match. The enemy
+	# standing there is still handled — as an enemy, by `best_enemy_target`.
+	if is_instance_valid(_grid) and _grid.get_unit_at(building.grid_position) != null:
+		return -INF
 
 	var value: float = float(
 		GameConfig.AI_OBJECTIVE_VALUE.get(building.get_type_string(), 10.0)

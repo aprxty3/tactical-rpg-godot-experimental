@@ -219,8 +219,9 @@ func _on_turn_started(faction_id: int) -> void:
 		_update_context_text("⚔️ %s IS PLAYING..." % GameConfig.faction_enemy_name(faction_id).to_upper())
 		end_turn_btn.disabled = true
 	else:
-		_update_context_text("🔵 YOUR TURN (%s)\nSelect unit or Castle." %
-			GameConfig.faction_display_name(faction_id).to_upper())
+		_update_context_text("%s YOUR TURN (%s)\nSelect unit or Castle." % [
+			GameConfig.faction_marker(faction_id),
+			GameConfig.faction_display_name(faction_id).to_upper()])
 		end_turn_btn.disabled = false
 	# The player's OWN treasury, never the faction whose turn it is. Passing
 	# `faction_id` here put an opponent's gold, iron and troop capacity in the
