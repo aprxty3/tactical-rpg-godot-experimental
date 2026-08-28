@@ -9,6 +9,9 @@ class_name SurrenderModal
 signal choice_made(unit: Node, choice: String)
 
 var _body: Label
+## Kept so the claim can be greyed out when the captor has no room for another
+## unit. The dialog does not work that out — it is told.
+var _capture_button: Button
 var _unit: TacticalUnit = null
 
 
@@ -17,7 +20,7 @@ func _init(_overlay_name: String = "SurrenderModal", _dim: float = 0.55,
 	super("SurrenderModal", 0.55, 16, 10)
 	add_title("🏳️ ENEMY SURRENDERS", 18)
 	_body = add_text()
-	add_button("⚔️  Capture (joins your army)", _on_choice.bind("capture"))
+	_capture_button = add_button("⚔️  Capture (joins your army)", _on_choice.bind("capture"))
 	add_button("💰  Ransom (take the gold)", _on_choice.bind("ransom"))
 	hide()
 
@@ -26,8 +29,11 @@ func _init(_overlay_name: String = "SurrenderModal", _dim: float = 0.55,
 ## reading the captor's troop capacity means reaching for EconomyManager and
 ## TurnManager, and a dialog that queries managers is a dialog that cannot be
 ## shown in a test without building half the game.
-func present(unit: TacticalUnit, ransom_gold: int, capacity_line: String) -> void:
+func present(unit: TacticalUnit, ransom_gold: int, capacity_line: String,
+		capture_allowed: bool = true) -> void:
 	_unit = unit
+	if is_instance_valid(_capture_button):
+		_capture_button.disabled = not capture_allowed
 	var data: UnitData = unit.unit_data
 	var unit_name: String = data.unit_name if is_instance_valid(data) else str(unit.name)
 	_body.text = "%s has broken and lays down arms.\nRansom pays %d Gold.%s" % [

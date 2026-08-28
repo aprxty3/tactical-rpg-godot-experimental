@@ -143,30 +143,64 @@ func _execute_upkeep() -> void:
 	var faction_id := get_current_faction()
 	var units := get_faction_units(faction_id)
 
-	# 1. Collect income from every building this faction holds. Each Building
-	#    reports its own yield, so a castle's stipend or a future building type
-	#    is paid without this loop knowing which types exist.
+	# 1. One sweep of this faction's holdings answers two questions: what they
+	#    earn, and which cells are villages their troops can be resupplied on.
+	#    Each Building reports its own yield, so a castle's stipend or a future
+	#    building type is paid without this loop knowing which types exist.
+	var gold := 0
+	var iron := 0
+	var village_cells: Dictionary = {}
+
+	var tree = get_tree()
+	if tree:
+		for bld in tree.get_nodes_in_group("buildings"):
+			if not (bld is Building) or bld.faction_id != faction_id:
+				continue
+			var income: Dictionary = bld.get_income()
+			gold += int(income.get("gold", 0))
+			iron += int(income.get("iron", 0))
+			if bld.building_type == Building.BuildingType.HOUSE:
+				village_cells[bld.grid_position] = true
+
+	# 2. The villages feed their garrisons FIRST, and starvation still gets the
+	#    last word below: holding a village softens an over-capacity turn without
+	#    cancelling it, which is the point of both rules at once.
+	_heal_village_garrisons(units, village_cells)
+
 	if economy_manager:
-		var gold := 0
-		var iron := 0
-
-		var tree = get_tree()
-		if tree:
-			for bld in tree.get_nodes_in_group("buildings"):
-				if bld is Building and bld.faction_id == faction_id:
-					var income: Dictionary = bld.get_income()
-					gold += int(income.get("gold", 0))
-					iron += int(income.get("iron", 0))
-
+		# 3. Income, then the logistics collapse (starvation) check.
 		economy_manager.collect_income(faction_id, gold, iron)
-
-		# 2. Check logistics collapse (starvation)
 		economy_manager.check_logistics(faction_id, units)
 
-	# 3. Reset action/movement points for surviving units
+	# 4. Reset action/movement points for surviving units
 	for unit in units:
 		if is_instance_valid(unit) and unit is TacticalUnit:
 			unit.reset_for_new_turn()
+
+
+## Resupply every unit standing on one of its OWN villages.
+##
+## Own, specifically: a building is captured the instant a unit ends its move on
+## it, so "the village you are standing in" and "the village you hold" are the
+## same place in practice — and requiring ownership keeps a unit that was placed
+## onto a neutral house by a test or a chest from quietly drawing rations.
+func _heal_village_garrisons(units: Array, village_cells: Dictionary) -> void:
+	if village_cells.is_empty() or GameConfig.VILLAGE_GARRISON_HEAL_RATIO <= 0.0:
+		return
+	for unit in units:
+		if not is_instance_valid(unit) or not (unit is TacticalUnit):
+			continue
+		var tactical := unit as TacticalUnit
+		if tactical.current_health <= 0 or not is_instance_valid(tactical.unit_data):
+			continue
+		if not village_cells.has(tactical.grid_position):
+			continue
+		# Ceil, then floored at 1: a percentage of a small max_health rounds to
+		# nothing, and a village that heals for zero reads as broken rather than
+		# as stingy. `heal` caps at max_health and is a no-op at full health.
+		var amount: int = int(ceil(
+			tactical.unit_data.max_health * GameConfig.VILLAGE_GARRISON_HEAL_RATIO))
+		tactical.heal(maxi(1, amount))
 
 
 ## Production Phase: player can recruit and build.

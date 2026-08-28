@@ -64,6 +64,23 @@ func get_used_capacity(faction_id: int, active_units: Array) -> int:
 	return total
 
 
+## Spare weight before this faction hits its own ceiling. Negative while an army
+## is over capacity and starving.
+func get_free_capacity(faction_id: int, active_units: Array) -> int:
+	return get_max_capacity(faction_id) - get_used_capacity(faction_id, active_units)
+
+
+## Would `weight` more troop weight still fit?
+##
+## The rule lives here, once, because three separate things add troops: a castle
+## recruiting, a captor claiming a prisoner, and a chest paying out a mercenary.
+## Only the first ever asked. An army that could not BUY its 13th point of
+## troops could still be HANDED one, and the ceiling that recruitment enforces
+## turned out to be the only one the game had.
+func has_capacity_for(faction_id: int, weight: int, active_units: Array) -> bool:
+	return get_free_capacity(faction_id, active_units) >= weight
+
+
 # === Resource Modifications ===
 
 func add_gold(faction_id: int, amount: int) -> void:

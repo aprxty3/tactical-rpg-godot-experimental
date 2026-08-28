@@ -125,11 +125,15 @@ func can_recruit(unit_data: UnitData, economy_mgr: Node, active_units: Array) ->
 	if economy_mgr.get_iron(faction_id) < unit_data.recruit_cost_iron:
 		return {"can_recruit": false, "reason": "Iron tidak cukup! (Butuh %d Iron)" % unit_data.recruit_cost_iron}
 
-	# 3. Cek Troop Capacity
-	var max_cap = economy_mgr.get_max_capacity(faction_id)
-	var used_cap = economy_mgr.get_used_capacity(faction_id, active_units)
-	if used_cap + unit_data.capacity_weight > max_cap:
-		return {"can_recruit": false, "reason": "Kapasitas Pasukan (Troop Capacity) Penuh! (%d/%d)" % [used_cap, max_cap]}
+	# 3. Cek Troop Capacity. Delegated so this rule reads the same here, at a
+	#    surrender prompt and at a mercenary payout — a heavy unit that does not
+	#    fit must be refused even when there is a point or two of room left.
+	if not economy_mgr.has_capacity_for(faction_id, unit_data.capacity_weight, active_units):
+		var max_cap: int = economy_mgr.get_max_capacity(faction_id)
+		var used_cap: int = economy_mgr.get_used_capacity(faction_id, active_units)
+		return {"can_recruit": false,
+			"reason": "Kapasitas Pasukan penuh! (%d/%d, %s butuh %d)" % [
+				used_cap, max_cap, unit_data.unit_name, unit_data.capacity_weight]}
 
 	return {"can_recruit": true, "reason": "OK"}
 

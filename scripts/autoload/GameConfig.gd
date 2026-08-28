@@ -71,6 +71,12 @@ const CASTLE_GOLD_INCOME: int = 20
 ## the same ratio gold runs at, and matches PANDORA_SPOILS_IRON's 2-8 payout.
 const IRON_MINE_INCOME: int = 3
 const HOUSE_GOLD_INCOME: int = 10
+## A unit holding one of its own villages is resupplied there, recovering this
+## fraction of its MAXIMUM health each upkeep — so a hero on 20/100 leaves the
+## village on 40/100, not 24/100. Villages were worth taking for the troop
+## capacity and worth nothing afterwards; this makes them worth standing in, and
+## gives a mauled army somewhere to pull back to instead of only forward to die.
+const VILLAGE_GARRISON_HEAL_RATIO: float = 0.20
 const FIELD_TAX_MULTIPLIER: int = 2       # 200% cost for field upgrades
 const STARVATION_DAMAGE: int = 15         # True damage per overcap turn
 

@@ -90,8 +90,11 @@ func grant_spoils(opener: TacticalUnit) -> Dictionary:
 func grant_mercenary(cell: Vector2i, opener: TacticalUnit) -> Dictionary:
 	var data: UnitData = pick_mercenary_data(opener)
 	var free_cells: Array = _free_cells.call(cell, 1)
-	if data == null or free_cells.is_empty():
-		# Nowhere to stand, or nothing to hire — pay the finder's fee instead.
+	if data == null or free_cells.is_empty() or not _can_feed(opener.faction_id, data):
+		# Nowhere to stand, nothing to hire, or no room in the ranks for one more
+		# mouth — pay the finder's fee instead. A chest is the third way troops
+		# enter an army, and free troops that ignore the troop ceiling are the
+		# same bug as buying past it.
 		return grant_spoils(opener)
 
 	var hired: TacticalUnit = _spawn_unit.call(data, opener.faction_id, free_cells[0])
@@ -119,6 +122,18 @@ func pick_mercenary_data(opener: TacticalUnit) -> UnitData:
 	if best != null:
 		return UnitData.variant_for_faction(best, opener.faction_id)
 	return opener.unit_data if is_instance_valid(opener.unit_data) else null
+
+
+## Does the opener's army have capacity for this hire?
+##
+## Answers true when there is no economy to ask — the focused test scenes build
+## the table without one, and a chest that refuses every mercenary there would
+## be a silent change to what those scenes exercise.
+func _can_feed(faction_id: int, data: UnitData) -> bool:
+	if not is_instance_valid(_economy) or not _economy.has_method("has_capacity_for"):
+		return true
+	var roster: Array = TurnManager.get_faction_units(faction_id) if is_instance_valid(TurnManager) else []
+	return _economy.has_capacity_for(faction_id, data.capacity_weight, roster)
 
 
 func spring_trap(opener: TacticalUnit) -> Dictionary:

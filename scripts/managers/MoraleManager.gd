@@ -230,16 +230,26 @@ func begin_surrender(unit: TacticalUnit, captor_faction_id: int) -> void:
 		resolve_surrender(unit, auto_choice_for(captor_faction_id, unit))
 
 
+## Can this army feed one more prisoner?
+##
+## A claimed unit is troops like any other, so it answers to the same ceiling a
+## recruited one does. Pulled out of `auto_choice_for` because the human captor
+## needs the same answer for a different reason: to be told, and to be stopped.
+func has_room_for(captor_faction_id: int, unit: TacticalUnit) -> bool:
+	if not is_instance_valid(economy_manager) or not is_instance_valid(unit) \
+			or not is_instance_valid(unit.unit_data):
+		return false
+	return economy_manager.has_capacity_for(
+		captor_faction_id,
+		unit.unit_data.capacity_weight,
+		TurnManager.get_faction_units(captor_faction_id)
+	)
+
+
 ## What an AI captor does: take the prisoner if the army can feed one, and
 ## ransom them otherwise. Also the fallback if the HUD ever fails to ask.
 func auto_choice_for(captor_faction_id: int, unit: TacticalUnit) -> String:
-	if not is_instance_valid(economy_manager) or not is_instance_valid(unit.unit_data):
-		return "ransom"
-
-	var roster: Array = TurnManager.get_faction_units(captor_faction_id)
-	var used: int = economy_manager.get_used_capacity(captor_faction_id, roster)
-	var maximum: int = economy_manager.get_max_capacity(captor_faction_id)
-	return "capture" if used + unit.unit_data.capacity_weight <= maximum else "ransom"
+	return "capture" if has_room_for(captor_faction_id, unit) else "ransom"
 
 
 ## Settle a pending surrender. `choice` is "capture" or "ransom".
@@ -249,6 +259,15 @@ func resolve_surrender(unit: TacticalUnit, choice: String) -> void:
 
 	var captor_faction_id: int = _pending[unit]
 	_pending.erase(unit)
+
+	# The AI asks before it chooses; the human is asked by a dialog, and a dialog
+	# can be answered "capture" by an army with no room for one. The ceiling is
+	# enforced here instead of at each caller, because this is the single point
+	# every claim — human, AI or scripted — passes through. Ransom is the
+	# fallback rather than a refusal: the prisoner is frozen until this resolves,
+	# so there has to be an outcome.
+	if choice == "capture" and not has_room_for(captor_faction_id, unit):
+		choice = "ransom"
 
 	if choice == "capture":
 		_capture(unit, captor_faction_id)

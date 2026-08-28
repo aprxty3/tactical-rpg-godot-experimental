@@ -79,6 +79,9 @@ func _ready() -> void:
 	_test_hud_dialogs()
 	_test_extracted_collaborators()
 	_test_map_balance()
+	_test_resource_roll()
+	_test_village_garrison()
+	await _test_troop_ceiling()
 	# LAST: this one latches match_over and re-runs setup_match, which would
 	# pull the board out from under anything that ran after it.
 	await _test_match_end_stops_play()
@@ -1152,6 +1155,29 @@ func _spawn(res_path: String, faction: int, cell: Vector2i) -> TacticalUnit:
 	return unit
 
 
+## Put a hand-built test unit onto its faction's actual ROSTER.
+##
+## `_spawn` above is enough for anything that reads the board — the grid, the
+## fog, a combat swing. It is not enough for anything that reads the roster:
+## troop capacity, upkeep and the victory check all walk `faction_units`, which
+## TurnManager fills from `unit_spawned`, and only a real spawner emits that.
+## Sections that stand an army up to test a LIMIT have to enlist it, or they
+## measure an army the game cannot see.
+func _enlist(unit: TacticalUnit) -> TacticalUnit:
+	if is_instance_valid(unit):
+		EventBus.unit_spawned.emit(unit, unit.faction_id)
+	return unit
+
+
+## The other half of `_enlist`. `_despawn` frees the node, and a freed node left
+## on the roster is a stale entry every later capacity reading has to step over.
+func _discharge(units: Array) -> void:
+	for u in units:
+		if is_instance_valid(u):
+			TurnManager._remove_unit_from_tracking(u)
+	_despawn(units)
+
+
 func _despawn(units: Array) -> void:
 	for u in units:
 		if is_instance_valid(u):
@@ -1526,6 +1552,340 @@ func _test_map_balance() -> void:
 		if s["gold_mine"] != 1 or s["iron_mine"] != 1 or s["village"] != 2:
 			even = false
 	_check(even, "each army is nearest to exactly 1 gold, 1 iron, 2 villages — %s" % tally.strip_edges())
+
+
+# ==============================================================================
+# 11. THE RESOURCE ROLL — a different board every match, fair every time
+# ==============================================================================
+
+## `_test_map_balance` above already measured THIS match's board and found it
+## even. That is the outcome; this is the machinery, and it is what stops the
+## next roll from being the unfair one. Two properties matter: the layout is
+## built from mirror orbits (so fairness is structural, not lucky), and the roll
+## actually rolls (so the board really does change between matches).
+func _test_resource_roll() -> void:
+	print("\n[11] The resource layout is rolled, not fixed")
+
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var scatter := ResourceScatter.new(grid, rng)
+
+	# --- the mirror group ----------------------------------------------------
+	var orbit: Array[Vector2i] = scatter.orbit_of(Vector2i(7, 4))
+	var mirrored: bool = orbit.size() == 4 \
+		and orbit.has(Vector2i(7, 4)) and orbit.has(Vector2i(22, 4)) \
+		and orbit.has(Vector2i(7, 15)) and orbit.has(Vector2i(22, 15))
+	_check(mirrored, "a cell and its three reflections form one orbit (%s)" % str(orbit))
+
+	# A cell that is its own mirror cannot seed a set of four, and placing it
+	# anyway is how a layout ends up with three of something. This map is even on
+	# both sides so no cell sits on an axis — which is the property to assert:
+	# every orbit it can produce really is four distinct cells.
+	var ragged: int = 0
+	for x in range(grid.grid_size.x):
+		for y in range(grid.grid_size.y):
+			var o: Array[Vector2i] = scatter.orbit_of(Vector2i(x, y))
+			var distinct: Dictionary = {}
+			for c in o:
+				distinct[c] = true
+			if distinct.size() != 4:
+				ragged += 1
+	_check(ragged == 0, "no cell on this map seeds a partial orbit (%d ragged)" % ragged)
+
+	# --- what is actually on the board ---------------------------------------
+	# Fairness measured once is fairness on one map. Symmetry is the reason it
+	# holds on every map, so check the property rather than the measurement.
+	var cells: Dictionary = {"gold_mine": [], "iron_mine": [], "village": []}
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if b is Building and cells.has(b.get_type_string()):
+			cells[b.get_type_string()].append(b.grid_position)
+
+	for kind in cells:
+		var present: Dictionary = {}
+		for cell in cells[kind]:
+			present[cell] = true
+		var closed: bool = true
+		for cell in cells[kind]:
+			for image in scatter.orbit_of(cell):
+				if not present.has(image):
+					closed = false
+		_check(closed, "every %s has all three of its mirror images (%d cells)"
+			% [kind, cells[kind].size()])
+
+	# --- it rolls ------------------------------------------------------------
+	# `roll` reports a layout without moving anything, so this cannot disturb the
+	# board the sections above measured.
+	var buildings: Array = get_tree().get_nodes_in_group("buildings")
+	var seeds: Array[int] = [11, 22, 33, 44]
+	var seen: Dictionary = {}
+	var all_found: bool = true
+	for seed_value in seeds:
+		var r := RandomNumberGenerator.new()
+		r.seed = seed_value
+		var report: Dictionary = ResourceScatter.new(grid, r).roll(buildings)
+		if not report["found"]:
+			all_found = false
+			continue
+		seen[str(report["gold_mine"]) + str(report["iron_mine"]) + str(report["village"])] = true
+
+	_check(all_found, "every seed reaches a complete layout on this map")
+	_check(seen.size() > 1, "different seeds lay the map out differently (%d of %d distinct)"
+		% [seen.size(), seeds.size()])
+
+	# The bands are what keep a fair roll from also being a shapeless one.
+	var r2 := RandomNumberGenerator.new()
+	r2.seed = 7
+	var sample: Dictionary = ResourceScatter.new(grid, r2).roll(buildings)
+	if sample["found"]:
+		var castles: Array[Vector2i] = []
+		for b in get_tree().get_nodes_in_group("buildings"):
+			if b is Building and b.building_type == Building.BuildingType.CASTLE \
+					and b.faction_id in MatchSetup.participants:
+				castles.append(b.grid_position)
+		var in_band: bool = true
+		for kind in ["gold_mine", "iron_mine", "village"]:
+			var band: Vector2i = ResourceScatter.REACH_BAND[kind]
+			var nearest: int = 99999
+			for cell in sample[kind]:
+				for castle in castles:
+					nearest = mini(nearest, _walk_cost(castle, cell))
+			if nearest < band.x or nearest > band.y:
+				in_band = false
+		_check(in_band, "a rolled layout keeps every kind inside its distance band")
+	else:
+		_check(false, "a rolled layout keeps every kind inside its distance band")
+
+
+# ==============================================================================
+# 12. VILLAGES RESUPPLY THEIR GARRISON
+# ==============================================================================
+
+## A village was worth taking for the troop capacity and worth nothing once
+## taken. Standing in one now heals a fraction of MAXIMUM health each upkeep, so
+## a mauled army has somewhere to pull back to. Driven through the real upkeep
+## rather than by calling the heal directly: the rule was never the hard part,
+## being reached from the turn loop is.
+func _test_village_garrison() -> void:
+	print("\n[12] A village resupplies whoever holds it")
+
+	var village: Building = _building_of_type("village")
+	if village == null:
+		_check(false, "the map has a village to garrison")
+		return
+
+	var faction: int = MatchSetup.participants[0]
+	var owner_before: int = village.faction_id
+	village.capture(faction)
+
+	# Gold and iron are handed out by the same upkeep; top the treasury up so a
+	# later section cannot be affected by what this one earns.
+	var index_before: int = TurnManager.current_faction_index
+	TurnManager.current_faction_index = TurnManager.faction_order.find(faction)
+
+	var garrison: TacticalUnit = _enlist(_spawn("res://resources/units/pawn_%s.tres"
+		% GameConfig.FACTION_SUFFIX[faction], faction, village.grid_position))
+	var control: TacticalUnit = _enlist(_spawn("res://resources/units/pawn_%s.tres"
+		% GameConfig.FACTION_SUFFIX[faction], faction,
+		_open_cell_away_from(village.grid_position)))
+
+	var maximum: int = garrison.unit_data.max_health
+	var expected: int = maxi(1, int(ceil(maximum * GameConfig.VILLAGE_GARRISON_HEAL_RATIO)))
+	garrison.current_health = maxi(1, maximum / 5)
+	control.current_health = maxi(1, maximum / 5)
+	var wounded: int = garrison.current_health
+
+	TurnManager._execute_upkeep()
+
+	_check(garrison.current_health == wounded + expected,
+		"the garrison recovers %d%% of its maximum (%d -> %d)"
+		% [int(GameConfig.VILLAGE_GARRISON_HEAL_RATIO * 100.0), wounded, garrison.current_health])
+	_check(control.current_health == wounded,
+		"a unit standing in the open recovers nothing (%d)" % control.current_health)
+
+	# Full health is not overhealed, and a second turn keeps healing.
+	garrison.current_health = maximum
+	TurnManager._execute_upkeep()
+	_check(garrison.current_health == maximum,
+		"a healthy garrison is not overhealed past %d" % maximum)
+
+	# The village has to be YOURS. A unit sitting on someone else's house is
+	# occupying it, not being supplied by it.
+	var rival: int = MatchSetup.participants[1]
+	village.capture(rival)
+	garrison.current_health = wounded
+	TurnManager._execute_upkeep()
+	_check(garrison.current_health == wounded,
+		"a village flying another flag supplies nobody (%d)" % garrison.current_health)
+
+	_discharge([garrison, control])
+	village.capture(owner_before)
+	TurnManager.current_faction_index = index_before
+
+
+## Somewhere open that is not the given cell and holds no building — for the
+## control unit, which must be standing on ordinary ground.
+func _open_cell_away_from(cell: Vector2i) -> Vector2i:
+	for x in range(grid.grid_size.x):
+		for y in range(grid.grid_size.y):
+			var candidate := Vector2i(x, y)
+			if candidate == cell or not grid.is_cell_walkable(candidate):
+				continue
+			if grid.get_building_at(candidate) != null:
+				continue
+			return candidate
+	return cell
+
+
+# ==============================================================================
+# 13. THE TROOP CEILING BINDS EVERY WAY TROOPS ARRIVE
+# ==============================================================================
+
+## Recruiting always checked the ceiling. Nothing else did — so an army that
+## could not BUY its next unit could still be handed one by a prisoner's
+## surrender or by a chest, and the limit the HUD displayed was enforced on
+## exactly one of the three doors into the roster.
+func _test_troop_ceiling() -> void:
+	print("\n[13] Troop capacity binds every way a unit can arrive")
+
+	var faction: int = MatchSetup.participants[0]
+	var suffix: String = GameConfig.FACTION_SUFFIX[faction]
+	var economy: Node = main.economy_manager
+	var castle: Building = null
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if b is Building and b.building_type == Building.BuildingType.CASTLE \
+				and b.faction_id == faction:
+			castle = b
+	if castle == null or not is_instance_valid(economy):
+		_check(false, "the player's castle and treasury are reachable")
+		return
+
+	# Cost must never be what refuses these — the ceiling must.
+	economy.add_gold(faction, 99999)
+	economy.add_iron(faction, 999)
+
+	# --- fill the roster to two points below the ceiling ---------------------
+	var filler: Array = []
+	var maximum: int = economy.get_max_capacity(faction)
+	while economy.get_used_capacity(faction, TurnManager.get_faction_units(faction)) < maximum - 2:
+		var cell: Vector2i = _open_cell_away_from(castle.grid_position)
+		var pawn: TacticalUnit = _enlist(
+			_spawn("res://resources/units/pawn_%s.tres" % suffix, faction, cell))
+		if pawn == null:
+			break
+		filler.append(pawn)
+		if filler.size() > 40:
+			break
+
+	var roster: Array = TurnManager.get_faction_units(faction)
+	var used: int = economy.get_used_capacity(faction, roster)
+	_check(used == maximum - 2, "roster stood up at %d/%d for the test" % [used, maximum])
+
+	# --- the rule itself -----------------------------------------------------
+	_check(economy.has_capacity_for(faction, 2, roster),
+		"a 2-weight unit still fits at %d/%d" % [used, maximum])
+	_check(not economy.has_capacity_for(faction, 3, roster),
+		"a 3-weight unit does not fit at %d/%d" % [used, maximum])
+
+	# --- door one: recruiting at a castle ------------------------------------
+	var heavy: UnitData = load("res://resources/units/knight_%s.tres" % suffix)
+	var light: UnitData = load("res://resources/units/warrior_%s.tres" % suffix)
+	var heavy_check: Dictionary = castle.can_recruit(heavy, economy, roster)
+	var light_check: Dictionary = castle.can_recruit(light, economy, roster)
+	_check(heavy.capacity_weight == 3 and light.capacity_weight == 2,
+		"the test units weigh what it assumes (%d and %d)"
+		% [heavy.capacity_weight, light.capacity_weight])
+	_check(not heavy_check["can_recruit"],
+		"the castle refuses the heavy unit — %s" % heavy_check["reason"])
+	_check(light_check["can_recruit"], "the castle still allows the one that fits")
+
+	# --- door two: claiming a prisoner ---------------------------------------
+	var morale: MoraleManager = main.morale_manager
+	var rival: int = MatchSetup.participants[1]
+	var prisoner: TacticalUnit = _enlist(_spawn("res://resources/units/knight_%s.tres"
+		% GameConfig.FACTION_SUFFIX[rival], rival, _open_cell_away_from(castle.grid_position)))
+
+	_check(not morale.has_room_for(faction, prisoner),
+		"the captor has no room for a 3-weight prisoner")
+	_check(morale.auto_choice_for(faction, prisoner) == "ransom",
+		"an AI captor ransoms rather than starve its army")
+
+	# The bug as reported: the AI asks before it chooses, but the human is asked
+	# by a dialog and can answer "capture" regardless. Standing in for the human
+	# here — the captor is treated as the one being prompted — so the prisoner
+	# stays pending and the claim arrives exactly the way a button press does.
+	var human_before: int = morale.human_faction_id
+	morale.human_faction_id = faction
+
+	var outcome: Array = []
+	var probe := func(_u: Node, result: String, _f: int): outcome.append(result)
+	EventBus.surrender_resolved.connect(probe)
+	morale.begin_surrender(prisoner, faction)
+	_check(morale.has_pending_surrender(), "the prisoner waits on the captor's answer")
+	morale.resolve_surrender(prisoner, "capture")
+	EventBus.surrender_resolved.disconnect(probe)
+
+	morale.human_faction_id = human_before
+	# The prompt was answered through the manager rather than the button, so the
+	# dialog it opened is still on screen. Nothing else in this suite may inherit
+	# a modal that is blocking input.
+	if main_hud_surrender_visible():
+		main.main_hud.surrender_modal.hide()
+
+	_check(outcome.size() == 1 and outcome[0] == "ransom",
+		"a capture the army cannot feed is settled as a ransom (%s)" % str(outcome))
+	_check(not is_instance_valid(prisoner) or prisoner.faction_id == rival,
+		"the prisoner never joined the roster")
+
+	# --- door three: a mercenary out of a chest ------------------------------
+	# Topped up to the ceiling first. The table hires the best unit the faction's
+	# castle can field, and at 6/8 a light hire still fits — refusing it would
+	# have been the wrong behaviour, and a green tick for the wrong reason.
+	while economy.get_used_capacity(faction, TurnManager.get_faction_units(faction)) < maximum:
+		var top_up: TacticalUnit = _enlist(_spawn("res://resources/units/pawn_%s.tres" % suffix,
+			faction, _open_cell_away_from(castle.grid_position)))
+		if top_up == null:
+			break
+		filler.append(top_up)
+		if filler.size() > 40:
+			break
+	_check(economy.get_used_capacity(faction, TurnManager.get_faction_units(faction)) == maximum,
+		"roster filled to the ceiling at %d/%d" % [maximum, maximum])
+
+	if is_instance_valid(objects) and objects.pandora != null and not filler.is_empty():
+		var opener: TacticalUnit = filler[0]
+		# The chest also pays gold when it has nowhere to STAND a mercenary, so
+		# without this the refusal below could pass for the wrong reason.
+		var has_space: bool = false
+		for d in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			if grid.is_cell_walkable(opener.grid_position + d):
+				has_space = true
+		_check(has_space, "the chest has room to stand a mercenary, so a refusal is the ceiling")
+		var payout: Dictionary = objects.pandora.grant_mercenary(opener.grid_position, opener)
+		_check(not payout.has("unit"),
+			"a chest pays gold instead of a mercenary when the ranks are full (%s)"
+			% str(payout.keys()))
+		# If it hired one anyway, it must not be left standing on the board for
+		# the sections below to trip over.
+		if payout.has("unit") and is_instance_valid(payout["unit"]):
+			_discharge([payout["unit"]])
+
+	# --- and it lets them in again once there is room ------------------------
+	_discharge(filler)
+	await get_tree().process_frame
+	var freed: Array = TurnManager.get_faction_units(faction)
+	_check(economy.has_capacity_for(faction, 3, freed),
+		"the heavy unit fits again once the roster empties (%d/%d)"
+		% [economy.get_used_capacity(faction, freed), economy.get_max_capacity(faction)])
+
+	if is_instance_valid(prisoner):
+		_discharge([prisoner])
+
+
+func main_hud_surrender_visible() -> bool:
+	if not is_instance_valid(main.main_hud):
+		return false
+	var modal = main.main_hud.surrender_modal
+	return is_instance_valid(modal) and modal.visible
 
 
 ## Terrain-aware Dijkstra, ignoring unit occupancy: this measures the shape of

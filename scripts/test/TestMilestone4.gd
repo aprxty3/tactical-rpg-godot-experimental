@@ -244,7 +244,12 @@ func _test_fog_of_war() -> void:
 		_check(not vision.is_cell_visible(GameConfig.Faction.BLUE_KINGDOM, far), "Distant cells stay unseen")
 
 	# Concealment: an enemy in forest is hidden at range but spotted from beside.
-	var forest := _find_free_cell_of(GameConfig.TerrainType.FOREST)
+	# The wood has to be one nobody is already standing next to, or the first
+	# half of the pair asserts nothing: a friendly unit beside it sees in, which
+	# is the behaviour the second half goes on to check. Earlier sections leave
+	# units on the board, so "a free forest cell" is not enough — it has to be an
+	# UNWATCHED one, and which cell that is moves whenever the map generator does.
+	var forest := _find_unwatched_forest(GameConfig.Faction.BLUE_KINGDOM)
 	if forest != Vector2i(-1, -1):
 		var hidden := _spawn_test_unit("res://resources/units/rogue_purple.tres", GameConfig.Faction.RED_LEGION, forest)
 		if hidden != null:
@@ -443,6 +448,37 @@ func _find_cell_of(terrain: GameConfig.TerrainType) -> Vector2i:
 
 
 ## Like _find_cell_of, but skips cells already holding a unit or a map object.
+## A free forest cell with no unit of `faction` adjacent to it, so concealment
+## can be tested from range without a bystander giving the hider away. Falls
+## back to any free forest cell, which at least keeps the check running.
+func _find_unwatched_forest(faction: int) -> Vector2i:
+	var fallback := Vector2i(-1, -1)
+	for x in range(grid.grid_size.x):
+		for y in range(grid.grid_size.y):
+			var cell := Vector2i(x, y)
+			if grid.get_terrain(cell) != GameConfig.TerrainType.FOREST:
+				continue
+			if grid.get_unit_at(cell) != null or not objects.objects_at(cell).is_empty():
+				continue
+			if fallback == Vector2i(-1, -1):
+				fallback = cell
+			if not grid.is_cell_walkable(cell + Vector2i(6, 0)):
+				continue
+			var watched := false
+			for node in get_tree().get_nodes_in_group("units"):
+				if not is_instance_valid(node) or not (node is TacticalUnit):
+					continue
+				var unit: TacticalUnit = node
+				if unit.faction_id != faction:
+					continue
+				if absi(unit.grid_position.x - cell.x) + absi(unit.grid_position.y - cell.y) <= 1:
+					watched = true
+					break
+			if not watched:
+				return cell
+	return fallback
+
+
 func _find_free_cell_of(terrain: GameConfig.TerrainType) -> Vector2i:
 	for x in range(grid.grid_size.x):
 		for y in range(grid.grid_size.y):

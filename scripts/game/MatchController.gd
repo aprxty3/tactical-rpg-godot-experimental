@@ -30,11 +30,21 @@ class_name MatchController
 @onready var map_object_manager: MapObjectManager = $MapObjectManager
 @onready var map_object_container: Node2D = $MapObjects
 
+## Seed for the per-match resource layout. 0 rolls a fresh one every match;
+## any other value reproduces the same board, which is what a bug report or a
+## repeatable test needs.
+@export var resource_seed: int = 0
+
 ## How long each AI waits between its own actions, so its turn reads as
 ## deliberate rather than instantaneous. One knob covering every AI on the
 ## field — with three opponents instead of one it is the single largest lever
 ## on how long a full round takes to watch.
 @export var ai_action_delay: float = 0.4
+
+## How much ground around a castle stays clear of props, in cells. `ArmyMuster`
+## searches outward from the keep for somewhere to stand, and a tree in ring one
+## is one fewer opening position.
+const MUSTER_CLEARANCE: int = 2
 
 ## The roles each army musters with. Same three for everyone, so no faction
 ## opens with an advantage that was never designed.
@@ -130,6 +140,8 @@ func _ready() -> void:
 	#    came up; spawning them in code means the river has to exist before
 	#    anyone is placed, or a starting unit lands in the water.
 	_build_terrain()
+	_dress_terrain()
+	_scatter_resources()
 	_spawn_starting_armies()
 	_finish_map_setup()
 
@@ -169,6 +181,58 @@ func _build_terrain() -> void:
 	grid_manager.set_terrain_blocked_cells(blocked)
 
 
+## Plant the props and freeze the terrain map.
+##
+## Split out of `_finish_map_setup` and pulled forward, ahead of the resource
+## roll, because of what it decides: a cell is forest because a tree was drawn
+## on it, and forest costs 2 MP where plain costs 1. Rolling the mines first
+## meant measuring their fairness against bare rivers and then planting the
+## trees that made it untrue — six rolls in twenty-four came out lopsided that
+## way, one army reaching the iron two moves before another.
+##
+## What the props must stay off is the ground each army musters on: its castle
+## and the rings around it, which is where `ArmyMuster` looks for standing room.
+## The authored building cells are reserved too, so the layout in the scene file
+## is still clean if the roll below declines to replace it.
+func _dress_terrain() -> void:
+	if not map_builder:
+		return
+
+	var reserved: Array[Vector2i] = []
+	for bld in get_tree().get_nodes_in_group("buildings"):
+		if not (bld is Building):
+			continue
+		var clearance: int = MUSTER_CLEARANCE if bld.building_type == Building.BuildingType.CASTLE else 1
+		for dx in range(-clearance, clearance + 1):
+			for dy in range(-clearance, clearance + 1):
+				reserved.append(bld.grid_position + Vector2i(dx, dy))
+
+	map_builder.scatter_decor(decor_container, grid_manager.cell_size, reserved)
+	grid_manager.set_terrain_map(map_builder.get_terrain_map())
+
+
+## Roll a fresh mine-and-village layout for this match.
+##
+## Sits between the dressed terrain and the armies. It has to come after the
+## props, or it measures a map that is about to change underneath it; and before
+## the muster, because the muster search refuses cells that hold a building, so
+## a mine arriving afterwards can land on top of a soldier.
+##
+## `ResourceScatter` leaves the authored layout alone if it cannot find a
+## measured-fair one, so a failure here costs variety, never fairness.
+func _scatter_resources() -> void:
+	var rng := RandomNumberGenerator.new()
+	if resource_seed == 0:
+		rng.randomize()
+	else:
+		rng.seed = resource_seed
+
+	var scatter := ResourceScatter.new(grid_manager, rng)
+	var report: Dictionary = scatter.scatter(get_tree().get_nodes_in_group("buildings"))
+	if not report["applied"]:
+		push_warning("ResourceScatter: keeping the authored layout — %s" % report["reason"])
+
+
 ## Props, hazards, fog and camera — everything that has to know where the
 ## terrain and the armies both ended up.
 func _finish_map_setup() -> void:
@@ -183,7 +247,9 @@ func _finish_map_setup() -> void:
 	# owns them.
 	grid_manager.register_existing_units()
 
-	# Keep props off anything gameplay-relevant.
+	# Keep hazards and treasure off anything gameplay-relevant. Recomputed here
+	# rather than reused from `_dress_terrain`: the resources have moved since,
+	# and the armies did not exist yet when the props went down.
 	var reserved: Array[Vector2i] = []
 	for bld in get_tree().get_nodes_in_group("buildings"):
 		if bld is Building:
@@ -193,13 +259,7 @@ func _finish_map_setup() -> void:
 	for unit in unit_container.get_children():
 		if unit is TacticalUnit:
 			reserved.append(unit.grid_position)
-	map_builder.scatter_decor(decor_container, grid_manager.cell_size, reserved)
 
-	# Terrain types are only final once the props are down — a cell is forest
-	# because a tree was actually drawn on it, not because it was planned to be.
-	grid_manager.set_terrain_map(map_builder.get_terrain_map())
-
-	# Hazards and treasure go in last, so they can avoid everything above.
 	map_object_manager.populate(map_builder, reserved)
 
 	# Fog needs the finished terrain to know what conceals.

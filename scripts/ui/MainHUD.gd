@@ -162,14 +162,22 @@ func _on_surrender_decision_required(unit: Node, captor_faction_id: int) -> void
 		weight = data.capacity_weight
 
 	var room: String = ""
+	# Capture is offered only when the army can actually feed the prisoner. It
+	# used to be offered unconditionally and then silently do nothing useful —
+	# MoraleManager now downgrades an impossible claim to a ransom, and a button
+	# that quietly does something other than what it says is worse than one that
+	# is greyed out with the reason next to it.
+	var can_capture: bool = true
 	if is_instance_valid(economy_manager):
-		var used: int = economy_manager.get_used_capacity(
-			captor_faction_id, TurnManager.get_faction_units(captor_faction_id)
-		)
+		var roster: Array = TurnManager.get_faction_units(captor_faction_id)
+		var used: int = economy_manager.get_used_capacity(captor_faction_id, roster)
 		var maximum: int = economy_manager.get_max_capacity(captor_faction_id)
+		can_capture = economy_manager.has_capacity_for(captor_faction_id, weight, roster)
 		room = "\nTroop Cap: %d/%d  (this unit costs %d)" % [used, maximum, weight]
+		if not can_capture:
+			room += "\n⚠️ No room in the ranks — ransom is the only option."
 
-	surrender_modal.present(prisoner, ransom, room)
+	surrender_modal.present(prisoner, ransom, room, can_capture)
 
 
 func is_surrender_popup_active() -> bool:
