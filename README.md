@@ -2,9 +2,10 @@
 
 A turn-based tactical RPG built in **Godot 4.7**, working title *War Perang Tactics*.
 
-Five factions fight over a 30×20 battlefield split by rivers, with grid movement, a
-combat-advantage triangle, a captured-territory economy, fog of war, morale, and an
-enemy AI that scores its options instead of walking at the nearest target.
+Four armies fight over a 30×20 battlefield split by rivers — and a fifth force holds
+the centre without ever contending. Grid movement, a combat-advantage triangle, a
+captured-territory economy, fog of war, morale, and an enemy AI that scores its options
+instead of walking at the nearest target.
 
 This is an **experimental / learning repository**. It is built milestone by milestone,
 each one closed only when an integration suite proves it, and the architecture is the
@@ -53,7 +54,9 @@ number, the AI included, asks that same resolver.
 
 ### Economy
 Gold, Iron, and Troop Capacity. Castles pay passive gold, mines and villages pay on
-capture, and exceeding your capacity triggers a starvation penalty. Upgrading a unit away
+capture, and exceeding your capacity triggers a starvation penalty. A village is worth
+**+3** capacity and a captured keep **+5**, so territory decides how large an army you
+can even field. Upgrading a unit away
 from your castle costs a 2× "Field Tax", so promotion has geography.
 
 ### Tactical layer
@@ -66,6 +69,22 @@ The enemy does not chase the nearest thing. `AITacticalEvaluator` scores objecti
 it will eat, and retreats when incoming threat outweighs remaining HP. The scoring is a
 plain `RefCounted` class with no scene dependencies, so it can be unit-tested without
 running a turn.
+
+### The Black Castle
+The keep in the middle of the map belongs to nobody and is guarded by six monsters.
+They take a turn like any army but are excluded from the victory check — `TurnManager`
+keeps `faction_order` (who acts) separate from `contenders` (who can win or lose).
+
+They play by inverted rules. A marauder **cannot claim** a castle or a mine, because it
+holds no ground; a *held* village it **burns** rather than capturing, while a *neutral*
+one it leaves alone; and it never offers or accepts a surrender. Every monster is leashed
+to roughly 11 cells of the den, so they guard rather than march.
+
+Nothing extra gates the keep: the boss stands on the castle's own cell and a unit cannot
+end its move on an occupied one, so "kill the guardian first" is enforced by the board.
+Take it and you inherit its recruit roster — and since no blue or red variant of a
+Skeleton exists, `variant_for_faction` falls back to the black one. **Clearing the den
+is how you get undead.**
 
 ### Presentation
 Eight-direction facing for cavalry, mount/dismount that trades movement for defence,

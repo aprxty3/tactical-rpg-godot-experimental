@@ -14,7 +14,7 @@ This skill defines the technical workflows, coding standards, architectural inva
 Communication MUST strictly follow the decoupled 4-layer architecture:
 1. **Data Layer (`scripts/data/`)**: Pure `.tres` custom Resources (`UnitData.gd`). MUST contain only `@export` variables. No logic, no signal emissions, no node references.
 2. **Event Layer (`scripts/autoload/EventBus.gd`)**: Global signal hub. All cross-manager communication goes through `EventBus`. `@warning_ignore("unused_signal")` is mandatory on all signals.
-3. **Logic Layer (`scripts/managers/`, `scripts/autoload/`)**: Rule engines (`TurnManager`, `EconomyManager`, `GridManager`, `CombatResolver`, `AIManager`, `MapBuilder`).
+3. **Logic Layer (`scripts/managers/`, `scripts/autoload/`)**: Rule engines — `TurnManager`, `EconomyManager`, `GridManager`, `CombatResolver`, `MapBuilder`, `MoraleManager`, `VisionManager`, `MapObjectManager`, `VfxManager`, plus the non-node collaborators `AIManager`, `AITacticalEvaluator`, `EncounterManager` and `ResourceScatter`. **Anything that DECIDES something must be reachable without a scene** — that rule is why the last four are `RefCounted`.
 4. **Actor Layer (`scripts/units/`, `scripts/buildings/`)**: Visual scene nodes (`TacticalUnit`, `Building`). Passive actors that read Resources, update visual representations, and emit events.
 
 > [!CAUTION]
@@ -88,7 +88,7 @@ godot --headless --editor --quit-after 50
 - **Texture Swapping**: When a building is captured (`Building.capture(faction_id)`), swap its texture using real assets from `assets/buildings/{Faction} Buildings/`. Never use `modulate()`.
 - **Mines**: Gold Mines and Iron Mines display faction-colored banners upon capture.
 - **Dynamic Castle Rosters**: Captured castles dynamically update their `recruitable_units` array to the conquering faction's unit variants.
-- **Village Economy**: Neutral villages grant $+2$ Troop Capacity (TC) to the capturing faction; losing a village deducts $2$ TC from the former owner.
+- **Capacity Ledger**: a village grants **+3** Troop Capacity, a castle **+5 beyond the first** (`maxi(0, castles - 1)` — the opening keep is already priced into the base of 8). Both are returned on loss, and a razed village takes its 3 with it. Castle counts must be **seeded from the board** at `register_faction`, because a faction already owns its opening keep and no capture event ever fires for it; villages need no seeding since every one starts neutral.
 
 ---
 

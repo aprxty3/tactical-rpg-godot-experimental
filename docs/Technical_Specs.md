@@ -110,8 +110,13 @@ To simulate the harsh reality of war, unit upgrade costs are highly dependent on
 
 ## 4. Technical Implementation Notes
 
-### EconomyManager (Autoload)
-Handles logic for calculating field tax and checking troop capacities:
+### EconomyManager (scene node, **not** an autoload)
+It lives on `Match.tscn` and is injected by `MatchController`, because its state
+is per-match — an autoload would carry one match's gold into the next. The four
+true autoloads are `GameConfig`, `MatchSetup`, `TurnManager` and `EventBus`
+(plus `AudioManager` and `GeminiClient`).
+
+Handles field tax and troop capacity:
 - `calculate_field_tax(base_cost, distance_to_castle) -> int`
 - `validate_upgrade_transaction(unit_data, target_data, position) -> bool`
 - `get_total_used_capacity(faction_id) -> int`

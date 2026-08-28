@@ -19,53 +19,64 @@ generated: { by: human:aprxty3, at: 2026-08-22T00:00:00Z }
 ---
 
 ## 2. Core Gameplay Loop
-The game operates in distinct phase-based turns:
+
+A match begins at the menu, not on the board: **Main Menu → pick one of four
+armies → Match**. From there every faction takes its turn in order, and the
+Black Castle takes one too.
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│ 1. Upkeep & Economy Phase                              │
-│    • Collect gold income from Gold Mines & Houses      │
-│    • Reset Unit Movement and Action Points             │
+│ 1. Upkeep                                              │
+│    • Income from every building you hold               │
+│    • Garrison healing — castle 40%, village 20%        │
+│    • Starvation, if you are over your troop ceiling    │
+│    • Reset movement and action points                  │
 └──────────────────────────┬─────────────────────────────┘
-                           │
                            ▼
 ┌────────────────────────────────────────────────────────┐
-│ 2. Production & Recruitment Phase                      │
-│    • Recruit new units at Castle / Barracks            │
-│    • Construct defensive structures (Towers, Walls)    │
+│ 2. Tactical Action                                     │
+│    • Move — Dijkstra range at REAL terrain cost        │
+│    • Attack — advantage triangle, terrain, morale,     │
+│      counter-attack, forest ambush                     │
+│    • Capture by ending a move on a building            │
+│    • Recruit [R] at a castle, promote [U], mount [M]   │
+│    • Trip traps, detonate kegs, open chests            │
 └──────────────────────────┬─────────────────────────────┘
-                           │
                            ▼
 ┌────────────────────────────────────────────────────────┐
-│ 3. Tactical Action Phase                               │
-│    • Move units across the grid (Movement Range)       │
-│    • Attack enemy targets (Class Advantage Triangle)   │
-│    • Interact with terrain hazards (TNT Barrels)       │
-│    • Capture strategic buildings (Capture Tile)        │
-└──────────────────────────┬─────────────────────────────┘
-                           │
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│ 4. End Turn & Switch Phase                             │
-│    • Evaluate Victory / Defeat Conditions              │
-│    • Hand over turn control to enemy AI / Next Player  │
+│ 3. End Turn                                            │
+│    • Morale drift; desertion and surrender resolve     │
+│    • Fog recomputed for the next faction               │
+│    • Victory check, then hand over                     │
 └────────────────────────────────────────────────────────┘
 ```
+
+The **Black Castle's garrison** slots into that order as a `marauder`: it takes
+a turn, but it is excluded from the victory check. `TurnManager` keeps two
+lists for exactly this — `faction_order` (everyone who acts) and `contenders`
+(everyone who can win or lose).
 
 ---
 
 ## 3. Victory and Defeat Conditions
 
-### Victory Conditions:
-1. **Total Conquest**: Eliminate all enemy units on the battlefield.
-2. **Decapitation (Capture Capital)**: Capture or destroy the enemy faction's primary **Castle**.
-3. **Economic Domination**: Control $\ge 75\%$ of all **Gold Mines** on the map for 3 consecutive turns.
+There is **one rule**, and it is deliberately narrower than the usual three:
 
-### Defeat Conditions:
-1. **Castle Fall**: The player's main Castle is captured or destroyed by an adversary.
-2. **Total Annihilation**: All player military units are wiped out with insufficient resources to recruit replacements.
+> A faction is eliminated only when it has **no units AND no castles**.
+> The last contender standing wins by *supremacy*.
 
----
+Two consequences are the entire point of writing it this way:
+
+- **Losing your castle does not lose you the match.** With units still on the
+  board you fight on as a rogue army — no income, no recruitment, no capacity
+  from a keep, but alive. This is why the troop-capacity formula charges from
+  the *second* castle: a castle-less army must not also be starved.
+- **Monsters cannot win, and killing them all wins nothing.** They are an
+  environmental threat, not a contender.
+
+Economic-domination and capture-the-capital conditions were considered and
+dropped. Both ended matches while an army was still capable of fighting, which
+is precisely the situation this game is trying to make interesting.
 
 ## 4. Design Pillars
 1. **Easy to Learn, Deep Tactical Mastery**:

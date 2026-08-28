@@ -12,27 +12,46 @@ This document defines the warring factions, unit archetypes, stat blueprints, an
 
 ---
 
-## 1. The Five Warring Factions
+## 1. Four Armies and One Den
 
-As of the Milestone 3 Unit Upgrade Tree pass, **all 5 factions field the identical roster** (Pawn → Warrior/Archer/Wizzard/Monk/Rogue → 8 Tier-3 promotions) — factions differ by color, flavor text, and (Black Coven only) an additional Undead sub-roster, not by which classes they can field. "Signature units" below are flavor/lore framing, not mechanical exclusivity.
+**Four factions contend. A fifth holds the centre and cannot win.**
 
-1. **Blue Kingdom**:
-   - *Theme*: Standard chivalric kingdom, disciplined formations, and balanced defense.
-   - *Flavor Units*: **Knight**, **Warrior**, **Pawn**.
-2. **Red Legion**:
-   - *Theme*: Aggressive offensive juggernaut focusing on brute physical damage and siege tactics.
-   - *Flavor Units*: **Warrior**, **Archer**, **Lancer**.
-3. **Purple Syndicate**:
-   - *Theme*: Cunning shadow guild relying on high mobility, poisons, and ambush strikes.
-   - *Flavor Units*: **Rogue**, **Assassin**, **Shadowblade**.
-4. **Yellow Empire**:
-   - *Theme*: Wealthy empire harnessing golden economy and ancient elemental sorcery.
-   - *Flavor Units*: **Wizzard**, **Archmage**, **High Priest**.
-5. **Black Coven / Necropolis**:
-   - *Theme*: Dark death cult summoning legions of skeletal minions and cursed vitality.
-   - *Flavor Units*: the full shared human roster (renamed — e.g. "Black Cultist Pawn", "Necromancer Monk") **plus** an exclusive Undead sub-roster with its own finished parallel promotion tree: **Skeleton Fodder** → **Skeleton Warrior / Skeleton Mage / Skeleton Rogue** → **Bone Reaper / Lich / Wraith**, and **Vampire** (its own Tier-2 entry point) → **Vampire Lord / Nightstalker**. See Section 2 below for the full table.
+Since the Milestone 3 upgrade-tree pass, all playable factions field the
+**identical roster** (Pawn → Warrior/Archer/Wizzard/Monk/Rogue → 8 Tier-3
+promotions). They differ by colour and flavour, not by which classes they can
+field. "Flavour units" below are lore framing, not mechanical exclusivity.
 
----
+| Faction | Theme | Flavour units |
+| :--- | :--- | :--- |
+| 🔵 **Blue Kingdom** | Chivalric kingdom, disciplined formations, balanced defence | Knight, Warrior, Pawn |
+| 🔴 **Red Legion** | Offensive juggernaut — brute physical damage and siege | Warrior, Archer, Lancer |
+| 🟣 **Purple Syndicate** | Shadow guild — mobility, poison, ambush | Rogue, Assassin, Shadowblade |
+| 🟡 **Yellow Empire** | Wealthy empire — golden economy, elemental sorcery | Wizzard, Archmage, High Priest |
+
+### ⚫ The Black Coven — a den, not a faction
+
+The Black Coven **fields no army and cannot be chosen**. It garrisons the Black
+Castle at the centre of the map with six monsters and takes a turn like anyone
+else, but it is excluded from the victory check — `TurnManager` calls it a
+*marauder*. Clearing it wins nothing on its own.
+
+It plays by inverted rules, and each one is a deliberate negative:
+
+- **It cannot claim a castle, a gold mine or an iron mine.** It holds no
+  ground, so those are scenery to it.
+- **A held village it BURNS** rather than flying a flag over. A *neutral*
+  village it leaves alone — an unclaimed house is nobody's supply line, and
+  razing neutral ground would only strip the map.
+- **Its monsters never accept a surrender**, and never offer one.
+- **Every monster is leashed** to roughly 11 cells of the den. They guard; they
+  do not march on your capital.
+
+**Taking the den is worth something anyway.** The Black Castle's recruit roster
+includes **Skeleton Fodder** and **Vampire**, and `UnitData.variant_for_faction`
+has no blue/red/purple/yellow variant to swap those to — so the fallback keeps
+the black ones. Capture the keep and you recruit undead alongside your own
+colour's troops. That is emergent from the resolver's fallback rule rather than
+special-cased, which is why it survives adding a sixth faction.
 
 ## 2. Unit Archetypes & Roles
 
@@ -67,7 +86,7 @@ As of the Milestone 3 Unit Upgrade Tree pass, **all 5 factions field the identic
 | **Assassin** | Rogue | Glass-Cannon Backstab | 4 Tiles | 1 Tile (Melee) | Highest single-target burst, lowest defense. |
 | **Shadowblade** | Rogue | Mobile Ambusher | 5 Tiles | 1 Tile (Melee) | More HP/defense than Assassin, slightly less burst. |
 
-**Black Coven exclusive — Undead lineage (a separate, parallel track from the tree above, reusing the same `[U]` Upgrade mechanic):**
+**The Undead lineage — a parallel track reusing the same `[U]` Upgrade mechanic.** Recruitable from the **Black Castle by whoever holds it**, which in practice means whoever cleared the den:
 
 Tier 1 (recruitable at Castle):
 
@@ -93,6 +112,27 @@ Tier 3 (promotion-only, one option per Tier-2 parent for the Skeleton branch, tw
 | **Wraith** | Skeleton Rogue | Stealth Ambusher | 5 Tiles | 1 Tile (Melee) | Hooded undead stalker that vanishes between strikes. |
 | **Vampire Lord** | Vampire | Heavier Bruiser | 4 Tiles | 1 Tile (Melee) | Ascended vampire, gorged on stolen vitality; retains Lifesteal. |
 | **Nightstalker** | Vampire | Mobile/Evasive | 5 Tiles | 1 Tile (Melee) | Feral, highly mobile vampire that hunts down fleeing prey; retains Lifesteal. |
+
+**Black Castle garrison — the six wandering encounters.** Never recruited, never
+promoted, and free to field, so they are deliberately **not** balanced against
+faction units of the same tier. Their job is to make the centre of the map cost
+something, not to be a fair fight.
+
+| Monster | Role | HP | ATK | DEF | Move | Range | Vision |
+| :--- | :--- | ---: | ---: | ---: | :---: | :---: | :---: |
+| **Ghoul** | Starved swarm | 38 | 14 | 2 | 4 | 1 | 4 |
+| **Bone Stalker** | Scout — fast, brittle, always seen first | 30 | 12 | 1 | **6** | 1 | **6** |
+| **Grave Warden** | The wall; holds the approach | **70** | 20 | **12** | 3 | 1 | 4 |
+| **Plague Wraith** | Rot at range; reaching it is the fight | 40 | 22 | 3 | 3 | **2** | 5 |
+| **Blood Fiend** | Feeds on what it kills | 62 | **26** | 8 | 4 | 1 | 5 |
+| **Dread Warden** *(boss)* | Stands on the keep's own tile | **140** | **34** | **16** | 3 | **2** | **7** |
+
+Nothing guards the den beyond the boss itself — and nothing needs to. It
+occupies the castle's cell, and a unit cannot end its move on an occupied one,
+so "kill the guardian first" is enforced by the board rather than by a rule.
+
+Six creatures come from **three** source bodies (skeleton ×2, vampire),
+recoloured offline. See `scripts_dev/generate_monsters.py`.
 
 ### Resource Cost Matrix
 | Unit | Tier | Gold Cost | Iron Cost | TC Weight | Notes |

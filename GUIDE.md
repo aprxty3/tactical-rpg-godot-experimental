@@ -147,14 +147,34 @@ If the return code is `0` and there are no red errors, it means the scene compil
 | `scenes/test_village_capacity.tscn` | Village capture, troop capacity, starvation |
 | `scenes/test_popup_and_map.tscn` | End-turn modal and tilemap population |
 | `scenes/test_battlefield.tscn` | Map shape, impassable water, bridge crossability, capture visuals, owner-variant recruitment |
+| `scenes/test_undead_gameplay.tscn` | The Undead lineage — recruitment, promotion, Holy ×2.5 |
+| `scenes/test_qa_stress.tscn` | Capacity ledger under capture/loss, health, sprite scaling |
+| `scenes/test_milestone4.tscn` | **61 checks** — vision, morale, map objects, fog |
+| `scenes/test_milestone5.tscn` | **324 checks** — AI scoring, VFX, mounts, audio, encounters, capacity |
+
+> **The milestone suites never exit on their own.** They print their summary and
+> then keep running, because live timers hold the tree open. Run them under
+> `timeout` and read the log — the shell will report the `timeout` kill (exit
+> **124**, or **144** if it escalates), and that is the *passing* outcome. Grep
+> the output for `CHECKS PASSED`; never trust the exit code here.
+>
+> ```bash
+> timeout 150 godot --headless --path . scenes/test_milestone5.tscn > /tmp/m5.log 2>&1
+> grep -E "CHECKS PASSED|FAILED" /tmp/m5.log
+> ```
 
 ### Static check without the engine
 Godot isn't always on `PATH`. This catches everything except GDScript compile errors —
 missing `ext_resource` paths, frame counts that don't divide the sheet, broken
 `upgrade_paths`, missing or stale render metrics, and faction prefixes leaking back into
 `unit_name`:
+`spritegen_lib` imports **numpy**, which is deliberately not a system dependency
+of this repo, so a bare `python3` invocation fails with `ModuleNotFoundError`.
+`uv` supplies it per-run:
+
 ```bash
-python3 scripts_dev/validate_project.py   # must report "0 error(s)"
+uv run --quiet --with numpy --with pillow python scripts_dev/validate_project.py
+# must report "0 error(s)"
 ```
 It is **not** a substitute for the headless run. Run both.
 
