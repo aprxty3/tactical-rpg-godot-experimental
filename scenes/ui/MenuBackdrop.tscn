@@ -1,0 +1,124 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/MenuBackdrop.gd" id="1_backdrop"]
+[ext_resource type="Script" uid="uid://s725iatejh81" path="res://scripts/managers/MapBuilder.gd" id="2_map_builder"]
+[ext_resource type="TileSet" uid="uid://cxhy51g182n7k" path="res://resources/tilesets/terrain_flat_tileset.tres" id="8_tileset"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Black.tscn" id="castle_black"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/Castle.tscn" id="castle_blue"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Purple.tscn" id="castle_purple"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Red.tscn" id="castle_red"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/Castle_Yellow.tscn" id="castle_yellow"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/House.tscn" id="house"]
+[ext_resource type="PackedScene" path="res://scenes/buildings/IronMine.tscn" id="mine_iron"]
+[ext_resource type="PackedScene" uid="uid://c3qg0m0k0x8m1" path="res://scenes/buildings/GoldMine.tscn" id="mine_gold"]
+
+[node name="MenuBackdrop" type="Node2D"]
+script = ExtResource("1_backdrop")
+
+[node name="MapBuilder" type="Node" parent="."]
+script = ExtResource("2_map_builder")
+
+[node name="TileMapLayer_Water" type="TileMapLayer" parent="."]
+z_index = -4
+tile_set = ExtResource("8_tileset")
+
+[node name="TileMapLayer_Ground" type="TileMapLayer" parent="."]
+z_index = -3
+tile_set = ExtResource("8_tileset")
+
+[node name="TileMapLayer_Path" type="TileMapLayer" parent="."]
+z_index = -2
+tile_set = ExtResource("8_tileset")
+
+[node name="TileMapLayer_Bridge" type="TileMapLayer" parent="."]
+z_index = -1
+tile_set = ExtResource("8_tileset")
+
+[node name="Decor" type="Node2D" parent="."]
+z_index = -1
+
+[node name="Buildings" type="Node2D" parent="."]
+
+[node name="Castle_Purple" parent="Buildings" instance=ExtResource("castle_purple")]
+position = Vector2(224, 224)
+grid_position = Vector2i(3, 3)
+
+[node name="Castle_Red" parent="Buildings" instance=ExtResource("castle_red")]
+position = Vector2(1696, 224)
+grid_position = Vector2i(26, 3)
+
+[node name="Castle_Blue" parent="Buildings" instance=ExtResource("castle_blue")]
+position = Vector2(224, 1056)
+grid_position = Vector2i(3, 16)
+
+[node name="Castle_Yellow" parent="Buildings" instance=ExtResource("castle_yellow")]
+position = Vector2(1696, 1056)
+grid_position = Vector2i(26, 16)
+
+[node name="Castle_Black" parent="Buildings" instance=ExtResource("castle_black")]
+position = Vector2(992, 672)
+grid_position = Vector2i(15, 10)
+
+[node name="GoldMine_1" parent="Buildings" instance=ExtResource("mine_gold")]
+position = Vector2(608, 416)
+grid_position = Vector2i(9, 6)
+
+[node name="GoldMine_2" parent="Buildings" instance=ExtResource("mine_gold")]
+position = Vector2(1312, 416)
+grid_position = Vector2i(20, 6)
+
+[node name="GoldMine_3" parent="Buildings" instance=ExtResource("mine_gold")]
+position = Vector2(608, 864)
+grid_position = Vector2i(9, 13)
+
+[node name="GoldMine_4" parent="Buildings" instance=ExtResource("mine_gold")]
+position = Vector2(1312, 864)
+grid_position = Vector2i(20, 13)
+
+[node name="IronMine_1" parent="Buildings" instance=ExtResource("mine_iron")]
+position = Vector2(864, 416)
+grid_position = Vector2i(13, 6)
+
+[node name="IronMine_2" parent="Buildings" instance=ExtResource("mine_iron")]
+position = Vector2(1056, 416)
+grid_position = Vector2i(16, 6)
+
+[node name="IronMine_3" parent="Buildings" instance=ExtResource("mine_iron")]
+position = Vector2(864, 864)
+grid_position = Vector2i(13, 13)
+
+[node name="IronMine_4" parent="Buildings" instance=ExtResource("mine_iron")]
+position = Vector2(1056, 864)
+grid_position = Vector2i(16, 13)
+
+[node name="Village_1" parent="Buildings" instance=ExtResource("house")]
+position = Vector2(480, 288)
+grid_position = Vector2i(7, 4)
+
+[node name="Village_2" parent="Buildings" instance=ExtResource("house")]
+position = Vector2(1440, 288)
+grid_position = Vector2i(22, 4)
+
+[node name="Village_3" parent="Buildings" instance=ExtResource("house")]
+position = Vector2(480, 992)
+grid_position = Vector2i(7, 15)
+
+[node name="Village_4" parent="Buildings" instance=ExtResource("house")]
+position = Vector2(1440, 992)
+grid_position = Vector2i(22, 15)
+
+[node name="Village_5" parent="Buildings" instance=ExtResource("house")]
+position = Vector2(672, 544)
+grid_position = Vector2i(10, 8)
+
+[node name="Village_6" parent="Buildings" instance=ExtResource("house")]
+position = Vector2(1248, 544)
+grid_position = Vector2i(19, 8)
+
+[node name="Village_7" parent="Buildings" instance=ExtResource("house")]
+position = Vector2(672, 736)
+grid_position = Vector2i(10, 11)
+
+[node name="Village_8" parent="Buildings" instance=ExtResource("house")]
+position = Vector2(1248, 736)
+grid_position = Vector2i(19, 11)

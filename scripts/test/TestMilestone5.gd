@@ -2199,6 +2199,31 @@ func _test_black_castle_encounters() -> void:
 	if is_instance_valid(village):
 		village.capture(village_owner)
 
+	# --- the menu's backdrop is scenery, not a board -------------------------
+	# `MenuBackdrop` puts 21 real `Building` nodes behind the main menu so it
+	# looks like the game rather than a dark rectangle. `Building._ready()` adds
+	# every one of them to the "buildings" group, which is how income, troop
+	# capacity, the victory check and the AI all find their buildings — so a
+	# decorative castle left in there is a castle the game would count. The
+	# backdrop pulls them straight back out; this is the check that it still
+	# does, because the failure would be silent and would look like an economy
+	# bug rather than a menu one.
+	var before: int = get_tree().get_nodes_in_group("buildings").size()
+	var backdrop = load("res://scenes/ui/MenuBackdrop.tscn").instantiate()
+	add_child(backdrop)
+	await get_tree().process_frame
+	var during: int = get_tree().get_nodes_in_group("buildings").size()
+	var props: int = 0
+	for child in backdrop.get_node("Buildings").get_children():
+		if child is Building:
+			props += 1
+	_check(props >= 20, "the menu backdrop stands up a full board (%d buildings)" % props)
+	_check(during == before,
+		"none of them join the gameplay group (%d before, %d with the backdrop up)"
+			% [before, during])
+	backdrop.queue_free()
+	await get_tree().process_frame
+
 
 func _check(condition: bool, message: String) -> void:
 	if condition:

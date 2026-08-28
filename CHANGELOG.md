@@ -116,6 +116,36 @@ quit the application outright is **Main Menu**. Both unpause the tree first:
 leaving it set carries the freeze into the menu and every button there does
 nothing.
 
+### 🗺️ The main menu shows the battlefield
+It was a flat dark rectangle. `scenes/ui/MenuBackdrop.tscn` puts the actual
+board behind it — the same `MapBuilder`, the same tileset, the same castles,
+mines and villages. Terrain and props only: no units, no fog, no HUD.
+
+Two things about it are deliberate:
+- **The buildings leave the `buildings` group on the way in.** They are real
+  `Building` nodes — that is what makes the banners and faction art correct —
+  and `Building._ready()` adds every one to that group. Income, troop capacity,
+  the victory check and the AI all find their buildings by walking it, so a
+  decorative castle left in there is a castle the game can count. They are
+  pulled straight back out, and a check asserts it: standing the backdrop up
+  leaves the gameplay group at exactly the size it was.
+- **The zoom is capped at 1:1.** The board covers the window rather than
+  letterboxing, but a tall narrow window needs a factor above 1, and magnifying
+  this art shimmers (the scale is not an integer) *and* zooms in so far that the
+  backdrop stops reading as a map. Past that point a thin band of scrim beats
+  a field of grass.
+
+The layout is a copy of the one authored in `Match.tscn`, not a reference to it:
+reading it back out of the match scene means loading every script that scene
+touches — the controller, the HUD, every manager — to find out where a village
+goes. Drift is cosmetic anyway, since the match rolls its own resource layout at
+start and these positions are only the fallback board.
+
+Text legibility went the other way to the obvious fix: rather than darkening the
+map until the title read, the scrim was **lightened** to 38% and the title,
+subtitle and version label got outlines. The map is the thing the player asked
+to see.
+
 ### 💣 Buried mines: 6 → 14
 Six on a 30x20 board is one mine per hundred cells, and play-testing found what
 that arithmetic predicts — whole matches passed without one going off. Minimum

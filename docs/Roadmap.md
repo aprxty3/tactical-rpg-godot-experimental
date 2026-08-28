@@ -575,6 +575,14 @@ QA stress, upgrade, village, undead) still passes unchanged.
         telling a player commanding the Purple Syndicate they were blue every
         turn. It comes off the faction now, and the monsters' turn reads
         **"🕯️ THE BLACK CASTLE STIRS…"** rather than naming a fifth enemy.
+      - **The main menu shows the battlefield** rather than a flat dark
+        rectangle: `scenes/ui/MenuBackdrop.tscn` builds the real board behind it
+        with the same `MapBuilder` and tileset — terrain, props and buildings,
+        no units, no fog, no HUD. Its buildings are removed from the `buildings`
+        group on the way in, because that group is how income, capacity, the
+        victory check and the AI find theirs, and a decorative castle in it is a
+        castle the game would count. The zoom is capped at 1:1 so a narrow
+        window cannot magnify pixel art into a field of grass.
 - [ ] **Full Campaign**: Design a multi-chapter narrative campaign with escalating difficulty and persistent army progression.
       **Still open.** The bootstrap item above cleared its structural
       prerequisites — there is a menu to enter from, a configurable match, and
