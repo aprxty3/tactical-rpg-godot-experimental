@@ -12,6 +12,29 @@ All major changes to the **War Perang Tactics** project are recorded below.
 
 ---
 
+## 🏷️ Release `v0.2.0` — first playable build (2026-08-29)
+
+Tagged at the top of the five entries below. `v0.1.0` was the repository going
+public — a licence and a README. **`v0.2.0` is the first build a stranger can
+actually play**, which is the whole reason it is a minor bump and not a patch:
+
+| Since `v0.1.0` | |
+|---|---|
+| **The game boots from a menu** | Main menu → faction select → match, instead of running a test scene |
+| **Four armies, not two** | Every faction is driven by the same scoring AI |
+| **A fifth force on the board** | Six monsters garrison the Black Castle and raid rather than conquer |
+| **A different board every match** | `ResourceScatter` places mines, villages, chests, traps and kegs from a fair seed |
+| **Ten collaborators out of five god nodes** | The managers were split so their decisions could be tested without running a turn |
+
+15 commits · 85 files · +7,437 / −768 lines. Milestone 5 integration checks
+went **88 → 324**, and the nine other suites stayed at zero failures.
+
+Not in this build: **save/load**, and therefore no campaign. A match is one
+sitting. See [`docs/Roadmap.md`](docs/Roadmap.md) for why that is deferred
+rather than forgotten.
+
+---
+
 ## 📅 Wandering Encounters, Castle Garrisons & the Turn Banner (2026-08-29)
 
 The Black Castle sat in the middle of the map for four milestones holding

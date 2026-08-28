@@ -14,7 +14,7 @@ point as much as the game is.
 
 ---
 
-## 📌 Project Status — `v0.1.0`
+## 📌 Project Status — `v0.2.0`
 
 | Milestone | State |
 |---|---|
@@ -22,14 +22,14 @@ point as much as the game is.
 | **2 — Playable Prototype & Unit Expansion** | ✅ Complete |
 | **3 — Economy & Unit Upgrade Tree** | ✅ Complete |
 | **4 — Advanced Tactical Systems & Morale** | ✅ Complete — 61 checks passing |
-| **5 — AI, Visual Polish, Mount, Audio** | 🟡 In progress — 88 checks passing; **Full Campaign deferred** |
+| **5 — AI, Visual Polish, Mount, Audio** | 🟡 In progress — 324 checks passing; **Full Campaign deferred** |
 
 Full Campaign is deliberately deferred: it needs a save/load layer that does not exist
 in the repo yet, and on its own it is larger than all of Milestone 4. See
 [`docs/Roadmap.md`](docs/Roadmap.md) for the reasoning and the per-item detail.
 
-**By the numbers:** 36 GDScript sources · 91 unit resources · 66 derived spritesheets ·
-10 integration test scenes · 5 playable factions.
+**By the numbers:** 51 GDScript sources · 97 unit resources · 72 derived spritesheets ·
+10 integration test scenes · 4 playable factions plus a monster den.
 
 ---
 
@@ -83,8 +83,8 @@ separate Music/SFX buses, a polyphonic SFX pool, crossfade and combat ducking.
    ```bash
    godot --headless --path . --import
    ```
-   The 66 derived spritesheets under `assets/characters/generated/` have no `.import`
-   files until Godot has seen them once.
+   The 72 derived spritesheets under `assets/characters/generated/` and
+   `assets/characters/monsters/` have no `.import` files until Godot has seen them once.
 3. Press **`F5`** to run the project. It opens on the main menu — *Start Game*,
    then pick which of the four armies you command.
 
@@ -160,9 +160,9 @@ Every milestone ships an integration scene that reports pass/fail per check and 
 on failure, so one broken system cannot mask the others.
 
 ```bash
-godot --headless --path . scenes/test_milestone5.tscn   # 88 checks
+godot --headless --path . scenes/test_milestone5.tscn   # 324 checks
 godot --headless --path . scenes/test_milestone4.tscn   # 61 checks
-godot --headless --path . scenes/test_all_units.tscn    # all 91 unit resources
+godot --headless --path . scenes/test_all_units.tscn    # all 97 unit resources
 ```
 
 Other suites: `test_battlefield`, `test_combat_mechanics`, `test_upgrade_flow`,
@@ -174,15 +174,44 @@ Other suites: `test_battlefield`, `test_combat_mechanics`, `test_upgrade_flow`,
 
 The 66 faction spritesheets are **derived**, not hand-drawn per faction: the garment
 palette is hue-rotated onto the faction hue (skin and linework preserved), then each
-promotion gets its own value/saturation treatment, rim light and role marker.
+promotion gets its own value/saturation treatment, rim light and role marker. The six
+monsters work the same way — three source bodies, rotated palettes.
+
+These scripts need **numpy**, which is deliberately not a system dependency of this
+repo. `uv` supplies it per-run without installing anything permanently:
 
 ```bash
-python3 scripts_dev/generate_sprites.py   # derive the 66 spritesheets
-python3 scripts_dev/wire_units.py         # wire them + bake sprite_scale/offset
-python3 scripts_dev/wire_mounts.py        # wire directional cavalry art
-python3 scripts_dev/generate_music.py     # render placeholder music loops
-python3 scripts_dev/validate_project.py   # static integrity check (must report 0 errors)
+UVRUN="uv run --quiet --with numpy --with pillow python"
+
+$UVRUN scripts_dev/generate_sprites.py    # derive the 66 faction spritesheets
+$UVRUN scripts_dev/generate_monsters.py   # derive the 6 Black Castle monsters
+$UVRUN scripts_dev/wire_units.py          # wire them + bake sprite_scale/offset
+$UVRUN scripts_dev/wire_mounts.py         # wire directional cavalry art
+$UVRUN scripts_dev/generate_music.py      # render placeholder music loops
+$UVRUN scripts_dev/validate_project.py    # static integrity check (must report 0 errors)
 ```
+
+Every generator is **byte-stable**: re-running one leaves an unchanged sheet's mtime
+alone, so Godot's import cache is not disturbed by a no-op regeneration.
+
+---
+
+## 📦 Building a release
+
+`export_presets.cfg` ships Web, Linux and Windows presets. Godot 4.7's export
+templates are a separate ~1 GB download and are **not** bundled with the Arch
+package, so the first export on a fresh machine needs them installed.
+
+```bash
+godot --headless --path . --export-release "Web" build/web/index.html
+```
+
+Two things about this project specifically: the presets exclude
+`config/gemini_secret.cfg` (a live API key that an exported `.pck` would publish),
+and they keep `addons/godot_ai/` because `project.godot` registers an autoload
+inside it. [`docs/Release_Guide.md`](docs/Release_Guide.md) covers the version-number
+rules, the checks worth running before a build leaves the machine, and the itch.io
+page settings.
 
 ---
 
@@ -202,11 +231,12 @@ python3 scripts_dev/validate_project.py   # static integrity check (must report 
 ├── assets/          # Sprites, audio, tilesets, shaders, VFX  (third-party art — see LICENSE)
 ├── addons/          # Third-party editor addons  (own licenses — see LICENSE)
 ├── docs/            # GDD & architecture documentation (OKF v0.2)
-├── resources/       # Resource files (.tres) — 91 units, mounts, terrain
+├── resources/       # Resource files (.tres) — 97 units, mounts, terrain
 ├── scenes/          # Prefabs, the playable scene, and 10 test scenes
 ├── scripts/         # GDScript source — autoload/ data/ managers/ ui/ units/ test/
 ├── scripts_dev/     # Offline pipelines (sprite derivation, metric baking, validation)
 ├── tests/           # Standalone unit tests
+├── export_presets.cfg  # Web / Linux / Windows build presets
 ├── CHANGELOG.md     # Release notes & change history
 ├── GUIDE.md         # Developer guide & system expansion
 ├── MEMORY.md        # Architectural invariants & design-decision history

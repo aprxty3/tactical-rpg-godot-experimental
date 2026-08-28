@@ -12,9 +12,10 @@ extends Node
 ## Campaign will extend this rather than replace it: a chapter number, a
 ## persistent roster and a save slot all belong to "this run", not to the rules.
 
-## The four armies that take the field. Black Coven is deliberately absent — it
-## holds a castle on the map as a neutral prize, but fields no troops and takes
-## no turn, and is reserved for the campaign's undead track.
+## The four armies that take the field. Black Coven is deliberately absent, but
+## no longer because it is idle: it garrisons the Black Castle with monsters and
+## takes a turn like anyone else. It is absent because it cannot win or lose, and
+## this list is "who is contending". See `marauders` below.
 const DEFAULT_PARTICIPANTS: Array[int] = [
 	GameConfig.Faction.BLUE_KINGDOM,
 	GameConfig.Faction.RED_LEGION,

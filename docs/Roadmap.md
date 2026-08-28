@@ -248,7 +248,7 @@ faction select, four armies) added 2026-08-27; god-node split, path-crossing
 mines and randomised-but-fair boards added 2026-08-28; wandering encounters,
 castle garrisons and the claim rule added 2026-08-29; Full Campaign still open
 
-**Verified**: `scenes/test_milestone5.tscn` — 308 integration checks, all passing.
+**Verified**: `scenes/test_milestone5.tscn` — 324 integration checks, all passing.
 Every earlier suite (Milestone 4, battlefield, combat, all-units, popup/map,
 QA stress, upgrade, village, undead) still passes unchanged.
 

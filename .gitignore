@@ -5,6 +5,7 @@
 .godot/
 
 # Exported binaries & templates
+/build/
 /android/
 /ios/
 *.apk
@@ -14,6 +15,7 @@
 *.tar.gz
 *.dmg
 *.pck
+*.wasm
 
 # ==========================================
 # Graphify & AI MCP Tooling (Local Cache)
