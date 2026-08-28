@@ -53,8 +53,7 @@ func _ready() -> void:
 	EventBus.surrender_decision_required.connect(_on_surrender_decision_required)
 	EventBus.map_event_triggered.connect(_on_map_event_triggered)
 
-	_setup_recruit_popup()
-	_setup_surrender_modal()
+	_build_dialogs()
 	_update_context_text("Select unit to move/attack, or Castle to recruit.")
 
 
@@ -77,158 +76,85 @@ func _on_confirm_end_turn() -> void:
 	hide_end_turn_confirmation()
 	end_turn_requested.emit()
 
-var recruit_popup: PopupPanel
-var recruit_vbox: VBoxContainer
 signal recruit_unit_requested(building: Node, unit_data: Resource)
-
-var upgrade_popup: PopupPanel
-var upgrade_vbox: VBoxContainer
 signal upgrade_unit_requested(unit: Node, target_data: Resource)
 
-func _setup_recruit_popup() -> void:
-	recruit_popup = PopupPanel.new()
-	recruit_vbox = VBoxContainer.new()
-	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	margin.add_child(recruit_vbox)
-	recruit_popup.add_child(margin)
-	add_child(recruit_popup)
+## Recruiting and promoting are the same interaction over different lists, so
+## both are the same component with different titles. They stay two instances
+## rather than one shared popup: the two can never be open at once today, but a
+## shared instance would make that a silent invariant instead of an impossible
+## state.
+var recruit_popup: UnitChoicePopup
+var upgrade_popup: UnitChoicePopup
 
-	upgrade_popup = PopupPanel.new()
-	upgrade_vbox = VBoxContainer.new()
-	var upgrade_margin = MarginContainer.new()
-	upgrade_margin.add_theme_constant_override("margin_left", 10)
-	upgrade_margin.add_theme_constant_override("margin_right", 10)
-	upgrade_margin.add_theme_constant_override("margin_top", 10)
-	upgrade_margin.add_theme_constant_override("margin_bottom", 10)
-	upgrade_margin.add_child(upgrade_vbox)
-	upgrade_popup.add_child(upgrade_margin)
-	add_child(upgrade_popup)
 
 func show_recruit_popup(building: Node) -> void:
-	for child in recruit_vbox.get_children():
-		child.queue_free()
+	if not is_instance_valid(recruit_popup) or not is_instance_valid(building):
+		return
+	recruit_popup.present(
+		"Select Unit to Recruit:",
+		building.get("recruitable_units"),
+		building,
+	)
 
-	var title = Label.new()
-	title.text = "Select Unit to Recruit:"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	recruit_vbox.add_child(title)
-
-	for unit_data in building.get("recruitable_units"):
-		var btn = Button.new()
-		btn.text = "%s (💰%d | ⛏️%d)" % [unit_data.unit_name, unit_data.recruit_cost_gold, unit_data.recruit_cost_iron]
-		btn.pressed.connect(_on_recruit_button_pressed.bind(building, unit_data))
-		recruit_vbox.add_child(btn)
-
-	recruit_popup.popup_centered(Vector2(250, 200))
 
 ## Shows available promotions for `unit` (from its UnitData.upgrade_paths)
 ## alongside the Field Tax surcharge if not currently at a friendly Castle.
 func show_upgrade_popup(unit: Node, is_at_castle: bool) -> void:
-	for child in upgrade_vbox.get_children():
-		child.queue_free()
-
-	var title = Label.new()
-	title.text = "Select Promotion:" if is_at_castle else "Select Promotion (⚠️ Field Tax 2x — not at Castle):"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	upgrade_vbox.add_child(title)
-
-	var paths: Dictionary = unit.unit_data.upgrade_paths if is_instance_valid(unit.unit_data) else {}
-	for label in paths:
-		var target_data = paths[label]
-		var btn = Button.new()
-		btn.text = "%s (💰%d | ⛏️%d)" % [target_data.unit_name, target_data.recruit_cost_gold, target_data.recruit_cost_iron]
-		btn.pressed.connect(_on_upgrade_button_pressed.bind(unit, target_data))
-		upgrade_vbox.add_child(btn)
-
-	upgrade_popup.popup_centered(Vector2(250, 200))
+	if not is_instance_valid(upgrade_popup) or not is_instance_valid(unit):
+		return
+	var paths: Dictionary = (unit.unit_data.upgrade_paths
+		if is_instance_valid(unit.unit_data) else {})
+	upgrade_popup.present(
+		"Select Promotion:" if is_at_castle
+			else "Select Promotion (⚠️ Field Tax 2x — not at Castle):",
+		paths.values(),
+		unit,
+	)
 
 
-func _on_recruit_button_pressed(building: Variant, unit_data: Variant) -> void:
-	recruit_popup.hide()
-	if is_instance_valid(building) and is_instance_valid(unit_data):
-		recruit_unit_requested.emit(building, unit_data)
-
-
-func _on_upgrade_button_pressed(unit: Variant, target_data: Variant) -> void:
-	upgrade_popup.hide()
-	if is_instance_valid(unit) and is_instance_valid(target_data):
-		upgrade_unit_requested.emit(unit, target_data)
-
-# ==============================================================================
-# SURRENDER MODAL
 # ==============================================================================
 
 signal surrender_choice_made(unit: Node, choice: String)
 
-var surrender_modal: Control
-var game_over_modal: Control
+var surrender_modal: SurrenderModal
+var game_over_modal: GameOverModal
 ## Latched once the match ends, so a second victory/defeat signal cannot rebuild
-## the result screen and the grid controller has something to ask.
+## the result screen and the match controller has something to ask.
 var _match_over: bool = false
-var surrender_text: Label
-var _surrender_unit: TacticalUnit = null
 
-## Built in code like the recruit and upgrade popups, but as a full-screen
-## Control rather than a PopupPanel: a PopupPanel can be dismissed by clicking
-## outside it, and a dismissed prompt would leave the prisoner frozen forever.
-## This overlay has exactly two exits, both of which resolve the capture.
-func _setup_surrender_modal() -> void:
-	surrender_modal = ColorRect.new()
-	surrender_modal.name = "SurrenderModal"
-	surrender_modal.color = Color(0, 0, 0, 0.55)
-	surrender_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
-	surrender_modal.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+## The dialogs are built here rather than declared in `MainHUD.tscn` because
+## that is how they already worked, and moving them into the scene would mean
+## re-authoring the scene file for no behavioural gain. What changed is that
+## each one is now a component that owns its own widgets; this HUD only wires
+## them up and relays their signals, so its public API is unchanged.
+func _build_dialogs() -> void:
+	recruit_popup = UnitChoicePopup.new("RecruitPopup")
+	recruit_popup.option_chosen.connect(
+		func(building, data): recruit_unit_requested.emit(building, data))
+	add_child(recruit_popup)
 
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 16)
+	upgrade_popup = UnitChoicePopup.new("UpgradePopup")
+	upgrade_popup.option_chosen.connect(
+		func(unit, data): upgrade_unit_requested.emit(unit, data))
+	add_child(upgrade_popup)
 
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-
-	var title := Label.new()
-	title.text = "🏳️ ENEMY SURRENDERS"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 18)
-	box.add_child(title)
-
-	surrender_text = Label.new()
-	surrender_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(surrender_text)
-
-	var capture_btn := Button.new()
-	capture_btn.text = "⚔️  Capture (joins your army)"
-	capture_btn.pressed.connect(_on_surrender_button.bind("capture"))
-	box.add_child(capture_btn)
-
-	var ransom_btn := Button.new()
-	ransom_btn.text = "💰  Ransom (take the gold)"
-	ransom_btn.pressed.connect(_on_surrender_button.bind("ransom"))
-	box.add_child(ransom_btn)
-
-	margin.add_child(box)
-	panel.add_child(margin)
-	surrender_modal.add_child(panel)
+	surrender_modal = SurrenderModal.new()
+	surrender_modal.choice_made.connect(
+		func(unit, choice): surrender_choice_made.emit(unit, choice))
 	add_child(surrender_modal)
-	surrender_modal.hide()
 
 
+## Resolve the captor's spare capacity HERE, not inside the dialog: it needs
+## EconomyManager and TurnManager, and a dialog that reaches for managers cannot
+## be shown without building most of the game around it.
 func _on_surrender_decision_required(unit: Node, captor_faction_id: int) -> void:
-	if not (unit is TacticalUnit):
+	if not (unit is TacticalUnit) or not is_instance_valid(surrender_modal):
 		return
-	_surrender_unit = unit as TacticalUnit
+	var prisoner := unit as TacticalUnit
+	var data: UnitData = prisoner.unit_data
 
-	var data: UnitData = _surrender_unit.unit_data
-	var unit_name: String = data.unit_name if is_instance_valid(data) else _surrender_unit.name
 	var ransom: int = 0
 	var weight: int = 0
 	if is_instance_valid(data):
@@ -243,17 +169,7 @@ func _on_surrender_decision_required(unit: Node, captor_faction_id: int) -> void
 		var maximum: int = economy_manager.get_max_capacity(captor_faction_id)
 		room = "\nTroop Cap: %d/%d  (this unit costs %d)" % [used, maximum, weight]
 
-	surrender_text.text = "%s has broken and lays down arms.\nRansom pays %d Gold.%s" % [
-		unit_name, ransom, room
-	]
-	surrender_modal.show()
-
-
-func _on_surrender_button(choice: String) -> void:
-	surrender_modal.hide()
-	if is_instance_valid(_surrender_unit):
-		surrender_choice_made.emit(_surrender_unit, choice)
-	_surrender_unit = null
+	surrender_modal.present(prisoner, ransom, room)
 
 
 func is_surrender_popup_active() -> bool:
@@ -451,58 +367,12 @@ func is_match_over() -> bool:
 
 
 func _show_game_over_modal(player_won: bool) -> void:
-	if is_instance_valid(game_over_modal):
-		game_over_modal.show()
-		return
-
-	game_over_modal = ColorRect.new()
-	game_over_modal.name = "GameOverModal"
-	game_over_modal.color = Color(0, 0, 0, 0.65)
-	game_over_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
-	# STOP, not IGNORE: the overlay has to swallow clicks, or the board stays
-	# playable through it and the "match over" state is cosmetic.
-	game_over_modal.mouse_filter = Control.MOUSE_FILTER_STOP
-
-	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 20)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
-
-	var title := Label.new()
-	title.text = "🏆 VICTORY" if player_won else "💀 DEFEAT"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color",
-		Color(0.3, 0.9, 0.3) if player_won else Color(0.9, 0.3, 0.3))
-	box.add_child(title)
-
-	var subtitle := Label.new()
-	subtitle.text = ("The enemy castles have fallen." if player_won
-		else "Your forces have been broken.")
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(subtitle)
-
-	var retry_btn := Button.new()
-	retry_btn.text = "🔄  Retry"
-	retry_btn.pressed.connect(_on_retry_pressed)
-	box.add_child(retry_btn)
-
-	var quit_btn := Button.new()
-	quit_btn.text = "🚪  Quit"
-	quit_btn.pressed.connect(func(): get_tree().quit())
-	box.add_child(quit_btn)
-
-	margin.add_child(box)
-	panel.add_child(margin)
-	game_over_modal.add_child(panel)
-	add_child(game_over_modal)
+	if not is_instance_valid(game_over_modal):
+		game_over_modal = GameOverModal.new()
+		game_over_modal.retry_pressed.connect(_on_retry_pressed)
+		game_over_modal.quit_pressed.connect(func(): get_tree().quit())
+		add_child(game_over_modal)
+	game_over_modal.present(player_won)
 
 
 ## Restart the match by reloading the scene.

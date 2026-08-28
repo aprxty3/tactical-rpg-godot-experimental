@@ -35,16 +35,13 @@ var is_mounted: bool = true
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
-# === Overhead HP Bar Components ===
-var hp_bar: ProgressBar
-var hp_label: Label
-var _hp_tween: Tween
-var _fill_style: StyleBoxFlat
-var _hp_bg_style: StyleBoxFlat
-
-# === Overhead Morale Strip ===
-var morale_bar: ColorRect
-var morale_fill: ColorRect
+# === Overhead Status Readout ===
+## HP bar, morale strip and floating combat text, all owned by one child
+## component. Instanced in code rather than declared in each unit scene: all 40+
+## unit `.tscn` files predate it, and building it here leaves every one of them
+## valid untouched — the same backwards-compatible-by-construction rule the
+## mount system follows.
+var overlay: UnitOverlay
 
 
 func _ready() -> void:
@@ -57,8 +54,15 @@ func _ready() -> void:
 		_initialize_from_data()
 	
 	_setup_default_animations()
-	_setup_health_bar()
-	_setup_morale_bar()
+
+	overlay = UnitOverlay.new()
+	overlay.name = "Overlay"
+	add_child(overlay)
+	overlay.set_faction_tint(
+		GameConfig.FACTION_TINT_COLORS.get(faction_id, Color(0.7, 0.7, 0.75))
+	)
+	_refresh_health(false)
+	_refresh_morale()
 
 
 ## Setup standard TinySwords animation frames dynamically based on unit archetype
@@ -265,7 +269,7 @@ func toggle_mount() -> bool:
 	# already spent walking.
 	current_movement = mini(current_movement, get_effective_movement())
 	consume_action()
-	_show_floating_indicator(
+	_pop_text(
 		"MOUNTED" if is_mounted else "ON FOOT",
 		Color(0.85, 0.9, 1.0)
 	)
@@ -284,8 +288,8 @@ func _initialize_from_data() -> void:
 	morale = GameConfig.MORALE_DEFAULT
 	pending_surrender = false
 	_update_visuals()
-	_update_health_bar(false)
-	_update_morale_bar()
+	_refresh_health(false)
+	_refresh_morale()
 
 
 ## Reset movement and action points at the start of a new turn.
@@ -299,9 +303,9 @@ func reset_for_new_turn() -> void:
 ## Returns true if the unit died.
 func take_damage(amount: int, damage_type: String = "normal") -> bool:
 	current_health -= amount
-	_update_health_bar(true)
+	_refresh_health(true)
 	_flash_damage()
-	_show_floating_indicator("-%d" % amount, Color(1.0, 0.25, 0.25))
+	_pop_text("-%d" % amount, Color(1.0, 0.25, 0.25))
 	EventBus.unit_damaged.emit(self, amount, damage_type)
 
 	if current_health <= 0:
@@ -319,8 +323,8 @@ func heal(amount: int) -> void:
 	current_health = mini(current_health + amount, unit_data.max_health)
 	var actual_healed := current_health - old_health
 	if actual_healed > 0:
-		_update_health_bar(true)
-		_show_floating_indicator("+%d" % actual_healed, Color(0.25, 1.0, 0.35))
+		_refresh_health(true)
+		_pop_text("+%d" % actual_healed, Color(0.25, 1.0, 0.35))
 		EventBus.unit_healed.emit(self, actual_healed)
 
 
@@ -381,26 +385,6 @@ func _restore_sprite() -> void:
 	sprite.position = Vector2.ZERO
 
 
-func _show_floating_indicator(text: String, color: Color) -> void:
-	var label = Label.new()
-	label.text = text
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_constant_override("outline_size", 3)
-	label.add_theme_color_override("font_outline_color", Color.BLACK)
-	label.position = Vector2(-20, -70)
-	add_child(label)
-
-	var tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(label, "position:y", label.position.y - 24.0, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(label, "modulate:a", 0.0, 0.6).set_ease(Tween.EASE_IN).set_delay(0.2)
-	tween.chain().tween_callback(label.queue_free)
-
-
 ## Swap UnitData resource for an upgraded version.
 ## Proportionally scales HP so upgrades feel fair.
 func upgrade_to(new_data: UnitData) -> void:
@@ -420,11 +404,11 @@ func upgrade_to(new_data: UnitData) -> void:
 	current_movement = mini(current_movement, get_effective_movement())
 
 	_update_visuals()
-	_update_health_bar(false)
+	_refresh_health(false)
 	# A promotion is a shot in the arm — and it also re-evaluates immunity, so
 	# the strip has to be refreshed either way.
 	adjust_morale(GameConfig.MORALE_KILL_BONUS)
-	_update_morale_bar()
+	_refresh_morale()
 	if animation_player and animation_player.has_animation("level_up_effect"):
 		animation_player.play("level_up_effect")
 
@@ -484,10 +468,10 @@ func adjust_morale(delta: int) -> GameConfig.MoraleLevel:
 	var old_level := get_morale_level()
 	morale = clampi(morale + delta, 0, GameConfig.MORALE_MAX)
 	var new_level := get_morale_level()
-	_update_morale_bar()
+	_refresh_morale()
 
 	if new_level != old_level:
-		_show_floating_indicator(
+		_pop_text(
 			GameConfig.MORALE_LABEL.get(new_level, "?"),
 			GameConfig.MORALE_COLOR.get(new_level, Color.WHITE),
 		)
@@ -519,135 +503,45 @@ func change_faction(new_faction_id: int) -> void:
 	current_movement = 0
 	morale = GameConfig.MORALE_AFTER_CAPTURE
 
-	_apply_hp_bar_faction_color()
-	_update_health_bar(false)
-	_update_morale_bar()
+	if is_instance_valid(overlay):
+		overlay.set_faction_tint(
+			GameConfig.FACTION_TINT_COLORS.get(faction_id, Color(0.7, 0.7, 0.75))
+		)
+	_refresh_health(false)
+	_refresh_morale()
 
 	EventBus.unit_captured.emit(self, old_faction, new_faction_id)
 
 
 # === Private Methods ===
 
-func _setup_health_bar() -> void:
-	hp_bar = ProgressBar.new()
-	hp_bar.name = "FloatingHPBar"
-	hp_bar.show_percentage = false
-	hp_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hp_bar.custom_minimum_size = Vector2(70, 10)
-	hp_bar.size = Vector2(70, 10)
-	hp_bar.position = Vector2(-35, -55)
-	
-	# Background style — the border carries the owner's colour, which is how a
-	# defecting unit reads as having changed sides.
-	_hp_bg_style = StyleBoxFlat.new()
-	_hp_bg_style.bg_color = Color(0.08, 0.08, 0.1, 0.85)
-	_hp_bg_style.set_border_width_all(1)
-	_hp_bg_style.set_corner_radius_all(2)
-	hp_bar.add_theme_stylebox_override("background", _hp_bg_style)
-	_apply_hp_bar_faction_color()
-	
-	# Fill style
-	_fill_style = StyleBoxFlat.new()
-	_fill_style.set_corner_radius_all(2)
-	hp_bar.add_theme_stylebox_override("fill", _fill_style)
-	
-	# Number label
-	hp_label = Label.new()
-	hp_label.name = "HPLabel"
-	hp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hp_label.size = hp_bar.size
-	hp_label.position = Vector2.ZERO
-	hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hp_label.add_theme_font_size_override("font_size", 10)
-	hp_label.add_theme_constant_override("outline_size", 3)
-	hp_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	hp_bar.add_child(hp_label)
-	
-	add_child(hp_bar)
-	_update_health_bar(false)
-
-
-func _apply_hp_bar_faction_color() -> void:
-	if not _hp_bg_style:
+## Push the current health numbers to the overhead readout. The unit owns the
+## numbers; the overlay owns how they look. Guarded because `_initialize_from_data`
+## can run from `_ready` before the overlay has been instanced.
+func _refresh_health(animate: bool = false) -> void:
+	if not is_instance_valid(overlay) or not is_instance_valid(unit_data):
 		return
-	var tint: Color = GameConfig.FACTION_TINT_COLORS.get(faction_id, Color(0.7, 0.7, 0.75))
-	_hp_bg_style.border_color = Color(tint.r, tint.g, tint.b, 0.95)
+	overlay.show_health(current_health, unit_data.max_health, animate)
 
 
-func _update_health_bar(animate: bool = false) -> void:
-	if not hp_bar or not is_instance_valid(unit_data):
+## Resolve the morale band and its colour here — those are rules — and hand the
+## overlay only the result. Undead pass `false` for visibility rather than a full
+## bar: they have no morale to show, which is not the same as high morale.
+func _refresh_morale() -> void:
+	if not is_instance_valid(overlay):
 		return
-	
-	var max_hp: int = unit_data.max_health
-	hp_bar.max_value = max_hp
-	
-	var ratio: float = float(current_health) / float(max_hp) if max_hp > 0 else 0.0
-	
-	# Dynamic color: Green (> 50%) -> Amber/Yellow (25%-50%) -> Bright Red (<= 25% - Sekarat!)
-	var bar_color: Color
-	if ratio > 0.5:
-		bar_color = Color(0.2, 0.85, 0.35)
-	elif ratio > 0.25:
-		bar_color = Color(0.95, 0.7, 0.15)
-	else:
-		bar_color = Color(0.95, 0.2, 0.2)
-		
-	if _fill_style:
-		_fill_style.bg_color = bar_color
-	
-	if hp_label:
-		if ratio <= 0.25 and current_health > 0:
-			hp_label.text = "⚠️ %d/%d" % [maxi(0, current_health), max_hp]
-		else:
-			hp_label.text = "%d/%d" % [maxi(0, current_health), max_hp]
-	
-	if animate:
-		if _hp_tween and _hp_tween.is_valid():
-			_hp_tween.kill()
-		_hp_tween = create_tween()
-		_hp_tween.set_ease(Tween.EASE_OUT)
-		_hp_tween.set_trans(Tween.TRANS_QUAD)
-		_hp_tween.tween_property(hp_bar, "value", float(maxi(0, current_health)), 0.25)
-	else:
-		hp_bar.value = float(maxi(0, current_health))
-
-
-## A thin strip under the HP bar. Deliberately not a second numeric readout —
-## the exact scalar belongs in the inspector panel; on the battlefield the
-## player only needs to see at a glance which units are about to break.
-func _setup_morale_bar() -> void:
-	morale_bar = ColorRect.new()
-	morale_bar.name = "MoraleStrip"
-	morale_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	morale_bar.color = Color(0.08, 0.08, 0.1, 0.85)
-	morale_bar.size = Vector2(70, 4)
-	morale_bar.position = Vector2(-35, -43)
-
-	morale_fill = ColorRect.new()
-	morale_fill.name = "Fill"
-	morale_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	morale_fill.position = Vector2.ZERO
-	morale_fill.size = Vector2(70, 4)
-	morale_bar.add_child(morale_fill)
-
-	add_child(morale_bar)
-	_update_morale_bar()
-
-
-func _update_morale_bar() -> void:
-	if not is_instance_valid(morale_bar):
-		return
-	# Undead have no morale to show, so they get no strip at all.
-	if is_morale_immune():
-		morale_bar.visible = false
-		return
-
-	morale_bar.visible = true
 	var level := get_morale_level()
-	var ratio: float = clampf(float(morale) / float(GameConfig.MORALE_MAX), 0.0, 1.0)
-	morale_fill.size = Vector2(70.0 * ratio, 4)
-	morale_fill.color = GameConfig.MORALE_COLOR.get(level, Color.WHITE)
+	overlay.show_morale(
+		morale,
+		GameConfig.MORALE_MAX,
+		GameConfig.MORALE_COLOR.get(level, Color.WHITE),
+		not is_morale_immune(),
+	)
+
+
+func _pop_text(text: String, color: Color) -> void:
+	if is_instance_valid(overlay):
+		overlay.pop_text(text, color)
 
 
 ## Walk off the battlefield without being killed — a morale break rather than a
@@ -657,7 +551,7 @@ func desert() -> void:
 	if current_health <= 0:
 		return
 	current_health = 0
-	_show_floating_indicator("DESERTED", GameConfig.MORALE_COLOR[GameConfig.MoraleLevel.FEARFUL])
+	_pop_text("DESERTED", GameConfig.MORALE_COLOR[GameConfig.MoraleLevel.FEARFUL])
 	_handle_death("desertion")
 
 
@@ -674,8 +568,10 @@ func _handle_death(damage_type: String) -> void:
 		death_tween.set_parallel(true)
 		death_tween.tween_property(sprite, "modulate:a", 0.0, 0.35)
 		death_tween.tween_property(sprite, "scale", sprite.scale * 0.8, 0.35)
-		if hp_bar:
-			death_tween.tween_property(hp_bar, "modulate:a", 0.0, 0.2)
+		# Fades the whole readout, where this used to fade only the HP bar and
+		# leave the morale strip fully opaque over a dissolving corpse.
+		if is_instance_valid(overlay):
+			overlay.fade_out(death_tween, 0.2)
 		death_tween.chain().tween_callback(queue_free)
 	else:
 		queue_free()

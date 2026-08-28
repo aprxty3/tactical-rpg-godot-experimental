@@ -44,6 +44,11 @@ var _objects: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 var _last_round: int = 1
 
+## What is inside a chest. Built in `setup` because it borrows this manager's
+## seeded RNG — a table with its own generator would break the reproducibility
+## that `random_seed` exists to provide.
+var pandora: PandoraTable
+
 
 func _ready() -> void:
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
@@ -61,6 +66,10 @@ func setup(grid_mgr: GridManager, eco_mgr: Node, objects_parent: Node2D, units_p
 	else:
 		_rng.seed = random_seed
 	_last_round = TurnManager.turn_number
+
+	# Spawning and cell-finding go in as Callables, so the table can place a
+	# mercenary without holding a reference back to this manager.
+	pandora = PandoraTable.new(_rng, economy_manager, _spawn_unit, _free_cells_around)
 
 
 # ==============================================================================
@@ -376,118 +385,12 @@ func extinguish_fire_at(cell: Vector2i) -> void:
 # ==============================================================================
 
 ## Resolve an opened chest into one of four outcomes and announce it.
-func open_chest(chest: Chest, opener: TacticalUnit) -> void:
-	var outcome: String = _roll_pandora()
-	var result: Dictionary = {}
-
-	match outcome:
-		"war_spoils":
-			result = _grant_spoils(opener)
-		"mercenary":
-			result = _grant_mercenary(chest.grid_position, opener)
-		"trap":
-			result = _spring_trap(opener)
-		"awaken_dead":
-			result = _awaken_dead(chest.grid_position, opener)
-
-	result["outcome"] = outcome
-	EventBus.map_event_triggered.emit(outcome, chest.grid_position, result)
-
-
-## Weighted pick over the GameConfig odds. Normalised by the total rather than
-## assuming the constants sum to 1.0, so retuning one of them cannot silently
-## make an outcome unreachable.
-func _roll_pandora() -> String:
-	var table: Array = [
-		{"id": "war_spoils", "weight": GameConfig.PANDORA_WAR_SPOILS_CHANCE},
-		{"id": "mercenary", "weight": GameConfig.PANDORA_MERCENARY_CHANCE},
-		{"id": "trap", "weight": GameConfig.PANDORA_TRAP_CHANCE},
-		{"id": "awaken_dead", "weight": GameConfig.PANDORA_AWAKEN_DEAD_CHANCE},
-	]
-	var total: float = 0.0
-	for entry in table:
-		total += float(entry["weight"])
-	if total <= 0.0:
-		return "war_spoils"
-
-	var roll: float = _rng.randf() * total
-	for entry in table:
-		roll -= float(entry["weight"])
-		if roll <= 0.0:
-			return entry["id"]
-	return table[table.size() - 1]["id"]
-
-
-func _grant_spoils(opener: TacticalUnit) -> Dictionary:
-	var gold: int = _rng.randi_range(GameConfig.PANDORA_SPOILS_GOLD.x, GameConfig.PANDORA_SPOILS_GOLD.y)
-	var iron: int = _rng.randi_range(GameConfig.PANDORA_SPOILS_IRON.x, GameConfig.PANDORA_SPOILS_IRON.y)
-	if is_instance_valid(economy_manager):
-		economy_manager.add_gold(opener.faction_id, gold)
-		economy_manager.add_iron(opener.faction_id, iron)
-	return {"gold": gold, "iron": iron}
-
-
-func _grant_mercenary(cell: Vector2i, opener: TacticalUnit) -> Dictionary:
-	var data: UnitData = _pick_mercenary_data(opener)
-	var free_cells := _free_cells_around(cell, 1)
-	if data == null or free_cells.is_empty():
-		# Nowhere to stand, or nothing to hire — pay the finder's fee instead.
-		return _grant_spoils(opener)
-
-	var hired := _spawn_unit(data, opener.faction_id, free_cells[0])
-	return {"unit": hired, "unit_name": data.unit_name}
-
-
-## Hire whatever the opener's own castle could field, preferring its best troop.
-## Falls back to a copy of the opener when that faction holds no castle.
-func _pick_mercenary_data(opener: TacticalUnit) -> UnitData:
-	var best: UnitData = null
-	for node in get_tree().get_nodes_in_group("buildings"):
-		if not (node is Building):
-			continue
-		var building: Building = node
-		if building.faction_id != opener.faction_id or building.building_type != Building.BuildingType.CASTLE:
-			continue
-		for candidate in building.recruitable_units:
-			if is_instance_valid(candidate) and (best == null or candidate.recruit_cost_gold > best.recruit_cost_gold):
-				best = candidate
-
-	if best != null:
-		return UnitData.variant_for_faction(best, opener.faction_id)
-	return opener.unit_data if is_instance_valid(opener.unit_data) else null
-
-
-func _spring_trap(opener: TacticalUnit) -> Dictionary:
-	opener.take_damage(GameConfig.PANDORA_TRAP_DAMAGE, "true")
-	opener.adjust_morale(GameConfig.MORALE_AMBUSHED)
-	return {"damage": GameConfig.PANDORA_TRAP_DAMAGE}
-
-
-## The dead rise against whoever disturbed them.
 ##
-## They enlist under the opener's enemy rather than the Black Coven, because the
-## Coven takes no turns in this match — undead spawned into a faction that never
-## acts would be statues. Their sprites stay Coven undead either way; the
-## Undead line has no per-faction variants by design.
-func _awaken_dead(cell: Vector2i, opener: TacticalUnit) -> Dictionary:
-	var hostile_faction: int = _enemy_of(opener.faction_id)
-	var cells := _free_cells_around(cell, GameConfig.PANDORA_UNDEAD_COUNT)
-	var raised: Array = []
-
-	for i in range(mini(cells.size(), GameConfig.PANDORA_UNDEAD_COUNT)):
-		var path: String = AWAKENED_UNITS[i % AWAKENED_UNITS.size()]
-		var data: UnitData = load(path) as UnitData
-		if is_instance_valid(data):
-			raised.append(_spawn_unit(data, hostile_faction, cells[i]))
-
-	return {"count": raised.size(), "faction_id": hostile_faction}
-
-
-func _enemy_of(faction_id: int) -> int:
-	for other in TurnManager.faction_order:
-		if other != faction_id:
-			return other
-	return GameConfig.Faction.BLACK_COVEN
+## The outcomes themselves live in `PandoraTable`; this manager owns the object
+## that was opened and the announcement, not the loot rules.
+func open_chest(chest: Chest, opener: TacticalUnit) -> void:
+	var result: Dictionary = pandora.open(chest.grid_position, opener)
+	EventBus.map_event_triggered.emit(result["outcome"], chest.grid_position, result)
 
 
 # === Spawn helpers ===

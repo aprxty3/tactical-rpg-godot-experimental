@@ -58,6 +58,10 @@ var reachable_cells: Array[Vector2i] = []
 var attackable_cells: Array[Vector2i] = []
 var hovered_cell: Vector2i = Vector2i(-1, -1)
 
+## The highlight layer. Created in code and forced to child index 0 — see
+## GridOverlay's own note on why that position is load-bearing.
+var grid_overlay: GridOverlay
+
 
 func _ready() -> void:
 	# The four TileMapLayers carry explicit negative z_index values (-4 water,
@@ -110,6 +114,17 @@ func _ready() -> void:
 	map_object_manager.setup(grid_manager, economy_manager, map_object_container, unit_container)
 	main_hud.player_faction_id = player_faction
 
+	# The highlight layer, forced to the front of the child list. The map layers
+	# sit at negative z_index so this controller's own drawing landed above them,
+	# while Buildings and Units — both z 0 — drew after it in tree order. A node
+	# draws before its children, so index 0 is the only position that reproduces
+	# that stack; anywhere later buries the highlights under the units on them.
+	grid_overlay = GridOverlay.new()
+	grid_overlay.name = "GridOverlay"
+	add_child(grid_overlay)
+	move_child(grid_overlay, 0)
+	grid_overlay.setup(grid_manager)
+
 	# 4. Terrain first, armies second, everything that reads them third. The
 	#    armies used to be nodes sitting in the scene file, so this order never
 	#    came up; spawning them in code means the river has to exist before
@@ -129,7 +144,7 @@ func _ready() -> void:
 	main_hud.initialize(economy_manager, grid_manager)
 
 	TurnManager.start_turn()
-	queue_redraw()
+	_refresh_overlay()
 
 
 ## Paint the 30x20 battlefield: rivers, bridges, roads and shoreline.
@@ -210,89 +225,12 @@ func _player_start_focus() -> Vector2:
 # ARMIES — mustered in code, because the number of them is no longer fixed
 # ==============================================================================
 
-## How far from its castle an army will look for somewhere to stand before it
-## gives up. Four rings is already 80 cells; needing more than that means the
-## castle was walled in by water and the map is the problem, not the search.
-const MUSTER_MAX_RADIUS: int = 4
-
-
-## Place each participant's opening three units around its own castle.
-##
-## These used to be six nodes saved into the scene file, which is why the match
-## was Blue versus Red and could not be anything else: a scene file cannot hold
-## "three units for whichever factions happen to be playing".
+## Placing the opening armies moved to `ArmyMuster`: castle lookup, the ring
+## search for free ground, and unit instancing are one job, and they are the
+## only part of this controller that runs exactly once and never again.
 func _spawn_starting_armies() -> void:
-	for faction_id in MatchSetup.participants:
-		var castle: Building = _castle_of(faction_id)
-		if castle == null:
-			push_warning("MatchController: %s has no castle; it musters nothing."
-				% GameConfig.faction_title(faction_id))
-			continue
-
-		var cells: Array[Vector2i] = _muster_cells(castle.grid_position, STARTING_ROLES.size())
-		if cells.size() < STARTING_ROLES.size():
-			push_warning("MatchController: only %d of %d muster cells free near %s's castle."
-				% [cells.size(), STARTING_ROLES.size(), GameConfig.faction_title(faction_id)])
-
-		for i in range(mini(cells.size(), STARTING_ROLES.size())):
-			_spawn_unit(STARTING_ROLES[i], faction_id, cells[i])
-
-
-func _castle_of(faction_id: int) -> Building:
-	for bld in get_tree().get_nodes_in_group("buildings"):
-		if bld is Building and bld.building_type == Building.BuildingType.CASTLE \
-				and bld.faction_id == faction_id:
-			return bld
-	return null
-
-
-## Free cells around a castle, searched ring by ring so the army forms up tight
-## against its own keep rather than strung out across the map.
-func _muster_cells(origin: Vector2i, count: int) -> Array[Vector2i]:
-	var found: Array[Vector2i] = []
-	var radius: int = 1
-	while found.size() < count and radius <= MUSTER_MAX_RADIUS:
-		for dy in range(-radius, radius + 1):
-			for dx in range(-radius, radius + 1):
-				# The ring only. Everything inside it was already offered by a
-				# smaller radius, and re-walking it would just cost time.
-				if absi(dx) != radius and absi(dy) != radius:
-					continue
-				var cell: Vector2i = origin + Vector2i(dx, dy)
-				if found.has(cell):
-					continue
-				# A building's own cell is walkable as far as the grid is
-				# concerned, but standing the opening army on top of the gold
-				# mine next door reads as a bug.
-				if not grid_manager.is_cell_walkable(cell):
-					continue
-				if grid_manager.get_building_at(cell) != null:
-					continue
-				found.append(cell)
-				if found.size() == count:
-					return found
-		radius += 1
-	return found
-
-
-## Instance one unit scene and hand it to the grid.
-##
-## `faction_id` is assigned before `add_child`, so the unit is already the right
-## colour when its own `_ready` builds the health bar from it.
-func _spawn_unit(role: String, faction_id: int, cell: Vector2i) -> TacticalUnit:
-	var suffix: String = GameConfig.faction_display_name(faction_id)
-	var path: String = "res://scenes/units/TacticalUnit_%s_%s.tscn" % [role, suffix]
-	if not ResourceLoader.exists(path):
-		push_warning("MatchController: no scene at %s" % path)
-		return null
-
-	var scene: PackedScene = load(path)
-	var unit: TacticalUnit = scene.instantiate()
-	unit.name = "%s_%s" % [suffix, role]
-	unit.faction_id = faction_id
-	unit_container.add_child(unit)
-	grid_manager.register_unit(unit, cell)
-	return unit
+	var muster := ArmyMuster.new(grid_manager, unit_container)
+	muster.muster(MatchSetup.participants, STARTING_ROLES)
 
 
 ## One AI per opponent.
@@ -380,7 +318,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		var cell := grid_manager.world_to_grid(get_global_mouse_position())
 		if cell != hovered_cell:
 			hovered_cell = cell
-			queue_redraw()
+			_refresh_overlay()
 		return
 
 	# Acts on RELEASE, not press. A left-drag pans the camera, and whether a press
@@ -445,7 +383,7 @@ func _handle_cell_click(cell: Vector2i) -> void:
 		EventBus.unit_move_requested.emit(selected_unit, cell)
 		reachable_cells.clear()
 		attackable_cells.clear()
-		queue_redraw()
+		_refresh_overlay()
 		return
 
 	if building_at_cell != null:
@@ -495,7 +433,7 @@ func _select_unit(unit: TacticalUnit) -> void:
 			unit.unit_data.attack_range_max,
 		)
 	EventBus.unit_selected.emit(unit)
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _select_building(bld: Building) -> void:
@@ -503,7 +441,7 @@ func _select_building(bld: Building) -> void:
 	selected_building = bld
 	if main_hud.has_method("show_building_info"):
 		main_hud.show_building_info(bld)
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _try_recruit_at_selected_castle() -> void:
@@ -594,7 +532,7 @@ func _do_upgrade(unit: TacticalUnit, target_data: Resource) -> void:
 			_select_unit(unit)
 	else:
 		_update_hud_text("❌ Not enough Gold/Iron to promote to %s." % target_data.unit_name)
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _do_recruit(building: Building, unit_data: Resource) -> void:
@@ -619,7 +557,7 @@ func _do_recruit(building: Building, unit_data: Resource) -> void:
 
 	var _new_unit = building.recruit_unit(unit_data, spawn_cell, economy_manager, unit_container)
 	_update_hud_text("✨ Recruited %s at %s!" % [unit_data.unit_name, spawn_cell])
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _deselect_all() -> void:
@@ -628,7 +566,7 @@ func _deselect_all() -> void:
 	reachable_cells.clear()
 	attackable_cells.clear()
 	EventBus.unit_deselected.emit()
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _on_unit_move_completed(unit: TacticalUnit, _from_cell: Vector2i, _to_cell: Vector2i) -> void:
@@ -636,12 +574,12 @@ func _on_unit_move_completed(unit: TacticalUnit, _from_cell: Vector2i, _to_cell:
 	# reselecting Blue units for a player commanding Yellow.
 	if unit.faction_id == player_faction:
 		_select_unit(unit)
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _on_building_captured(building: Building, _new_faction_id: int) -> void:
 	_update_hud_text("🚩 Building captured: %s!" % building.name)
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _on_combat_resolved(result: Dictionary) -> void:
@@ -660,7 +598,7 @@ func _on_combat_resolved(result: Dictionary) -> void:
 		log_str += " ➔ ☠️ %s DIED!" % def_name
 
 	_update_hud_text(log_str)
-	queue_redraw()
+	_refresh_overlay()
 
 
 ## A forest burned down. GridManager already rewrote the terrain; the tree
@@ -672,11 +610,11 @@ func _on_terrain_changed(cell: Vector2i, new_terrain: int) -> void:
 	# Movement ranges are terrain-dependent, so a live selection is now stale.
 	if selected_unit:
 		_select_unit(selected_unit)
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _on_vision_updated(_faction_id: int) -> void:
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _on_surrender_triggered(unit: Node) -> void:
@@ -693,7 +631,7 @@ func _on_surrender_choice_made(unit: Node, choice: String) -> void:
 		"⚔️ Prisoner pressed into service." if choice == "capture"
 		else "💰 Prisoner ransomed for gold."
 	)
-	queue_redraw()
+	_refresh_overlay()
 
 
 func _on_dialogue_generated(speaker_name: String, text: String, _emotion: String) -> void:
@@ -704,67 +642,16 @@ func _on_story_event_narrated(title: String, body: String) -> void:
 	_update_hud_text("📜 [%s]: %s" % [title, body])
 
 
-func _draw() -> void:
-	if not grid_manager:
+## Hand the overlay everything it paints. The controller stays the single owner
+## of what is selected and where the cursor is; the overlay keeps no copy that
+## could fall out of step with it.
+func _refresh_overlay() -> void:
+	if not is_instance_valid(grid_overlay):
 		return
-
-	var cs = grid_manager.cell_size
-	var gs = grid_manager.grid_size
-
-	# 1. Grid lines (Tactical overlay mesh)
-	for x in range(gs.x + 1):
-		draw_line(Vector2(x * cs.x, 0), Vector2(x * cs.x, gs.y * cs.y), Color(1, 1, 1, 0.18), 1.0)
-	for y in range(gs.y + 1):
-		draw_line(Vector2(0, y * cs.y), Vector2(gs.x * cs.x, y * cs.y), Color(1, 1, 1, 0.18), 1.0)
-
-	# 2. Reachable Move Cells (Vibrant Blue with glowing border and center dot)
-	for cell in reachable_cells:
-		var rect = Rect2(Vector2(cell.x * cs.x, cell.y * cs.y), Vector2(cs.x, cs.y))
-		var center = rect.get_center()
-		draw_rect(rect, Color(0.12, 0.58, 1.0, 0.42))
-		draw_rect(rect, Color(0.35, 0.9, 1.0, 0.95), false, 2.5)
-		draw_circle(center, 4.5, Color(0.6, 0.95, 1.0, 0.9))
-
-	# 3. Attackable Cells (Vibrant Crimson Red with Hazard border and Crosshair)
-	for cell in attackable_cells:
-		var rect = Rect2(Vector2(cell.x * cs.x, cell.y * cs.y), Vector2(cs.x, cs.y))
-		var center = rect.get_center()
-		draw_rect(rect, Color(1.0, 0.15, 0.15, 0.48))
-		draw_rect(rect, Color(1.0, 0.35, 0.35, 1.0), false, 3.0)
-		# Crosshair reticle
-		draw_line(center - Vector2(10, 0), center + Vector2(10, 0), Color(1.0, 0.9, 0.9, 0.95), 2.0)
-		draw_line(center - Vector2(0, 10), center + Vector2(0, 10), Color(1.0, 0.9, 0.9, 0.95), 2.0)
-		draw_circle(center, 4.0, Color(1.0, 0.2, 0.2, 0.9))
-
-	# 4. Selected Unit Highlight (Golden double ring)
-	if selected_unit:
-		var u_cell = selected_unit.grid_position
-		var rect = Rect2(Vector2(u_cell.x * cs.x, u_cell.y * cs.y), Vector2(cs.x, cs.y))
-		draw_rect(rect, Color(1.0, 0.85, 0.15, 0.25))
-		draw_rect(rect, Color(1.0, 0.92, 0.2, 1.0), false, 3.5)
-
-	# 5. Selected Building Highlight (Emerald ring)
-	if selected_building:
-		var b_cell = selected_building.grid_position
-		var rect = Rect2(Vector2(b_cell.x * cs.x, b_cell.y * cs.y), Vector2(cs.x, cs.y))
-		draw_rect(rect, Color(0.2, 0.95, 0.45, 0.25))
-		draw_rect(rect, Color(0.3, 1.0, 0.5, 1.0), false, 3.5)
-
-	# 6. Hovered Cell Cursor
-	if hovered_cell.x >= 0 and hovered_cell.x < gs.x and hovered_cell.y >= 0 and hovered_cell.y < gs.y:
-		var rect = Rect2(Vector2(hovered_cell.x * cs.x, hovered_cell.y * cs.y), Vector2(cs.x, cs.y))
-		var pad = 4.0
-		# Corner brackets
-		var pt_tl = rect.position + Vector2(pad, pad)
-		var pt_tr = Vector2(rect.end.x - pad, rect.position.y + pad)
-		var pt_bl = Vector2(rect.position.x + pad, rect.end.y - pad)
-		var pt_br = rect.end - Vector2(pad, pad)
-		var clr = Color(1.0, 1.0, 1.0, 0.8)
-		draw_line(pt_tl, pt_tl + Vector2(10, 0), clr, 2.0)
-		draw_line(pt_tl, pt_tl + Vector2(0, 10), clr, 2.0)
-		draw_line(pt_tr, pt_tr - Vector2(10, 0), clr, 2.0)
-		draw_line(pt_tr, pt_tr + Vector2(0, 10), clr, 2.0)
-		draw_line(pt_bl, pt_bl + Vector2(10, 0), clr, 2.0)
-		draw_line(pt_bl, pt_bl - Vector2(0, 10), clr, 2.0)
-		draw_line(pt_br, pt_br - Vector2(10, 0), clr, 2.0)
-		draw_line(pt_br, pt_br - Vector2(0, 10), clr, 2.0)
+	grid_overlay.refresh(
+		reachable_cells,
+		attackable_cells,
+		selected_unit.grid_position if is_instance_valid(selected_unit) else GridOverlay.NO_CELL,
+		selected_building.grid_position if is_instance_valid(selected_building) else GridOverlay.NO_CELL,
+		hovered_cell,
+	)

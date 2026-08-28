@@ -75,6 +75,9 @@ func _ready() -> void:
 	_test_upgrade_does_not_refill_movement()
 	await _test_ai_hunts_enemies()
 	await _test_audio()
+	await _test_unit_overlay()
+	_test_hud_dialogs()
+	_test_extracted_collaborators()
 	# LAST: this one latches match_over and re-runs setup_match, which would
 	# pull the board out from under anything that ran after it.
 	await _test_match_end_stops_play()
@@ -1160,6 +1163,259 @@ func _cell_of_terrain(terrain: GameConfig.TerrainType) -> Vector2i:
 			if grid.get_terrain(cell) == terrain:
 				return cell
 	return Vector2i(-1, -1)
+
+
+# ==============================================================================
+# 7. REFACTOR — the overhead readout is a component, not part of the actor
+# ==============================================================================
+
+## Guards the TacticalUnit -> UnitOverlay extraction. Two things can regress:
+## the widgets can drift back onto the actor, or the component can stop
+## reflecting the unit's state. Both are checked, because a component that is
+## correctly separated but no longer updates is not an improvement.
+func _test_unit_overlay() -> void:
+	print("\n[7] The overhead readout is its own component")
+
+	var unit := _spawn("res://resources/units/pawn_blue.tres", 0, Vector2i(14, 12))
+
+	# Structure: the widgets belong to the overlay, never to the unit itself.
+	# These two assertions are the actual regression guard — if someone rebuilds
+	# a bar on the actor, this fails rather than silently duplicating the UI.
+	_check(is_instance_valid(unit.overlay), "the unit owns a UnitOverlay child")
+	_check(unit.overlay is UnitOverlay, "and it is the component type, not a bare Node2D")
+	_check(unit.get_node_or_null("FloatingHPBar") == null,
+		"the HP bar is NOT a direct child of the actor any more")
+	_check(unit.get_node_or_null("MoraleStrip") == null,
+		"nor is the morale strip")
+
+	var bar: ProgressBar = unit.overlay.get_node_or_null("FloatingHPBar")
+	var strip: ColorRect = unit.overlay.get_node_or_null("MoraleStrip")
+	_check(bar != null, "the HP bar lives under the overlay")
+	_check(strip != null, "the morale strip lives under the overlay")
+	if bar == null or strip == null:
+		_despawn([unit])
+		return
+
+	var label: Label = bar.get_node_or_null("HPLabel")
+	_check(label != null, "the HP bar still carries its number label")
+
+	# Behaviour: damage must reach the readout. The label updates synchronously
+	# while the bar VALUE is tweened, so the label is what proves the push
+	# happened this frame.
+	var max_hp: int = unit.unit_data.max_health
+	_check(label.text == "%d/%d" % [max_hp, max_hp],
+		"a fresh unit reads full health (%s)" % label.text)
+
+	unit.take_damage(int(max_hp / 2), "true")
+	await get_tree().process_frame
+	_check(label.text.begins_with("%d/" % (max_hp - int(max_hp / 2))),
+		"the readout follows a hit (%s)" % label.text)
+
+	# Floating text is parented to the overlay, not to the actor.
+	var labels_before: int = _count_labels(unit.overlay)
+	unit.overlay.pop_text("TEST", Color.WHITE)
+	_check(_count_labels(unit.overlay) == labels_before + 1,
+		"floating text spawns under the overlay")
+
+	# Morale: a mortal unit shows the strip, Undead have none to show. This is
+	# the one rule the overlay must NOT decide for itself — it is handed the
+	# answer, so the check confirms the unit is still deciding it.
+	_check(strip.visible, "a mortal unit shows its morale strip")
+	var skeleton := _spawn("res://resources/units/skeleton_black.tres", 4, Vector2i(15, 12))
+	var undead_strip: ColorRect = skeleton.overlay.get_node_or_null("MoraleStrip")
+	_check(skeleton.is_morale_immune(), "the skeleton is morale-immune")
+	_check(undead_strip != null and not undead_strip.visible,
+		"an Undead unit hides the strip entirely rather than showing it full")
+
+	# Defection recolours the bar border — the visible tell that a captured unit
+	# changed sides.
+	var before_tint: Color = _hp_border_color(unit)
+	unit.change_faction(1)
+	await get_tree().process_frame
+	var after_tint: Color = _hp_border_color(unit)
+	_check(before_tint != after_tint,
+		"defecting repaints the HP bar border to the new faction")
+
+	_despawn([unit, skeleton])
+
+
+func _count_labels(root: Node) -> int:
+	var n: int = 0
+	for child in root.get_children():
+		if child is Label:
+			n += 1
+	return n
+
+
+func _hp_border_color(unit: TacticalUnit) -> Color:
+	var bar: ProgressBar = unit.overlay.get_node_or_null("FloatingHPBar")
+	if bar == null:
+		return Color.BLACK
+	var sb := bar.get_theme_stylebox("background")
+	return (sb as StyleBoxFlat).border_color if sb is StyleBoxFlat else Color.BLACK
+
+
+# ==============================================================================
+# 8. REFACTOR — the HUD's dialogs are components, not inline widget code
+# ==============================================================================
+
+## Guards the MainHUD -> {UnitChoicePopup, SurrenderModal, GameOverModal} split.
+## The recruit and upgrade popups were near-identical copies; they are now two
+## instances of one component, so the check that matters is that BOTH still work
+## and still emit their own distinct signal.
+func _test_hud_dialogs() -> void:
+	print("\n[8] HUD dialogs are their own components")
+
+	var hud = main.main_hud
+	_check(is_instance_valid(hud), "the HUD is reachable")
+	if not is_instance_valid(hud):
+		return
+
+	_check(hud.recruit_popup is UnitChoicePopup, "the recruit popup is a UnitChoicePopup")
+	_check(hud.upgrade_popup is UnitChoicePopup, "the upgrade popup is one too")
+	_check(hud.recruit_popup != hud.upgrade_popup,
+		"they are two instances, so both can never be open as one")
+	_check(hud.surrender_modal is SurrenderModal, "the surrender prompt is a SurrenderModal")
+	_check(hud.surrender_modal is ModalOverlay,
+		"which is built on the shared ModalOverlay skeleton")
+
+	# The blocking behaviour is the whole point of a modal — a dialog that lets
+	# clicks through leaves the board playable underneath it.
+	_check(hud.surrender_modal.mouse_filter == Control.MOUSE_FILTER_STOP,
+		"the surrender overlay swallows clicks")
+
+	# Assert the CONTRACT on a fresh instance, not on the HUD's live one. By the
+	# time this section runs the combat sections above have fought real rounds,
+	# and a unit that broke leaves a legitimately-open prompt behind — asserting
+	# on the live modal tests match state, not the component.
+	var fresh := SurrenderModal.new()
+	_check(not fresh.visible, "a newly built surrender modal starts hidden")
+	fresh.free()
+
+	# The recruit list is built from a Castle's roster and relays through the
+	# HUD's own signal, so the match controller's wiring is untouched.
+	var castle: Building = _building_of_type("castle")
+	if is_instance_valid(castle):
+		var heard := []
+		hud.recruit_unit_requested.connect(func(b, d): heard.append([b, d]), CONNECT_ONE_SHOT)
+		hud.show_recruit_popup(castle)
+		var buttons := _buttons_in(hud.recruit_popup)
+		_check(buttons.size() > 0,
+			"the recruit popup lists the castle's units (%d)" % buttons.size())
+		_check(hud.recruit_popup.visible, "and is on screen")
+		if not buttons.is_empty():
+			buttons[0].pressed.emit()
+			_check(heard.size() == 1, "choosing one relays recruit_unit_requested")
+			_check(not hud.recruit_popup.visible, "and closes the popup")
+
+	# The result screen is built on demand and re-shown, never stacked.
+	hud._show_game_over_modal(true)
+	_check(hud.game_over_modal is GameOverModal, "the result screen is a GameOverModal")
+	var first_modal = hud.game_over_modal
+	var win_titles := _labels_in(hud.game_over_modal)
+	_check(win_titles.size() > 0 and "VICTORY" in win_titles[0].text,
+		"a win reads VICTORY")
+	hud._show_game_over_modal(false)
+	_check(hud.game_over_modal == first_modal,
+		"a second result re-uses the same overlay instead of stacking one")
+	var lose_titles := _labels_in(hud.game_over_modal)
+	_check(lose_titles.size() > 0 and "DEFEAT" in lose_titles[0].text,
+		"and it is rewritten, not left reading VICTORY")
+	hud.game_over_modal.hide()
+
+
+## Depth-first: the widgets sit inside a margin/box chain, not directly under
+## the dialog root.
+func _buttons_in(root: Node) -> Array:
+	var found := []
+	for child in root.get_children():
+		if child is Button:
+			found.append(child)
+		found.append_array(_buttons_in(child))
+	return found
+
+
+func _labels_in(root: Node) -> Array:
+	var found := []
+	for child in root.get_children():
+		if child is Label:
+			found.append(child)
+		found.append_array(_labels_in(child))
+	return found
+
+
+# ==============================================================================
+# 9. REFACTOR — chest table, army muster and highlight layer are collaborators
+# ==============================================================================
+
+## Guards the three remaining extractions: PandoraTable out of MapObjectManager,
+## ArmyMuster and GridOverlay out of MatchController. Each is checked on its own
+## terms — a collaborator that cannot be exercised without rebuilding the whole
+## match would not have been worth splitting out.
+func _test_extracted_collaborators() -> void:
+	print("\n[9] Chest table, army muster and highlight layer")
+
+	# --- PandoraTable ---------------------------------------------------------
+	_check(objects.pandora is PandoraTable, "the chest outcomes live in a PandoraTable")
+	var outcome: String = objects.pandora.roll()
+	_check(outcome in ["war_spoils", "mercenary", "trap", "awaken_dead"],
+		"roll() returns one of the four outcomes (%s)" % outcome)
+
+	# The manager exposes `random_seed` so a run can be reproduced. That promise
+	# only holds if the table rolls from the manager's generator rather than one
+	# of its own, so the same seed must produce the same sequence.
+	var rng_a := RandomNumberGenerator.new()
+	rng_a.seed = 12345
+	var rng_b := RandomNumberGenerator.new()
+	rng_b.seed = 12345
+	var table_a := PandoraTable.new(rng_a, null, Callable(), Callable())
+	var table_b := PandoraTable.new(rng_b, null, Callable(), Callable())
+	var seq_a := []
+	var seq_b := []
+	for i in range(20):
+		seq_a.append(table_a.roll())
+		seq_b.append(table_b.roll())
+	_check(seq_a == seq_b, "the same seed rolls the same outcomes, so runs stay reproducible")
+
+	# --- ArmyMuster -----------------------------------------------------------
+	var muster := ArmyMuster.new(grid, units_root)
+	var castle: Building = muster.castle_of(main.player_faction)
+	_check(is_instance_valid(castle), "the muster finds the player's castle")
+	if is_instance_valid(castle):
+		var cells: Array[Vector2i] = muster.muster_cells(castle.grid_position, 3)
+		_check(cells.size() == 3, "it finds three cells to form up on (%d)" % cells.size())
+		var all_dry := true
+		var all_clear := true
+		for cell in cells:
+			if not grid.is_cell_walkable(cell):
+				all_dry = false
+			if grid.get_building_at(cell) != null:
+				all_clear = false
+		_check(all_dry, "none of them is water or blocked terrain")
+		_check(all_clear, "and none of them is another building's cell")
+
+	# --- GridOverlay ----------------------------------------------------------
+	_check(main.grid_overlay is GridOverlay, "the highlights are drawn by a GridOverlay")
+	# Draw order is the whole reason this node exists at a fixed index: the map
+	# layers sit at negative z_index, Buildings and Units at zero. Anywhere but
+	# the front of the child list and the highlights end up under the units
+	# standing on them.
+	_check(main.get_child(0) == main.grid_overlay,
+		"and it sits at child index 0, under the units rather than over them")
+	_check(not main.has_method("_draw"),
+		"the controller no longer paints the board itself")
+
+	# The overlay must reflect what the controller selects, without keeping a
+	# second copy of the selection that could drift.
+	var probe := _spawn("res://resources/units/pawn_blue.tres", main.player_faction,
+		Vector2i(16, 12))
+	main._select_unit(probe)
+	_check(main.grid_overlay.selected_unit_cell == probe.grid_position,
+		"selecting a unit moves the golden ring to its cell")
+	main._deselect_all()
+	_check(main.grid_overlay.selected_unit_cell == GridOverlay.NO_CELL,
+		"and deselecting clears it")
+	_despawn([probe])
 
 
 func _check(condition: bool, message: String) -> void:
