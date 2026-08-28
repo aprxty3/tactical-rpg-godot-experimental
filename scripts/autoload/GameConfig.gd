@@ -58,8 +58,21 @@ const NEUTRAL_MULTIPLIER: float = 1.0
 const HOLY_VS_UNDEAD_MULTIPLIER: float = 2.5  # Priest vs Skeleton/Vampire
 
 # === Economy Constants ===
+## What an army can field before it needs to take ground for more.
+##
+## Read as "your own keep and the land around it" — a faction's starting castle
+## is already priced in here, which is why `CASTLE_CAPACITY_BONUS` below only
+## pays out from the SECOND castle onward.
 const BASE_TROOP_CAPACITY: int = 8
-const VILLAGE_CAPACITY_BONUS: int = 2
+const VILLAGE_CAPACITY_BONUS: int = 3
+## Every castle held beyond the first. Taking an enemy keep should be worth more
+## than taking a village, because it costs far more to do and it is the only
+## capture that can end someone's match.
+##
+## Counted from the second castle rather than the first so an army's opening
+## capacity is unchanged, and so losing your own keep does not also starve the
+## "rogue army" the victory rules deliberately allow to keep fighting.
+const CASTLE_CAPACITY_BONUS: int = 5
 const GOLD_MINE_INCOME: int = 50
 ## A castle pays a small stipend on top of being a spawn point, so holding one is
 ## worth something even before any mine is taken. Deliberately below a gold mine:
@@ -422,10 +435,20 @@ const AI_COUNTER_WEIGHT: float = 0.8
 ## seeking out.
 const AI_AMBUSH_BONUS: float = 0.6
 ## Below this fraction of max HP a unit starts looking for a way out.
-const AI_RETREAT_HP_RATIO: float = 0.35
+##
+## Lowered from 0.35 after play-testing: at a third of health a unit still has
+## a real swing in it, and an army that walks away at the first scratch reads as
+## passive rather than as careful. Now only genuinely mauled units break off.
+const AI_RETREAT_HP_RATIO: float = 0.25
 ## ...and so does any unit standing where the incoming threat this turn is at
 ## least this fraction of the HP it has left, however healthy it looks.
-const AI_RETREAT_THREAT_RATIO: float = 0.9
+##
+## Raised from 0.9. `threat_at` sums every visible enemy that could both reach
+## and strike the cell, which is deliberately an over-estimate of one turn's
+## reach — so at 0.9 a unit near two enemies was almost always "in danger" and
+## spent the match backing away from fights it would have won. Above 1.0 it only
+## flinches from ground that could actually kill it outright.
+const AI_RETREAT_THREAT_RATIO: float = 1.35
 ## Retreating units prefer cover; this weights the terrain damage multiplier
 ## against raw threat when picking where to fall back to.
 const AI_RETREAT_COVER_WEIGHT: float = 12.0
@@ -437,13 +460,45 @@ const AI_RETREAT_COVER_WEIGHT: float = 12.0
 ## 5 castles, so hunting was unreachable code and the army never engaged unless
 ## the player happened to stand in its path.
 ##
-## Set between village (55) and gold mine (70): worth diverting for, not worth
-## abandoning a castle capture for.
-const AI_ENEMY_VALUE: float = 62.0
+## Raised from 62 to sit level with a gold mine (70 x 1.25 neutral = 87.5), so a
+## living enemy at comparable distance is now a genuine alternative to another
+## capture rather than a distant second. Below that the armies spent whole
+## matches walking past each other to flags.
+const AI_ENEMY_VALUE: float = 88.0
 ## A target already hurt is worth more than a fresh one — finishing a wounded
 ## unit removes a whole unit, where chipping a healthy one removes nothing.
-## Scales linearly with the fraction of health already gone.
-const AI_WOUNDED_BONUS: float = 45.0
+## Scales linearly with the fraction of health already gone. At 60 a
+## half-dead enemy (118) outranks every building on the board.
+const AI_WOUNDED_BONUS: float = 60.0
+
+# === AI Recruitment Composition ===
+## How much each unit of the same class already in the army discounts buying
+## another one.
+##
+## The old rule ranked candidates by `(counter advantage, gold cost)` and took
+## the maximum, which is deterministic twice over: the same board always picked
+## the same unit, and every tie went to the most expensive — the Wizzard, at 120
+## gold the priciest thing a castle sells. Since Melee is the commonest class on
+## the field and Mage counters Melee, the answer was "another mage", every time.
+##
+## At 0.35 the third unit of a class carries -0.70, which a 1.5x counter
+## advantage (0.80 net) can no longer pay for against a neutral alternative at
+## 1.00 — so a counter class caps out around two before the army broadens. The
+## decisive 2.5x holy-vs-undead matchup still buys a third and a fourth, which
+## is right: that one is worth stacking.
+##
+## Measured over 20 trials of six draws against a Melee enemy: 0.35 averages
+## 2.3 mages and never fewer than 4 distinct classes. The old rule bought six
+## mages out of six, every time.
+const AI_SAME_CLASS_PENALTY: float = 0.35
+## Random spread added to each candidate's score, so two equally sensible buys
+## are not always resolved the same way. Small enough that it reorders equals
+## and never overrides a real counter advantage.
+const AI_RECRUIT_JITTER: float = 0.45
+## Gold cost still nudges the choice, at a thousandth of its value — a 120g
+## Wizzard carries 0.12. Enough to prefer the better unit among equals, far too
+## little to be the tiebreak it used to be.
+const AI_RECRUIT_COST_WEIGHT: float = 0.001
 
 # === Pandora's Box Rewards ===
 const PANDORA_SPOILS_GOLD: Vector2i = Vector2i(80, 220)

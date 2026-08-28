@@ -83,6 +83,7 @@ func _ready() -> void:
 	_test_village_garrison()
 	await _test_troop_ceiling()
 	await _test_black_castle_encounters()
+	await _test_ai_appetite()
 	# LAST: this one latches match_over and re-runs setup_match, which would
 	# pull the board out from under anything that ran after it.
 	await _test_match_end_stops_play()
@@ -2223,6 +2224,150 @@ func _test_black_castle_encounters() -> void:
 			% [before, during])
 	backdrop.queue_free()
 	await get_tree().process_frame
+
+
+# ==============================================================================
+# 15. WHAT THE AI WANTS — CAPACITY, COMPOSITION, AGGRESSION
+# ==============================================================================
+
+## Three play-testing complaints, one section: keeps were worth no capacity, the
+## enemy only ever bought mages, and the armies read as passive.
+func _test_ai_appetite() -> void:
+	print("\n[15] Taking ground, buying variety, picking fights")
+
+	var army: int = MatchSetup.participants[0]
+	var rival: int = MatchSetup.participants[1]
+	var economy: Node = main.economy_manager
+
+	# --- a second keep is worth more than a village -------------------------
+	var base: int = economy.get_max_capacity(army)
+	_check(base == GameConfig.BASE_TROOP_CAPACITY,
+		"an army holding one keep and no villages sits at base capacity (%d)" % base)
+
+	var rival_keep: Building = null
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if b is Building and b.building_type == Building.BuildingType.CASTLE \
+				and b.faction_id == rival:
+			rival_keep = b
+			break
+	if rival_keep == null:
+		_check(false, "there is a rival castle to take")
+		return
+
+	rival_keep.capture(army)
+	_check(economy.get_max_capacity(army) == base + GameConfig.CASTLE_CAPACITY_BONUS,
+		"taking an enemy keep is worth +%d capacity (%d -> %d)"
+			% [GameConfig.CASTLE_CAPACITY_BONUS, base, economy.get_max_capacity(army)])
+	_check(economy.get_max_capacity(rival) == GameConfig.BASE_TROOP_CAPACITY,
+		"...and losing your only keep does not starve you below base (%d)"
+			% economy.get_max_capacity(rival))
+	rival_keep.capture(rival)
+	_check(economy.get_max_capacity(army) == base,
+		"the capacity goes back when the keep does")
+
+	_check(GameConfig.CASTLE_CAPACITY_BONUS > GameConfig.VILLAGE_CAPACITY_BONUS,
+		"a keep outranks a village (+%d vs +%d)"
+			% [GameConfig.CASTLE_CAPACITY_BONUS, GameConfig.VILLAGE_CAPACITY_BONUS])
+
+	# --- the recruiter buys an army, not six copies of one unit -------------
+	# The old rule was deterministic twice over — same board, same answer, and
+	# every tie to the most expensive unit, which is the Wizzard. Six draws
+	# against a Melee enemy used to be six mages.
+	var commander: AIManager = null
+	for ai in main.ai_managers:
+		commander = ai
+		break
+	var castle: Building = null
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if b is Building and b.building_type == Building.BuildingType.CASTLE \
+				and b.faction_id == army:
+			castle = b
+			break
+
+	if commander == null or castle == null or castle.recruitable_units.is_empty():
+		_check(false, "an AI commander and a stocked castle are reachable")
+		return
+
+	# Twenty trials, not one. The tiebreak is deliberately random, so a single
+	# sample tests the seed rather than the rule — and a flaky assertion in a
+	# suite this size is worse than no assertion at all.
+	var roster: Array = castle.recruitable_units
+	const TRIALS: int = 20
+	var mage_total: int = 0
+	var fewest_classes: int = 99
+	var sample: Dictionary = {}
+	for trial in range(TRIALS):
+		var picked: Dictionary = {}
+		var army_so_far: Array = []
+		for i in range(6):
+			var choice: UnitData = commander.pick_recruit(roster, "Melee", army_so_far)
+			if not is_instance_valid(choice):
+				break
+			picked[choice.unit_class] = int(picked.get(choice.unit_class, 0)) + 1
+			# Fake the purchase, so the next draw sees the army the last built.
+			var bought := TacticalUnit.new()
+			bought.unit_data = choice
+			army_so_far.append(bought)
+		for u in army_so_far:
+			if is_instance_valid(u):
+				u.free()
+		mage_total += int(picked.get("Mage", 0))
+		fewest_classes = mini(fewest_classes, picked.size())
+		sample = picked
+
+	var mage_mean: float = float(mage_total) / float(TRIALS)
+	_check(fewest_classes >= 3,
+		"every trial of six draws buys at least 3 different classes (worst %d, last %s)"
+			% [fewest_classes, str(sample)])
+	_check(mage_mean <= 2.5,
+		"six draws against Melee average at most 2.5 mages (got %.2f over %d trials)"
+			% [mage_mean, TRIALS])
+
+	# An empty army still buys the actual counter — variety must never cost the
+	# AI its matchups, so the composition penalty has to start at zero.
+	var counters: Dictionary = {}
+	for i in range(12):
+		var first: UnitData = commander.pick_recruit(roster, "Melee", [])
+		if is_instance_valid(first):
+			counters[first.unit_class] = true
+	_check(counters.has("Mage"),
+		"with nothing on the board yet the counter to Melee is still reachable (%s)"
+			% str(counters.keys()))
+
+	# --- and the armies actually pick fights --------------------------------
+	# `score_enemy_target` and `score_objective` share a scale on purpose, so
+	# this is a real comparison rather than two numbers that merely look alike.
+	var gold_value: float = float(GameConfig.AI_OBJECTIVE_VALUE.get("gold_mine", 0.0))
+	_check(GameConfig.AI_ENEMY_VALUE >= gold_value,
+		"a living enemy is worth at least a gold mine to walk toward (%.0f vs %.0f)"
+			% [GameConfig.AI_ENEMY_VALUE, gold_value])
+	_check(GameConfig.AI_ENEMY_VALUE + GameConfig.AI_WOUNDED_BONUS
+			> float(GameConfig.AI_OBJECTIVE_VALUE.get("castle", 0.0)),
+		"a half-dead enemy outranks even a castle (%.0f vs %.0f)"
+			% [GameConfig.AI_ENEMY_VALUE + GameConfig.AI_WOUNDED_BONUS,
+				float(GameConfig.AI_OBJECTIVE_VALUE.get("castle", 0.0))])
+
+	# A unit at half health standing next to one enemy used to break off. The
+	# threat estimate counts every enemy that could reach AND strike the cell,
+	# which over-counts a single turn on purpose — so the trigger has to sit
+	# above 1.0 or the AI flinches from fights it wins.
+	_check(GameConfig.AI_RETREAT_THREAT_RATIO > 1.0,
+		"a unit only breaks off from ground that could actually kill it (%.2f)"
+			% GameConfig.AI_RETREAT_THREAT_RATIO)
+	_check(GameConfig.AI_RETREAT_HP_RATIO < 0.3,
+		"and only when genuinely mauled, not merely scratched (%.2f)"
+			% GameConfig.AI_RETREAT_HP_RATIO)
+
+	var judge := AITacticalEvaluator.new(grid, main.combat_resolver, null, army)
+	var hurt: TacticalUnit = _enlist(_spawn("res://resources/units/warrior_%s.tres"
+		% GameConfig.FACTION_SUFFIX[army], army, _open_cell_away_from(castle.grid_position)))
+	hurt.current_health = int(hurt.unit_data.max_health * 0.5)
+	_check(not judge.should_retreat(hurt),
+		"a warrior at half health with nothing adjacent stands its ground")
+	hurt.current_health = maxi(1, int(hurt.unit_data.max_health * 0.15))
+	_check(judge.should_retreat(hurt),
+		"...but one at 15% looks for a way out")
+	_discharge([hurt])
 
 
 func _check(condition: bool, message: String) -> void:

@@ -116,6 +116,63 @@ quit the application outright is **Main Menu**. Both unpause the tree first:
 leaving it set carries the freeze into the menu and every button there does
 nothing.
 
+### 🏯 A captured keep is worth capacity, and a village is worth more
+Taking a castle changed the flag and nothing else. Now:
+
+| | Before | After |
+|---|---|---|
+| Village | +2 troop capacity | **+3** |
+| Castle | nothing | **+5**, from the second keep onward |
+
+Castles pay from the **second**, because `BASE_TROOP_CAPACITY` already stands
+for a faction's own keep — crediting the first as well would hand every army
+five free capacity at match start, and *subtracting* for a lost one would starve
+the castle-less "rogue army" the victory rules deliberately let keep fighting.
+Opening capacity is unchanged at 5/8; taking an enemy keep reads 13.
+
+Castles also needed **seeding**, which villages never did: every village starts
+neutral so its count can only be built up by captures, but a faction owns its
+castle from the moment the scene loads and no capture event ever fires for it.
+`register_faction()` reads the board.
+
+The two capture branches in `EconomyManager` were byte-identical apart from the
+tally they touched, and the castle would have been a third copy, so they now
+share one `CAPACITY_LEDGER` and one `_announce_capacity()`.
+
+### 🎲 The enemy stopped buying six mages
+Recruitment ranked candidates by `(counter advantage, gold cost)` and took the
+maximum — deterministic twice over. The same board always gave the same answer,
+and every tie went to the most expensive unit on the list: the Wizzard, at 120
+gold. Melee is the commonest class on the field and Mage counters Melee, so the
+answer was "another mage", every time. Each purchase individually correct; the
+army absurd.
+
+The choice moved into `AIManager.pick_recruit()` — public and side-effect free,
+so it can be exercised on a bare list without running a turn, the same reason
+`AITacticalEvaluator` exists. Four terms in descending authority: counter
+advantage, **a penalty per unit of that class already owned**, cost at a
+thousandth of its value, and a little jitter.
+
+The penalty is what does the work — an army is a composition, not a series of
+individually optimal purchases. Measured over 20 trials of six draws against a
+Melee enemy: **2.3 mages on average, never fewer than 4 distinct classes.** The
+decisive 2.5x holy-vs-undead matchup still stacks past two, which is right.
+
+### ⚔️ And the armies pick fights
+Three constants, one complaint: the enemy read as passive.
+
+- **`AI_ENEMY_VALUE` 62 → 88.** Enemies and buildings compete on one scale
+  (value ÷ real path cost), and at 62 a living enemy lost to a neutral gold mine
+  at 87.5 nearly every time — so the armies walked past each other to flags.
+- **`AI_WOUNDED_BONUS` 45 → 60**, putting a half-dead enemy at 148, ahead of a
+  castle.
+- **`AI_RETREAT_THREAT_RATIO` 0.9 → 1.35.** `threat_at` sums every visible enemy
+  that could both reach and strike a cell — deliberately an over-estimate of one
+  turn's reach — so at 0.9 a unit standing near two enemies was almost always
+  "in danger" and spent the match backing out of fights it would have won.
+- **`AI_RETREAT_HP_RATIO` 0.35 → 0.25.** At a third of health a unit still has a
+  real swing in it.
+
 ### 🗺️ The main menu shows the battlefield
 It was a flat dark rectangle. `scenes/ui/MenuBackdrop.tscn` puts the actual
 board behind it — the same `MapBuilder`, the same tileset, the same castles,

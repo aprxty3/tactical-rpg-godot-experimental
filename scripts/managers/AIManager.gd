@@ -32,6 +32,10 @@ var evaluator: AITacticalEvaluator
 ## report.
 var _last_known: Dictionary = {}
 
+## Breaks ties in recruitment. Seeded per commander rather than shared, so four
+## AI armies on one board do not all reach for the same unit on the same turn.
+var _rng := RandomNumberGenerator.new()
+
 
 func _ready() -> void:
 	EventBus.turn_started.connect(_on_turn_started)
@@ -49,6 +53,7 @@ func setup(grid_mgr: GridManager, eco_mgr: Node,
 	object_manager = object_mgr
 	combat_resolver = combat_mgr
 	evaluator = AITacticalEvaluator.new(grid_mgr, combat_mgr, vision_mgr, ai_faction_id)
+	_rng.randomize()
 
 
 ## Guards against a second AI turn starting while the first is still running.
@@ -115,25 +120,12 @@ func _ai_try_recruit() -> void:
 	# army of Mages, which is the matchup Knights lose.
 	var counter_class: String = _most_common_enemy_class()
 
-	var chosen_unit: UnitData = null
-	var chosen_rank: Vector2 = Vector2(-INF, -INF)
-
+	var affordable: Array[UnitData] = []
 	for u_data in ai_castle.recruitable_units:
-		var check = ai_castle.can_recruit(u_data, economy_manager, active_units)
-		if not check["can_recruit"]:
-			continue
-		# Rank on (does it counter what we are facing, then how strong is it).
-		# Comparing as a Vector2 keeps the priority order explicit: the counter
-		# term always dominates, and cost only separates equals.
-		var advantage: float = 1.0
-		if counter_class != "" and is_instance_valid(combat_resolver):
-			advantage = combat_resolver.class_advantage(
-				u_data.unit_class, counter_class, u_data.unit_name.to_lower()
-			)
-		var rank := Vector2(advantage, float(u_data.recruit_cost_gold))
-		if chosen_unit == null or rank > chosen_rank:
-			chosen_rank = rank
-			chosen_unit = u_data
+		if ai_castle.can_recruit(u_data, economy_manager, active_units)["can_recruit"]:
+			affordable.append(u_data)
+
+	var chosen_unit: UnitData = pick_recruit(affordable, counter_class, active_units)
 
 	if chosen_unit == null:
 		return
@@ -152,6 +144,56 @@ func _ai_try_recruit() -> void:
 		if unit_container:
 			ai_castle.recruit_unit(chosen_unit, spawn_cell, economy_manager, unit_container)
 			await get_tree().create_timer(action_delay).timeout
+
+
+## Which of these units to buy. Public and side-effect free so the choice can be
+## exercised on a bare list — the same reason `AITacticalEvaluator` exists.
+##
+## The rule it replaced ranked candidates by `(counter advantage, gold cost)` and
+## took the maximum, which is deterministic twice over: the same board always
+## produced the same answer, and every tie went to the most expensive unit on the
+## list. That is the Wizzard, at 120 gold — and since Melee is the commonest
+## class on the field and Mage counters Melee, the answer was "another mage",
+## every single time. An army of six wizards, each purchase individually
+## correct.
+##
+## Four terms, in descending authority:
+##   1. **Counter advantage** against what the enemy actually fields. Still
+##      dominant — variety must not cost the AI its matchups.
+##   2. **A penalty per unit of that class already owned.** This is the term that
+##      does the work: an army is a composition, not a series of individually
+##      optimal purchases.
+##   3. **Cost**, at a thousandth of its value — enough to prefer the better unit
+##      among equals, far too little to be the tiebreak it used to be.
+##   4. **Jitter**, so two equally sensible buys are not always resolved the same
+##      way.
+func pick_recruit(candidates: Array, counter_class: String,
+		active_units: Array) -> UnitData:
+	var own_classes: Dictionary = {}
+	for owned in active_units:
+		if is_instance_valid(owned) and is_instance_valid(owned.unit_data):
+			var cls: String = owned.unit_data.unit_class
+			own_classes[cls] = int(own_classes.get(cls, 0)) + 1
+
+	var best: UnitData = null
+	var best_score: float = -INF
+	for u_data in candidates:
+		if not is_instance_valid(u_data):
+			continue
+		var advantage: float = 1.0
+		if counter_class != "" and is_instance_valid(combat_resolver):
+			advantage = combat_resolver.class_advantage(
+				u_data.unit_class, counter_class, u_data.unit_name.to_lower()
+			)
+		var score: float = advantage
+		score -= GameConfig.AI_SAME_CLASS_PENALTY * float(
+			own_classes.get(u_data.unit_class, 0))
+		score += GameConfig.AI_RECRUIT_COST_WEIGHT * float(u_data.recruit_cost_gold)
+		score += _rng.randf_range(0.0, GameConfig.AI_RECRUIT_JITTER)
+		if best == null or score > best_score:
+			best_score = score
+			best = u_data
+	return best
 
 
 ## AI moves and orders each of its units to attack

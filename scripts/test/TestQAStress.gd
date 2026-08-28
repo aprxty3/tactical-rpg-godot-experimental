@@ -74,9 +74,36 @@ func _ready() -> void:
 	test_village.capture(GameConfig.Faction.BLUE_KINGDOM)
 	var blue_cap_after_village: int = eco_mgr.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM)
 	var blue_used_after_village: int = eco_mgr.get_used_capacity(GameConfig.Faction.BLUE_KINGDOM, TurnManager.get_faction_units(GameConfig.Faction.BLUE_KINGDOM))
-	assert(blue_cap_after_village == 10, "Blue max capacity must be 10 after claiming 1 village, got %d" % blue_cap_after_village)
+	# Against the constant, not a literal. The literal 10 outlived the balance
+	# it was written for the moment a village started paying 3 instead of 2.
+	var expect_after_village: int = GameConfig.BASE_TROOP_CAPACITY + GameConfig.VILLAGE_CAPACITY_BONUS
+	assert(blue_cap_after_village == expect_after_village,
+		"Blue max capacity must be %d after claiming 1 village, got %d"
+			% [expect_after_village, blue_cap_after_village])
 	assert(blue_used_after_village == 5, "Blue used capacity must remain 5 (not 0) after claiming village, got %d" % blue_used_after_village)
 	print("✅ [QA 02b] Village claim verified: Capacity updated to %d/%d (Used capacity accurately preserved)." % [blue_used_after_village, blue_cap_after_village])
+
+	# A castle is worth more than a village and pays only from the SECOND one —
+	# a faction's own keep is already priced into BASE_TROOP_CAPACITY, so taking
+	# an enemy's is the first castle that adds anything.
+	var enemy_castle: Building = null
+	for bld in get_tree().get_nodes_in_group("buildings"):
+		if bld is Building and bld.building_type == Building.BuildingType.CASTLE \
+				and bld.faction_id == GameConfig.Faction.RED_LEGION:
+			enemy_castle = bld
+			break
+	assert(enemy_castle != null, "An enemy castle must exist for claiming")
+	enemy_castle.capture(GameConfig.Faction.BLUE_KINGDOM)
+	var blue_cap_after_castle: int = eco_mgr.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM)
+	var expect_after_castle: int = expect_after_village + GameConfig.CASTLE_CAPACITY_BONUS
+	assert(blue_cap_after_castle == expect_after_castle,
+		"Blue max capacity must be %d after taking a second castle, got %d"
+			% [expect_after_castle, blue_cap_after_castle])
+	enemy_castle.capture(GameConfig.Faction.RED_LEGION)
+	assert(eco_mgr.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM) == expect_after_village,
+		"Losing the taken castle must give the capacity back")
+	print("✅ [QA 02c] Castle claim verified: +%d capacity on the second keep, returned on loss."
+		% GameConfig.CASTLE_CAPACITY_BONUS)
 
 	# 3. Test Recruitment at Blue Castle
 	var blue_castle: Building = null

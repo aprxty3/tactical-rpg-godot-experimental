@@ -9,6 +9,7 @@ class_name EconomyManager
 var _faction_gold: Dictionary = {}
 var _faction_iron: Dictionary = {}
 var _faction_villages: Dictionary = {}  # village count per faction
+var _faction_castles: Dictionary = {}   # castle count per faction
 
 
 func _ready() -> void:
@@ -27,10 +28,37 @@ func _connect_signals() -> void:
 
 
 ## Initialize a faction's starting resources.
+##
+## Villages start at zero because every village on the map starts neutral, so
+## the count can only ever be built up by captures. Castles cannot: a faction
+## owns its keep from the moment the scene loads and no capture event ever fires
+## for it, so the count has to be READ off the board here or an army that later
+## takes an enemy castle would be credited with two while holding two — and
+## every capacity number after that would be one castle too generous.
 func register_faction(faction_id: int, starting_gold: int = 200, starting_iron: int = 5) -> void:
 	_faction_gold[faction_id] = starting_gold
 	_faction_iron[faction_id] = starting_iron
 	_faction_villages[faction_id] = 0
+	_faction_castles[faction_id] = _count_castles(faction_id)
+
+
+## Castles this faction currently holds, read from the board.
+##
+## Returns 0 rather than failing when there is no tree to walk: the focused test
+## scenes build an EconomyManager on its own, with no board at all, and they are
+## entitled to a manager that still answers questions about gold.
+func _count_castles(faction_id: int) -> int:
+	if not is_inside_tree():
+		return 0
+	var tree := get_tree()
+	if not tree:
+		return 0
+	var total := 0
+	for bld in tree.get_nodes_in_group("buildings"):
+		if bld is Building and bld.faction_id == faction_id \
+				and bld.building_type == Building.BuildingType.CASTLE:
+			total += 1
+	return total
 
 
 # === Resource Queries ===
@@ -43,9 +71,19 @@ func get_iron(faction_id: int) -> int:
 	return _faction_iron.get(faction_id, 0)
 
 
+## Everything this faction can field: its own lands, plus what it has taken.
+##
+## Castles count from the SECOND one. `BASE_TROOP_CAPACITY` already stands for
+## a faction's own keep, so paying for the first as well would hand every army
+## five free capacity at match start; and subtracting for a lost keep would
+## starve the castle-less "rogue army" the victory rules deliberately let keep
+## fighting. `maxi` is what holds that floor.
 func get_max_capacity(faction_id: int) -> int:
 	var village_count: int = _faction_villages.get(faction_id, 0)
-	return GameConfig.BASE_TROOP_CAPACITY + (village_count * GameConfig.VILLAGE_CAPACITY_BONUS)
+	var extra_castles: int = maxi(0, int(_faction_castles.get(faction_id, 0)) - 1)
+	return (GameConfig.BASE_TROOP_CAPACITY
+		+ village_count * GameConfig.VILLAGE_CAPACITY_BONUS
+		+ extra_castles * GameConfig.CASTLE_CAPACITY_BONUS)
 
 
 ## Calculate the total Troop Capacity weight of active units.
@@ -192,27 +230,42 @@ func _apply_starvation(active_units: Array, faction_id: int) -> void:
 
 # === Signal Handlers ===
 
-func _on_resource_node_captured(node_type: String, new_faction_id: int, old_faction_id: int) -> void:
-	match node_type:
-		"village":
-			if old_faction_id in _faction_villages:
-				_faction_villages[old_faction_id] = maxi(0, _faction_villages[old_faction_id] - 1)
-				if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("capacity_changed"):
-					var old_units: Array = TurnManager.get_faction_units(old_faction_id) if is_instance_valid(TurnManager) else []
-					EventBus.capacity_changed.emit(
-						old_faction_id,
-						get_used_capacity(old_faction_id, old_units),
-						get_max_capacity(old_faction_id)
-					)
+## Which ledger each capturable building type moves.
+##
+## A dictionary rather than a `match` with a branch per type, because both
+## branches were byte-identical apart from the tally they touched — and the
+## castle would have been a third copy of the same fifteen lines.
+const CAPACITY_LEDGER: Dictionary = {
+	"village": "_faction_villages",
+	"castle": "_faction_castles",
+}
 
-			_faction_villages[new_faction_id] = _faction_villages.get(new_faction_id, 0) + 1
-			if not Engine.is_editor_hint() and is_instance_valid(EventBus) and EventBus.has_signal("capacity_changed"):
-				var new_units: Array = TurnManager.get_faction_units(new_faction_id) if is_instance_valid(TurnManager) else []
-				EventBus.capacity_changed.emit(
-					new_faction_id,
-					get_used_capacity(new_faction_id, new_units),
-					get_max_capacity(new_faction_id)
-				)
+
+func _on_resource_node_captured(node_type: String, new_faction_id: int, old_faction_id: int) -> void:
+	if not CAPACITY_LEDGER.has(node_type):
+		return
+	var ledger: Dictionary = get(CAPACITY_LEDGER[node_type])
+
+	# The loser is decremented only if it was ever registered. A building can
+	# change hands from NEUTRAL, and neutral has no treasury to debit.
+	if old_faction_id in ledger:
+		ledger[old_faction_id] = maxi(0, int(ledger[old_faction_id]) - 1)
+		_announce_capacity(old_faction_id)
+
+	ledger[new_faction_id] = int(ledger.get(new_faction_id, 0)) + 1
+	_announce_capacity(new_faction_id)
+
+
+## Tell the HUD what this faction can now field. Guarded rather than assumed:
+## this runs from a signal, and the focused test scenes drive captures with no
+## TurnManager and sometimes no EventBus at all.
+func _announce_capacity(faction_id: int) -> void:
+	if Engine.is_editor_hint() or not is_instance_valid(EventBus) \
+			or not EventBus.has_signal("capacity_changed"):
+		return
+	var units: Array = TurnManager.get_faction_units(faction_id) if is_instance_valid(TurnManager) else []
+	EventBus.capacity_changed.emit(
+		faction_id, get_used_capacity(faction_id, units), get_max_capacity(faction_id))
 
 
 func _on_unit_lifecycle_changed(_arg1 = null, _arg2 = null, _arg3 = null) -> void:
@@ -246,12 +299,7 @@ func _on_building_destroyed(building: Node) -> void:
 		return
 	_faction_villages[owner_id] = maxi(0, _faction_villages[owner_id] - 1)
 
-	if Engine.is_editor_hint() or not is_instance_valid(EventBus) \
-			or not EventBus.has_signal("capacity_changed"):
-		return
-	var units: Array = TurnManager.get_faction_units(owner_id) if is_instance_valid(TurnManager) else []
 	# The owner may now be over the ceiling they were exactly at. Announcing it
 	# here means the HUD turns red the moment the smoke clears, rather than
 	# waiting for their next upkeep to tell them they are starving.
-	EventBus.capacity_changed.emit(
-		owner_id, get_used_capacity(owner_id, units), get_max_capacity(owner_id))
+	_announce_capacity(owner_id)

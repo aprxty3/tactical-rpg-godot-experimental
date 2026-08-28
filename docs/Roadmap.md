@@ -583,6 +583,34 @@ QA stress, upgrade, village, undead) still passes unchanged.
         victory check and the AI find theirs, and a decorative castle in it is a
         castle the game would count. The zoom is capped at 1:1 so a narrow
         window cannot magnify pixel art into a field of grass.
+- [x] **What the AI wants — capacity, composition, aggression** *(2026-08-29,
+      from play-testing)*: three complaints with one root each.
+      - **A captured keep was worth nothing but a flag.** A castle now pays
+        **+5 troop capacity** and a village **+3** (was 2). Castles pay from the
+        *second* keep: `BASE_TROOP_CAPACITY` already stands for a faction's own,
+        so crediting the first would hand every army five free capacity at
+        match start, and subtracting for a lost one would starve the
+        castle-less "rogue army" the victory rules deliberately allow. Castles
+        also need seeding at registration — villages start neutral so captures
+        alone build their count, but a faction owns its keep before any capture
+        event can fire.
+      - **The enemy only ever bought mages.** The ranking was
+        `(counter advantage, gold cost)`, deterministic twice over: same board,
+        same answer, and every tie to the most expensive unit on the list — the
+        Wizzard at 120 gold. Since Melee is the commonest class and Mage counters
+        Melee, that was the answer every time. `AIManager.pick_recruit()` is now
+        a public, side-effect-free function (testable on a bare list, the same
+        reason the evaluator exists) scoring counter advantage, **a penalty per
+        unit of that class already owned**, cost at a thousandth of its value,
+        and jitter. Measured over 20 trials of six draws: 2.3 mages average,
+        never fewer than 4 distinct classes.
+      - **The armies read as passive.** `AI_ENEMY_VALUE` 62 → 88, so a living
+        enemy is no longer beaten by a neutral gold mine on the shared
+        value-per-step scale; `AI_WOUNDED_BONUS` 45 → 60, putting a half-dead
+        enemy ahead of a castle; `AI_RETREAT_THREAT_RATIO` 0.9 → 1.35, because
+        `threat_at` over-estimates one turn's reach on purpose and at 0.9 a unit
+        near two enemies backed out of fights it would have won; and
+        `AI_RETREAT_HP_RATIO` 0.35 → 0.25.
 - [ ] **Full Campaign**: Design a multi-chapter narrative campaign with escalating difficulty and persistent army progression.
       **Still open.** The bootstrap item above cleared its structural
       prerequisites — there is a menu to enter from, a configurable match, and
