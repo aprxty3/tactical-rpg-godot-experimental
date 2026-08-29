@@ -14,11 +14,9 @@ var faction_order: Array[int] = []
 
 ## The subset of `faction_order` that can actually win or lose the match.
 ##
-## Split from the turn order because the Black Coven's monsters needed a turn
-## without becoming a fifth contender: with one list, a den of ghouls counted as
-## a surviving faction and no army could ever reach "last one standing", so a
-## won match simply never ended. Marauders move, fight and die on this list's
-## terms and are invisible to the one below.
+## Split from the turn order because monsters need a turn without becoming a
+## contender: with one list a den of ghouls counted as a surviving faction, so
+## "last one standing" was unreachable and a won match never ended.
 var contenders: Array[int] = []
 
 ## Per-faction arrays of active TacticalUnit nodes on the map.
@@ -48,12 +46,9 @@ func _connect_signals() -> void:
 	EventBus.building_captured.connect(_on_building_captured)
 
 
-## Initialize the turn system with participating factions.
-## Call this when the match/level starts.
-##
-## `marauders` take a turn but sit outside the victory check — see `contenders`.
-## It defaults to empty, so every existing two-argument caller (all the focused
-## test scenes) keeps the behaviour it had: turn order and contenders identical.
+## Start a match. `marauders` take a turn but sit outside the victory check —
+## see `contenders`. Defaults to empty, so two-argument callers keep turn order
+## and contenders identical.
 func setup_match(factions: Array[int], eco_manager: Node,
 		marauders: Array[int] = []) -> void:
 	contenders = factions.duplicate()
@@ -124,11 +119,9 @@ func advance_phase() -> void:
 			_end_current_turn()
 
 
-## End the current faction's turn immediately and advance to the next faction.
-##
-## Refuses once the match is decided. Blocking input in the controller is not
-## enough on its own: the AI ends its own turn from a coroutine, so without this
-## the losing side keeps taking turns behind the result screen.
+## Advance to the next faction. Refuses once the match is decided — blocking
+## input is not enough, because the AI ends its own turn from a coroutine and
+## would keep playing behind the result screen.
 func end_turn() -> void:
 	if match_over:
 		return
@@ -210,12 +203,9 @@ const GARRISON_HEAL_BY_TYPE: Dictionary = {
 }
 
 
-## Resupply every unit standing on one of its OWN healing buildings.
-##
-## Own, specifically: a building is captured the instant a unit ends its move on
-## it, so "the keep you are standing in" and "the keep you hold" are the same
-## place in practice — and requiring ownership keeps a unit that was placed onto
-## a neutral house by a test or a chest from quietly drawing rations.
+## Resupply units standing on their OWN healing buildings. Ownership matters:
+## capture is instant, so the two are the same in play, but requiring it stops a
+## unit placed on a neutral house by a test or a chest from drawing rations.
 func _heal_garrisons(units: Array, heal_cells: Dictionary) -> void:
 	if heal_cells.is_empty():
 		return

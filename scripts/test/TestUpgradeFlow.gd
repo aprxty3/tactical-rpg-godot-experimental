@@ -28,7 +28,7 @@ func _ready() -> void:
 	assert(ok, "Pawn -> Warrior upgrade must succeed with sufficient funds")
 	assert(unit.unit_data == warrior_data, "Unit swapped to Warrior data")
 	assert(economy.get_gold(GameConfig.Faction.BLUE_KINGDOM) == gold_before - cost["gold"], "Gold deducted by exact at-Castle cost")
-	print("✅ [Promotion] Pawn -> %s succeeded, HP scaled to %d/%d, gold %d -> %d" % [
+	print(" [Promotion] Pawn -> %s succeeded, HP scaled to %d/%d, gold %d -> %d" % [
 		warrior_data.unit_name, unit.current_health, unit.unit_data.max_health,
 		gold_before, economy.get_gold(GameConfig.Faction.BLUE_KINGDOM)
 	])
@@ -43,7 +43,7 @@ func _ready() -> void:
 	ok = economy.process_upgrade(GameConfig.Faction.BLUE_KINGDOM, unit, knight_data, false)
 	assert(ok, "Warrior -> Knight upgrade must succeed (funds cover Field Tax)")
 	assert(unit.unit_data == knight_data, "Unit swapped to Knight data")
-	print("✅ [Field Tax] Warrior -> %s off-Castle cost %dg (vs %dg at Castle)" % [knight_data.unit_name, field_cost["gold"], castle_cost["gold"]])
+	print(" [Field Tax] Warrior -> %s off-Castle cost %dg (vs %dg at Castle)" % [knight_data.unit_name, field_cost["gold"], castle_cost["gold"]])
 
 	# 3. Insufficient funds must fail cleanly (no swap, no deduction) -- use a
 	# fresh Pawn->Warrior attempt (genuinely positive cost) with gold drained to 0.
@@ -55,7 +55,7 @@ func _ready() -> void:
 	ok = economy.process_upgrade(GameConfig.Faction.BLUE_KINGDOM, poor_unit, warrior_data, true)
 	assert(not ok, "Upgrade must fail when funds are insufficient")
 	assert(poor_unit.unit_data == data_before_fail, "Unit data must NOT change on a failed upgrade")
-	print("✅ [Insufficient Funds] Upgrade correctly rejected, unit remained %s" % poor_unit.unit_data.unit_name)
+	print(" [Insufficient Funds] Upgrade correctly rejected, unit remained %s" % poor_unit.unit_data.unit_name)
 
 	# 4. A promotion must LOOK different. Tier-3 units used to re-use their
 	# parent's texture verbatim, so Archer -> Sniper changed nothing on screen.
@@ -75,7 +75,7 @@ func _ready() -> void:
 		var promo: UnitData = load(pair[1])
 		assert(base.spritesheet != promo.spritesheet,
 			"%s -> %s must not share a spritesheet" % [base.unit_name, promo.unit_name])
-	print("✅ [Promotion Visuals] every checked promotion swaps its spritesheet")
+	print(" [Promotion Visuals] every checked promotion swaps its spritesheet")
 
 	# 5. Faction colour must not leak into the displayed name.
 	for res_path in ["res://resources/units/pawn_blue.tres",
@@ -86,7 +86,7 @@ func _ready() -> void:
 		for word in ["Blue ", "Red ", "Purple ", "Yellow ", "Black "]:
 			assert(not d.unit_name.begins_with(word),
 				"unit_name '%s' still carries a faction prefix" % d.unit_name)
-	print("✅ [Unit Names] recruit/upgrade labels carry no faction prefix")
+	print(" [Unit Names] recruit/upgrade labels carry no faction prefix")
 
 	# 6. Every unit must render at the same body height regardless of source art.
 	var dir := DirAccess.open("res://resources/units")
@@ -103,7 +103,7 @@ func _ready() -> void:
 				checked += 1
 			f = dir.get_next()
 		dir.list_dir_end()
-	print("✅ [Sprite Metrics] %d units carry baked scale/offset" % checked)
+	print(" [Sprite Metrics] %d units carry baked scale/offset" % checked)
 
 	# 7. Undead lineage: Skeleton Fodder -> Skeleton Mage -> Lich (own parallel track)
 	economy.register_faction(GameConfig.Faction.BLACK_COVEN, 200, 5)
@@ -124,7 +124,7 @@ func _ready() -> void:
 	assert(ok, "Skeleton Mage -> Lich upgrade must succeed")
 	assert(fodder.unit_data == lich_data, "Unit swapped to Lich data")
 	assert(lich_data.unit_class == "Undead", "Lich keeps unit_class Undead for the Holy-vs-Undead bonus")
-	print("✅ [Undead Track] Skeleton Fodder -> Skeleton Mage -> %s promotion chain works identically" % lich_data.unit_name)
+	print(" [Undead Track] Skeleton Fodder -> Skeleton Mage -> %s promotion chain works identically" % lich_data.unit_name)
 
-	print("🎉 Unit Upgrade Tree verified: promotion, Field Tax, funds-guard, tint flags, and the Undead track all correct!")
+	print(" Unit Upgrade Tree verified: promotion, Field Tax, funds-guard, tint flags, and the Undead track all correct!")
 	get_tree().quit(0)

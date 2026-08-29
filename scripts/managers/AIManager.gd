@@ -26,10 +26,8 @@ var combat_resolver: CombatResolver
 ## here; judgement lives there, where it can be tested without running a turn.
 var evaluator: AITacticalEvaluator
 
-## Enemy unit -> the cell where the AI last actually saw it. Without this the AI
-## would forget an enemy the instant it stepped into a forest and simply stop
-## advancing; with it, it keeps marching on the last sighting like a real scout
-## report.
+## Enemy unit -> where the AI last saw it. Without it the AI forgets an enemy
+## the moment it enters a forest and stops advancing.
 var _last_known: Dictionary = {}
 
 ## Breaks ties in recruitment. Seeded per commander rather than shared, so four
@@ -56,13 +54,9 @@ func setup(grid_mgr: GridManager, eco_mgr: Node,
 	_rng.randomize()
 
 
-## Guards against a second AI turn starting while the first is still running.
-##
-## Without it the turn loop runs away: this handler is a coroutine, so a rapid
-## turn change spawns a second _execute_ai_turn() alongside the first, and each
-## one ends with its own TurnManager.end_turn(). The extra end_turn() lands on
-## the PLAYER's turn and consumes it, so the match advances by itself while
-## nobody is touching the controls.
+## Stops a second AI turn starting while the first runs. This handler is a
+## coroutine, so a rapid turn change spawns a second `_execute_ai_turn()`; each
+## calls `end_turn()`, and the extra one consumes the PLAYER's turn.
 var _turn_running: bool = false
 
 
@@ -146,27 +140,16 @@ func _ai_try_recruit() -> void:
 			await get_tree().create_timer(action_delay).timeout
 
 
-## Which of these units to buy. Public and side-effect free so the choice can be
-## exercised on a bare list — the same reason `AITacticalEvaluator` exists.
+## Which unit to buy. Public and side-effect free so it can be exercised on a
+## bare list — the same reason `AITacticalEvaluator` exists.
 ##
-## The rule it replaced ranked candidates by `(counter advantage, gold cost)` and
-## took the maximum, which is deterministic twice over: the same board always
-## produced the same answer, and every tie went to the most expensive unit on the
-## list. That is the Wizzard, at 120 gold — and since Melee is the commonest
-## class on the field and Mage counters Melee, the answer was "another mage",
-## every single time. An army of six wizards, each purchase individually
-## correct.
+## Replaces a `(advantage, cost)` maximum that was deterministic twice over:
+## every tie went to the priciest unit, and Mage counters the commonest class,
+## so the answer was always another mage.
 ##
-## Four terms, in descending authority:
-##   1. **Counter advantage** against what the enemy actually fields. Still
-##      dominant — variety must not cost the AI its matchups.
-##   2. **A penalty per unit of that class already owned.** This is the term that
-##      does the work: an army is a composition, not a series of individually
-##      optimal purchases.
-##   3. **Cost**, at a thousandth of its value — enough to prefer the better unit
-##      among equals, far too little to be the tiebreak it used to be.
-##   4. **Jitter**, so two equally sensible buys are not always resolved the same
-##      way.
+## Four terms, descending authority: counter advantage; a penalty per unit of
+## that class already owned (the term that does the work — an army is a
+## composition); cost at a thousandth of its value; jitter to break ties.
 func pick_recruit(candidates: Array, counter_class: String,
 		active_units: Array) -> UnitData:
 	var own_classes: Dictionary = {}
@@ -263,15 +246,11 @@ func _ai_move_and_attack_units() -> void:
 			await get_tree().create_timer(action_delay).timeout
 
 
-## Pull a unit back to safer ground when it is in trouble.
+## Pull a unit back to safer ground. Returns true when it withdrew, so the
+## caller skips the rest of its turn rather than undoing the disengagement.
 ##
-## Returns true when the unit actually withdrew, so the caller can skip the rest
-## of its turn — a retreating unit does not then wander toward an objective and
-## undo the disengagement it just paid a move for.
-##
-## Deliberately conservative: `best_retreat_cell` returns "nowhere" unless some
-## reachable cell is genuinely safer than standing still, so a surrounded unit
-## fights where it is instead of shuffling sideways into equal danger.
+## `best_retreat_cell` returns nowhere unless a reachable cell is genuinely
+## safer, so a surrounded unit fights where it stands.
 func _try_retreat(unit: TacticalUnit) -> bool:
 	if not is_instance_valid(evaluator) or not is_instance_valid(unit):
 		return false
@@ -293,14 +272,12 @@ func _try_retreat(unit: TacticalUnit) -> bool:
 	return true
 
 
-## Wait for ONE unit's walk to finish, with a hard ceiling.
+## Wait for ONE unit's walk, with a hard ceiling.
 ##
-## Replaces `await EventBus.unit_move_completed`, which resumes on whichever
-## unit arrives first — not necessarily this one — and never resumes at all if
-## the move is rejected. Either way the coroutine desynchronises from the turn
-## it belongs to, and a coroutine that resumes late calls end_turn() a second
-## time. Polling one unit's own moving flag cannot mistake another unit's
-## arrival for this one's, and the ceiling guarantees the turn always finishes.
+## `await EventBus.unit_move_completed` resumes on whichever unit arrives first
+## and never at all if the move is rejected — either way the coroutine
+## desynchronises and calls `end_turn()` twice. Polling this unit's own flag
+## cannot mistake another's arrival, and the ceiling guarantees termination.
 func _await_unit_move(unit: TacticalUnit, max_seconds: float = 4.0) -> void:
 	var elapsed: float = 0.0
 	while elapsed < max_seconds:
@@ -348,11 +325,9 @@ func _refresh_scouting_report() -> void:
 			_last_known[unit] = unit.grid_position
 
 
-## The class the enemy fields most of, among units this faction can actually see.
-##
-## Returns "" when nothing is in sight, which makes recruitment fall back to
-## picking the strongest affordable unit — buying a counter to an army you have
-## not scouted is guesswork, and guessing would quietly undo the fog.
+## The commonest enemy class among units this faction can SEE. Returns "" when
+## nothing is in sight, so recruitment falls back rather than countering an army
+## it has not scouted — guessing would quietly undo the fog.
 func _most_common_enemy_class() -> String:
 	if not is_instance_valid(evaluator):
 		return ""
@@ -373,14 +348,10 @@ func _most_common_enemy_class() -> String:
 	return best_class
 
 
-## Find an enemy target within the unit's attack range.
-## Only units the AI can actually see are eligible — an enemy sitting in a
-## forest one tile away is invisible until something steps beside it, which is
-## exactly what makes the ambush bonus worth setting up.
-## Delegates to the evaluator, which weighs expected damage against the counter
-## it will eat and the kill it might land. The previous rule here was "lowest HP
-## wins", which happily traded a Knight into a Mage for one point of chip damage
-## because it could not see the counter-attack coming.
+## Best enemy in range. Only visible units are eligible, which is what makes the
+## ambush bonus worth setting up. The evaluator weighs expected damage against
+## the counter it will eat; the old "lowest HP wins" rule traded a Knight into a
+## Mage for chip damage because it could not see the counter coming.
 func _find_best_attack_target(unit: TacticalUnit) -> TacticalUnit:
 	if not is_instance_valid(evaluator):
 		return null
@@ -417,12 +388,8 @@ func _find_barrel_shot(unit: TacticalUnit) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-## Where this unit should be heading.
-##
-## Buildings are ranked by value per step of travel rather than raw proximity,
-## so a Gold Mine a short road away beats a Village underfoot — the "strategic
-## target prioritization" the Roadmap asks for, which the old
-## nearest-building-wins rule could not express at all.
+## Where this unit is heading. Ranked by value per step rather than proximity,
+## so a Gold Mine down a road beats a Village underfoot.
 func _find_strategic_destination(unit: TacticalUnit) -> Vector2i:
 	var tree = get_tree()
 	if not tree:

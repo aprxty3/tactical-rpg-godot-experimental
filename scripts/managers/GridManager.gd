@@ -27,12 +27,10 @@ var _moving_units: Dictionary = {}
 func _ready() -> void:
 	_initialize_astar_grid()
 	_connect_event_bus()
-	# Register units already in the scene tree on load. This has to be deferred:
-	# _ready() propagates depth-first in tree order, so sibling branches declared
-	# after this node — Units among them — are not in place yet when we run.
-	# Callers that need the roster earlier in the same frame (fog's first sight
-	# pass, prop placement) call register_existing_units() themselves; it is
-	# idempotent, so the deferred call landing afterwards changes nothing.
+	# Deferred because `_ready()` runs depth-first in tree order, so sibling
+	# branches declared after this node — Units among them — are not in place
+	# yet. Callers needing the roster sooner call `register_existing_units()`
+	# themselves; it is idempotent, so the deferred call changes nothing.
 	call_deferred("register_existing_units")
 
 
@@ -169,10 +167,8 @@ func set_terrain_blocked_cells(cells: Array[Vector2i]) -> void:
 # ==============================================================================
 # TERRAIN TYPES — cover, movement cost and concealment
 # ==============================================================================
-# MapBuilder decides the layout; GridManager owns it from then on. Everything
-# that asks "what is on this cell" — CombatResolver for cover, VisionManager for
-# concealment, MapObjectManager for flammability — asks here, so there is
-# exactly one answer.
+# MapBuilder decides the layout; GridManager owns it after that. Cover,
+# concealment and flammability all ask here, so there is exactly one answer.
 
 ## Vector2i -> GameConfig.TerrainType
 var _terrain: Dictionary = {}
@@ -250,14 +246,12 @@ func is_unit_moving(unit: TacticalUnit) -> bool:
 const MOVE_DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
 
 
-## Flood the map outward from a unit, paying each cell's terrain cost.
+## Dijkstra flood paying each cell's terrain cost — a plain BFS cannot answer
+## "how far can this unit go" once steps cost 1 or 2. Reachability and the
+## executed route both derive from this one field, so a unit can never be shown
+## a cell it cannot afford.
 ##
-## Terrain made steps cost 1 or 2, so a plain BFS no longer answers "how far can
-## this unit go" — it needs Dijkstra. Reachability and the executed route are
-## both derived from this one field, which is what guarantees a unit can never
-## be shown a cell it cannot actually afford to walk to.
-##
-## Returns {"cost": Dictionary[Vector2i, int], "came_from": Dictionary[Vector2i, Vector2i]}.
+## Returns {"cost": {Vector2i: int}, "came_from": {Vector2i: Vector2i}}.
 func _compute_movement_field(unit: TacticalUnit) -> Dictionary:
 	var start: Vector2i = unit.grid_position
 	var budget: int = unit.current_movement
@@ -368,12 +362,10 @@ func get_path_cells(from_cell: Vector2i, to_cell: Vector2i, _unit: TacticalUnit 
 	if not is_within_bounds(from_cell) or not is_within_bounds(to_cell):
 		return path_array
 
-	# Lepaskan sementara status solid titik awal & akhir agar AStar bisa menemukan rute.
-	# Both ends remember what they were: restoring `from_cell` to solid
-	# unconditionally would mark an EMPTY start cell permanently impassable, and
-	# the corruption is invisible until something later fails to path through it.
-	# The AI asks for routes from cells nobody stands on, so this has to be
-	# symmetric with the `to_cell` handling directly below.
+	# Temporarily un-solid both endpoints so AStar can find a route. Each end
+	# remembers what it was: restoring `from_cell` to solid unconditionally would
+	# mark an EMPTY start cell permanently impassable, and that corruption stays
+	# invisible until something later fails to path through it.
 	var start_was_solid: bool = astar.is_point_solid(from_cell)
 	astar.set_point_solid(from_cell, false)
 	var target_was_solid: bool = astar.is_point_solid(to_cell)

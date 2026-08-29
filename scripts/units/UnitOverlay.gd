@@ -3,23 +3,18 @@ class_name UnitOverlay
 ## UnitOverlay — the overhead status readout for one unit: HP bar, morale strip,
 ## and floating combat text.
 ##
-## Extracted from `TacticalUnit`, which had grown ~150 lines of pure widget
-## construction inside a battlefield actor. Nothing here knows a game rule: it
-## is handed numbers and colours and draws them. Morale bands, immunity and
-## faction palettes are decided by the unit and arrive already resolved, so this
-## file can never drift out of step with the rules — it has no opinion to drift.
+## Extracted from `TacticalUnit`, which had grown ~150 lines of widget
+## construction. Nothing here knows a game rule — bands, immunity and palettes
+## arrive already resolved, so it has no opinion that could drift.
 ##
-## Three widgets, one component rather than three: they share a single stacked
-## column above the sprite, so their offsets are coupled by layout. Splitting
-## them would mean three scripts negotiating the same 70px column.
+## One component, not three: the widgets share a stacked column above the
+## sprite, so their offsets are coupled by layout.
 ##
-## The unit calls into this directly instead of going through signals. That is
-## the sanctioned direction — a parent driving its own child's interface. The
-## rule this must never break is the reverse one: nothing in here reaches back
-## up to the unit, or sideways to a sibling.
+## The unit calls in directly rather than via signals — a parent driving its own
+## child. The rule that must not break is the reverse: nothing here reaches back
+## up to the unit or sideways to a sibling.
 ##
-## Built lazily rather than in `_ready`, so a caller can push state in the same
-## frame the overlay is created without depending on when `_ready` fired.
+## Built lazily, so a caller can push state the same frame it is created.
 
 ## Width of both bars, in pixels. The morale fill is a fraction of this.
 @export var bar_width: float = 70.0

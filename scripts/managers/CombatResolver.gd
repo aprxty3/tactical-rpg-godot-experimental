@@ -107,16 +107,12 @@ func resolve_combat(attacker: TacticalUnit, defender: TacticalUnit) -> Dictionar
 	return full_report
 
 
-## Read-only damage preview: exactly what resolve_combat() would deal, with no
-## state touched and no signal emitted.
+## Exactly what `resolve_combat()` would deal, touching no state and emitting
+## nothing. Exists so the AI scores swings without a second copy of the formula,
+## which would drift the moment either side was tuned.
 ##
-## Exists so the AI can score a swing without owning a second copy of the damage
-## formula. A copy would drift the moment either side was tuned, and the AI would
-## then be planning against rules the player never experiences.
-##
-## `def_cell_override` answers "what would this cost if the defender stood there
-## instead" — threat mapping needs that, because it evaluates cells a unit has
-## not moved to yet. Vector2i(-1, -1) means "wherever the defender actually is".
+## `def_cell_override` asks "what if the defender stood there instead" — threat
+## mapping evaluates cells nothing has moved to yet. (-1, -1) means "as it is".
 func preview_damage(att: TacticalUnit, def: TacticalUnit,
 		def_cell_override: Vector2i = Vector2i(-1, -1)) -> Dictionary:
 	if not is_instance_valid(att) or not is_instance_valid(def):
@@ -167,22 +163,15 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 	# 3. Class Fighting Style Modifiers
 	var trait_mult: float = 1.0
 	
-	# Cavalry (Lancer) Momentum Charge (+25% damage when initiating attack).
-	#
-	# Keyed on the CLASS only. The old `or "lancer" in att_name` fallback meant a
-	# rider that had stepped off its horse kept the charge bonus purely because
-	# of what it was called, which silently defeated the whole point of
-	# dismounting. Every Lancer resource declares unit_class = "Cavalry", so
-	# nothing depended on the name.
+	# Cavalry momentum charge (+25% when initiating). Keyed on CLASS only: the
+	# old `or "lancer" in att_name` let a dismounted rider keep the bonus for its
+	# name alone, defeating the point of dismounting.
 	if att_class == "Cavalry":
 		trait_mult *= 1.25
 
-	# Infiltrator (Rogue) Backstab Critical (+50% damage).
-	#
-	# The name fallback STAYS here, unlike the Cavalry check above: Skeleton
-	# Rogue is class "Undead" (so that Holy Smite applies to it) yet is meant to
-	# backstab, and its name is the only thing that says so. Nothing dismounts
-	# into or out of Infiltrator, so there is no state for the name to contradict.
+	# Rogue backstab (+50%). The name fallback STAYS, unlike Cavalry above:
+	# Skeleton Rogue is class "Undead" so Holy Smite applies, and its name is the
+	# only thing marking it a backstabber. Nothing dismounts into Infiltrator.
 	if att_class == "Infiltrator" or "rogue" in att_name:
 		trait_mult *= 1.50
 
@@ -215,13 +204,9 @@ func _calculate_damage(att: TacticalUnit, def: TacticalUnit, additional_mult: fl
 	}
 
 
-## Public read of the advantage triangle: > 1.0 means `attacker_class` beats
-## `defender_class`, < 1.0 means it loses to it.
-##
-## Exposed so recruitment can pick a counter to what the enemy actually fields
-## without keeping its own copy of the matchup table — the same reasoning as
-## preview_damage(). Names are optional and only matter for the unit-specific
-## rules (Holy vs Undead and friends).
+## The advantage triangle: > 1.0 beats, < 1.0 loses. Exposed so recruitment can
+## counter what the enemy fields without a second copy of the matchup table.
+## Names are optional and only matter for unit-specific rules.
 func class_advantage(attacker_class: String, defender_class: String,
 		attacker_name: String = "", defender_name: String = "") -> float:
 	var info: Dictionary = _get_advantage_multiplier(

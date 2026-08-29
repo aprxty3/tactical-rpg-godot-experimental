@@ -2,16 +2,12 @@ extends PopupPanel
 class_name UnitChoicePopup
 ## UnitChoicePopup — pick one unit from a costed list.
 ##
-## Recruiting at a Castle and promoting a veteran are the same interaction:
-## show some UnitData, price each one, act on the chosen one. They had been
-## written twice in `MainHUD` — two popups, two identical margin blocks, two
-## copies of the `"%s (💰%d | ⛏️%d)"` button format, two identical
-## `popup_centered(Vector2(250, 200))` calls — differing only in their title and
-## in what they emitted.
+## Recruiting and promoting are the same interaction: show some UnitData, price
+## it, act on the choice. `MainHUD` had both written out in full, differing only
+## in title and in what they emitted.
 ##
-## So this takes the differences as arguments. `payload` is whatever the caller
-## needs handed back: the Castle doing the recruiting, or the unit being
-## promoted. This class never inspects it.
+## The differences are arguments now. `payload` is handed straight back to the
+## caller — the Castle, or the unit being promoted — never inspected here.
 
 ## `payload` is echoed back untouched; `choice` is the UnitData that was picked.
 signal option_chosen(payload: Variant, choice: Resource)

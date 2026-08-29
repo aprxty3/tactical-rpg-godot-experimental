@@ -3,14 +3,12 @@ class_name MapBuilder
 ## MapBuilder — Logic layer: paints the tactical battlefield and reports which
 ## cells are impassable terrain.
 ##
-## The 16x10 prototype map was a flat grass rectangle with a decorative dirt
-## squiggle: no chokepoints, no cover, nothing to fight over. This builds a
-## 30x20 Advance-Wars-shaped battlefield instead — two rivers cut the map into
-## a west flank, a contested centre and an east flank, and the only ways across
-## are four bridges.
+## Two rivers cut a 30x20 board into a west flank, a contested centre and an
+## east flank, crossable only at four bridges — the prototype's flat rectangle
+## had no chokepoints and nothing to fight over.
 ##
-## Decoupled: owns no game rules. It paints TileMapLayers and hands the blocked
-## cells back to GridManager, which is the single source of truth for movement.
+## Owns no game rules: it paints TileMapLayers and hands blocked cells back to
+## GridManager, the single source of truth for movement.
 
 # --- Tileset source ids (resources/tilesets/terrain_flat_tileset.tres) ---
 const SRC_GROUND: int = 0
@@ -200,14 +198,12 @@ func _paint_blob(layer: TileMapLayer, origin: Vector2i, cells: Array) -> void:
 		layer.set_cell(cell, SRC_GROUND, origin + _blob_offset(l, r, u, d))
 
 
-## Tilemap_Flat's 4x4 blocks are a strict edge-lookup, not a set of
-## interchangeable variants — verified by sampling every tile's border bands:
-##   column 0 = left edge drawn   column 1 = no side edges
-##   column 2 = right edge drawn  column 3 = both side edges
-##   row    0 = top edge drawn    row    1 = no top/bottom edge
-##   row    2 = bottom edge drawn row    3 = both
-## Picking "column 1 or 2 at random" for interiors (an earlier attempt) sprays
-## right-hand edges through the middle of the field and turns it into a maze.
+## Tilemap_Flat's 4x4 blocks are a strict edge lookup, not interchangeable
+## variants — verified by sampling every tile's border bands:
+##   col 0 = left edge   col 1 = none   col 2 = right edge   col 3 = both
+##   row 0 = top edge    row 1 = none   row 2 = bottom edge  row 3 = both
+## Randomising between columns 1 and 2 for interiors sprays right-hand edges
+## through open field and renders the map as a maze.
 func _blob_offset(l: bool, r: bool, u: bool, d: bool) -> Vector2i:
 	var col: int = 3
 	if l and r:
@@ -242,14 +238,13 @@ func _in_bounds(c: Vector2i) -> bool:
 
 # === Decoration ===
 
-## Props are plain Sprite2Ds rather than tiles or colliders, and they avoid
-## roads, water and reserved cells so they never hide a unit or a building.
-## Which prop lands on a cell now decides that cell's terrain type, so the
-## cover a player can see is exactly the cover the rules apply.
+## Plain Sprite2Ds, avoiding roads, water and reserved cells so they never hide
+## a unit. The prop decides the cell's terrain type, so visible cover is exactly
+## the cover the rules apply.
+##
 ## Both tree sheets are 1536x256 holding EIGHT 192px frames, not six. Declaring
-## six made Godot slice them at 256px, so frame 0 carried its own tree plus a
-## 26px strip of the next frame's trunk — the thin vertical slivers that showed
-## up beside every tree on the map.
+## six made Godot slice at 256px, so every frame carried a strip of the next
+## tree's trunk — the slivers that appeared beside every tree.
 const TREE_SPECS: Array = [
 	{"path": "res://assets/terrain/Resources/Wood/Trees/Tree1.png", "hframes": 8, "scale": 0.30, "y": -14.0},
 	{"path": "res://assets/terrain/Resources/Wood/Trees/Tree2.png", "hframes": 8, "scale": 0.30, "y": -14.0},
@@ -415,16 +410,12 @@ func get_barrel_cells(reserved: Array[Vector2i], max_count: int = 6) -> Array[Ve
 ## Treasure positions, scattered with a seeded RNG so every match differs while
 ## a fixed seed still reproduces a layout exactly for tests. Chests avoid roads,
 ## water and prop cells so they are always visible and always reachable.
-## Cells for buried traps: the same seeded scatter as chests, with its own
-## spacing rule.
+## The same seeded scatter as chests, differing only in spacing — shared rather
+## than copied, since a copy would drift the moment either filter changed.
 ##
-## Shares `_scatter_cells` with `get_chest_cells` rather than copying it —
-## the two differ only in how far apart their results must sit, and a copy would
-## drift the moment either one's candidate filter changed.
-##
-## Traps are deliberately NOT kept off roads and bridges. A mine on the only
-## bridge is the whole point of a mine; the walkability filter inside
-## `_scatter_cells` already keeps them out of water and off occupied cells.
+## Traps are deliberately NOT kept off roads and bridges: a mine on the only
+## bridge is the point of a mine. `_scatter_cells` already excludes water and
+## occupied cells.
 func get_trap_cells(reserved: Array[Vector2i], count: int, rng: RandomNumberGenerator) -> Array[Vector2i]:
 	return _scatter_cells(reserved, count, rng, GameConfig.HIDDEN_TRAP_MIN_SPACING)
 

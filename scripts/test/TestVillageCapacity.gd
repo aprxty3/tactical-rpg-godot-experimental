@@ -21,7 +21,7 @@ func _ready() -> void:
 
 	assert(house.faction_id == GameConfig.Faction.NEUTRAL, "House starts neutral")
 	assert(economy.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM) == GameConfig.BASE_TROOP_CAPACITY, "Blue starts at base capacity")
-	print("✅ [Neutral Village] House starts unowned, base capacity %d" % GameConfig.BASE_TROOP_CAPACITY)
+	print(" [Neutral Village] House starts unowned, base capacity %d" % GameConfig.BASE_TROOP_CAPACITY)
 
 	# 1. Blue captures the village -> +2 TC for Blue
 	house.capture(GameConfig.Faction.BLUE_KINGDOM)
@@ -29,13 +29,13 @@ func _ready() -> void:
 	assert(economy.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM) == expected_captured, "Blue capacity increases by VILLAGE_CAPACITY_BONUS after capture")
 	assert(last_capacity_signal["faction_id"] == GameConfig.Faction.BLUE_KINGDOM, "Signal faction must be Blue Kingdom")
 	assert(last_capacity_signal["max_cap"] == expected_captured, "Signal max_cap must be %d" % expected_captured)
-	print("✅ [Capture] Blue captures village, capacity %d -> %d (Signal max_cap: %d)" % [GameConfig.BASE_TROOP_CAPACITY, expected_captured, last_capacity_signal["max_cap"]])
+	print(" [Capture] Blue captures village, capacity %d -> %d (Signal max_cap: %d)" % [GameConfig.BASE_TROOP_CAPACITY, expected_captured, last_capacity_signal["max_cap"]])
 
 	# 2. Red recaptures the same village -> Blue's bonus must be removed, Red gains it
 	house.capture(GameConfig.Faction.RED_LEGION)
 	assert(economy.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM) == GameConfig.BASE_TROOP_CAPACITY, "Blue capacity reverts to base after losing the village")
 	assert(economy.get_max_capacity(GameConfig.Faction.RED_LEGION) == expected_captured, "Red capacity increases after recapturing")
-	print("✅ [Recapture] Red recaptures village, Blue reverts to %d, Red rises to %d" % [GameConfig.BASE_TROOP_CAPACITY, expected_captured])
+	print(" [Recapture] Red recaptures village, Blue reverts to %d, Red rises to %d" % [GameConfig.BASE_TROOP_CAPACITY, expected_captured])
 
-	print("🎉 Village Economy & Troop Capacity verified: capture, recapture, and decrement-on-loss all correct!")
+	print(" Village Economy & Troop Capacity verified: capture, recapture, and decrement-on-loss all correct!")
 	get_tree().quit(0)

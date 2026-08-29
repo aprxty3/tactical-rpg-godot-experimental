@@ -3,23 +3,18 @@ class_name ResourceScatter
 ## ResourceScatter — lays the mines and villages out fresh every match, without
 ## giving anyone a better opening than anyone else.
 ##
-## The authored layout in `Match.tscn` was hand-tuned until all four armies were
-## exactly the same walk from a gold mine, an iron mine and two villages. That is
-## worth keeping and it is also the same board every single time. This rolls a
-## new one per match and keeps the guarantee, by never placing a single building:
-## it places an ORBIT of four — a cell and its three mirror images — so the
-## layout is symmetric under the same reflections that map one castle onto
-## another. Symmetry is what makes it fair; the roll is what makes it different.
+## The authored layout was hand-tuned so all four armies walked the same
+## distance to every prize — worth keeping, but the same board every match. This
+## rolls a new one and keeps the guarantee by never placing a single building:
+## it places an ORBIT of four (a cell and its three mirror images), symmetric
+## under the reflections that map one castle onto another.
 ##
-## Symmetry alone is not quite proof, because the terrain under it is only
-## roughly symmetric (the centre road sits a column off, one pond is a row off).
-## So every candidate orbit is measured with a real path search from all four
-## castles and rejected unless the four distances tie exactly. A fair map is a
-## measured property here, not an assumed one.
+## Symmetry alone is not proof, because the terrain beneath is only roughly
+## symmetric — the centre road sits a column off. So every candidate orbit is
+## measured by real path search from all four castles and rejected unless the
+## distances tie exactly. Fairness is measured here, not assumed.
 ##
-## A RefCounted with injected collaborators, like `ArmyMuster` and
-## `PandoraTable`: it can be run against a bare grid and interrogated without
-## building a match around it.
+## A RefCounted with injected collaborators, so it runs against a bare grid.
 
 ## How much room to leave around a castle, in cells. The opening army musters
 ## from the rings immediately outside its keep, and a mine dropped into that
@@ -39,12 +34,9 @@ const MAX_ATTEMPTS: int = 400
 ## Distances are measured in movement points. This stands in for "unreachable".
 const UNREACHABLE: int = 1 << 20
 
-## How far from the nearest castle each kind of prize may sit, in movement
-## points. Fairness alone leaves the map shapeless: a draw that pushes both
-## village orbits thirteen moves out is perfectly even-handed and still a bad
-## board, because nobody can garrison anything before turn five. These bands are
-## what make a roll feel like the same game each time — near villages, a flank
-## mine worth an early march, and iron far enough out to be genuinely contested.
+## Distance bands from the nearest castle, in movement points. Fairness alone
+## leaves the map shapeless — pushing both village orbits thirteen moves out is
+## even-handed and still a bad board. These keep every roll the same game.
 const REACH_BAND: Dictionary = {
 	"gold_mine": Vector2i(3, 11),
 	"iron_mine": Vector2i(9, 16),
@@ -85,12 +77,8 @@ func scatter(buildings: Array) -> Dictionary:
 	return report
 
 
-## Everything `scatter` does except touching the board.
-##
-## Separate so the roll can be interrogated — twice with different seeds, to
-## prove it actually rolls — without a test having to rearrange a live match to
-## find out. `found` says whether a layout was reached; the three cell arrays
-## say where each kind would go.
+## Everything `scatter` does except touching the board, so the roll can be run
+## twice with different seeds and compared without rearranging a live match.
 func roll(buildings: Array) -> Dictionary:
 	var report: Dictionary = {
 		"found": false, "reason": "",
@@ -156,12 +144,9 @@ func orbit_of(cell: Vector2i) -> Array[Vector2i]:
 	] as Array[Vector2i]
 
 
-## The castles that actually form a four-fold ring.
-##
-## Derived rather than listed: a castle belongs to the ring exactly when all
-## three of its mirror images are castles too. That drops the Black Coven's keep
-## in the middle of the map — which is nobody's opening position — without this
-## needing to know that the Black Coven exists.
+## Derived, not listed: a castle joins the ring exactly when all three of its
+## mirror images are castles too. That drops the centre keep without this
+## needing to know the Black Coven exists.
 func _mirror_castles(castles: Array) -> Array[Vector2i]:
 	var occupied: Dictionary = {}
 	for cell in castles:
@@ -186,13 +171,10 @@ func _mirror_castles(castles: Array) -> Array[Vector2i]:
 # MEASUREMENT
 # ==============================================================================
 
-## Movement-point cost from `origin` to every cell it can reach.
-##
-## A real Dijkstra over the grid's own move costs, not Manhattan distance: the
-## first hand-balanced layout put two mines in forest at 2 MP a cell, which is an
-## asymmetry a ruler cannot see. Run before the terrain map is filled in, every
-## open cell costs 1 and this degrades to a plain BFS — the right answer for a
-## board whose only obstacles at that point are its rivers.
+## Real Dijkstra over the grid's move costs, not Manhattan: the first
+## hand-balanced layout put two mines in 2 MP forest, an asymmetry a ruler
+## cannot see. Before the terrain map exists this degrades to BFS, which is
+## correct when the only obstacles are rivers.
 func distance_field(origin: Vector2i) -> Dictionary:
 	var dist: Dictionary = {origin: 0}
 	var frontier: Array[Vector2i] = [origin]
@@ -243,13 +225,10 @@ func _reach(orbit: Array[Vector2i], anchors: Array[Vector2i], fields: Dictionary
 # CANDIDATE POOLS
 # ==============================================================================
 
-## Every orbit that is legal ground AND measures the same from all four castles,
-## sorted into the kind of prize it is allowed to hold.
-##
-## Gold sits on the flanks and iron in the contested middle. That is not an
-## aesthetic choice: it is the shape the map was balanced into deliberately —
-## the flank prize is yours to hold, the centre prize is the reason to march.
-## Villages go anywhere, because their job is to be spread out.
+## Legal orbits that measure equal from all four castles, sorted by what they
+## may hold. Gold on the flanks, iron in the contested middle: the flank prize
+## is yours to hold, the centre prize is the reason to march. Villages go
+## anywhere, because their job is to be spread out.
 func _build_pools(anchors: Array[Vector2i], fields: Dictionary,
 		castles: Array) -> Dictionary:
 	var pools: Dictionary = {"gold_mine": [], "iron_mine": [], "village": []}

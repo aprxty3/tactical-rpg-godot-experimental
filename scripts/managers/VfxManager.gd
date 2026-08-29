@@ -2,16 +2,12 @@ extends Node
 class_name VfxManager
 ## VfxManager — Logic layer: turns things that happened into things you can see.
 ##
-## Listens to the EventBus and nothing listens back. No gameplay script holds a
-## reference to this manager, so a scene that omits it behaves identically minus
-## the sparkle — which is exactly what the older focused test scenes need. It can
-## never change an outcome, only illustrate one.
+## Listens to the EventBus and nothing listens back, so a scene that omits it
+## behaves identically minus the sparkle. It can never change an outcome.
 ##
-## Uses CPUParticles2D rather than GPUParticles2D on purpose: this project ships
-## on the **GL Compatibility** renderer, where the GPU path's richer features
-## (trails, attractors, collision) are unavailable anyway. The bursts here are
-## 12-28 short-lived particles fired once, so the CPU cost is noise, and the CPU
-## node needs no ParticleProcessMaterial — one node, one configuration, done.
+## CPUParticles2D, not GPU: on the GL Compatibility renderer the GPU path's
+## trails/attractors/collision are unavailable anyway, these bursts are 12-28
+## one-shot particles, and the CPU node needs no ParticleProcessMaterial.
 
 @export_group("VFX Settings")
 ## Master switch. Off means no nodes are ever spawned, for a headless test run
@@ -43,12 +39,8 @@ const DEATH_SHEET: String = "res://assets/characters/dead/Dead.png"
 const DEATH_HFRAMES: int = 7
 const DEATH_VFRAMES: int = 2
 
-## One table describing every effect, rather than one function per effect. Adding
-## a new burst is a row here plus a call — not another near-copy of the spawn
-## code, which is how effect systems usually rot.
-##
-## `speed` is a Vector2 read as (min, max). `gravity` is positive-down, matching
-## Godot's screen axis, so a value above zero makes debris settle.
+## One table, not one function per effect — a new burst is a row plus a call.
+## `speed` is (min, max); `gravity` is positive-down, so above zero settles.
 const EFFECTS: Dictionary = {
 	"impact": {
 		"texture": "Dust_01.png", "hframes": 8, "count": 14, "lifetime": 0.40,
@@ -77,14 +69,9 @@ const EFFECTS: Dictionary = {
 		"speed": Vector2(150.0, 300.0), "spread": 180.0, "scale": 0.75,
 		"gravity": 240.0, "tint": Color(1.0, 0.72, 0.30),
 	},
-	# Fire_01/02/03 are sprite SHEETS (8/10/12 frames of 64px), not single
-	# images. Drawn as flat textures — which is all this manager could do before
-	# — every particle showed the whole filmstrip at once, which is why the
-	# explosion read as orange grit instead of fire. `hframes` switches the
-	# particle onto the flipbook path so each one plays the flame animation.
-	#
-	# Negative gravity because flame rises; the previous effects all used
-	# positive gravity, which is right for debris and wrong for fire.
+	# Fire_01/02/03 are sprite SHEETS (8/10/12 frames). Drawn flat, every
+	# particle showed the whole filmstrip at once and read as orange grit;
+	# `hframes` puts them on the flipbook path. Negative gravity: flame rises.
 	"flame": {
 		"texture": "Fire_02.png", "hframes": 10, "count": 18, "lifetime": 0.8,
 		"speed": Vector2(55.0, 120.0), "spread": 26.0, "scale": 1.6,
@@ -160,12 +147,9 @@ func _on_combat_resolved(result: Dictionary) -> void:
 	shake(clampf(float(damage) / float(max_hp), 0.0, 1.0) * 6.0, 0.22)
 
 
-## A unit died. No particle burst: a spray of red debris is the vocabulary of an
-## explosion, and a sword to the chest is not one. The skull sheet lands, settles
-## and sinks instead — a marker, which is what a death should leave behind.
-##
-## The shake drops from 4.0 to 1.2 for the same reason. A kill should register as
-## a thump, not as ordnance going off.
+## No particle burst: red debris is the vocabulary of an explosion, and a sword
+## to the chest is not one. The skull sheet settles and sinks — a marker. Shake
+## drops 4.0 -> 1.2 for the same reason: a thump, not ordnance.
 func _on_unit_died(unit: Node, _cause: String) -> void:
 	if is_instance_valid(unit):
 		flipbook_at_position(unit.global_position, DEATH_SHEET,
@@ -179,12 +163,9 @@ func _on_unit_deserted(unit: Node) -> void:
 
 
 func _on_hazard_detonated(cell: Vector2i, _radius: int, chain_index: int) -> void:
-	# Fire only — no debris row. A powder keg going off should read as ignition,
-	# and the dust layer that used to sit here made it a brown cloud instead.
-	# Blast front, burning gas, the flame it leaves standing, and embers.
-	#
-	# All of it lives here rather than half here and half in MapObjectManager,
-	# which owns map objects and their rules, not their pyrotechnics.
+	# Fire only — the old dust layer made a keg read as a brown cloud rather
+	# than ignition. Blast front, burning gas, standing flame, embers. All of it
+	# here: MapObjectManager owns the rules, not the pyrotechnics.
 	flipbook_at_cell(cell, EXPLOSION_SHEET, EXPLOSION_FRAMES, 0.45, 110.0)
 	burst_at_cell(cell, "fireball")
 	burst_at_cell(cell, "flame")
@@ -287,17 +268,13 @@ func burst_at_position(world_pos: Vector2, effect_id: String) -> CPUParticles2D:
 		mat.particles_anim_h_frames = int(spec["hframes"])
 		mat.particles_anim_v_frames = 1
 		mat.particles_anim_loop = false
-		# NOTE on tints for additive rows: an additive tint is not the colour you
-		# see, it is the colour ADDED to the ground behind it. Over this game's
-		# grass a warm orange sums into pale yellow, so the fire rows carry
-		# deliberately green-starved tints that only look right once added.
+		# An additive tint is the colour ADDED to what is behind it, not the one
+		# you see — over grass a warm orange sums to pale yellow, so the fire
+		# rows carry green-starved tints that only look right once added.
 		#
-		# Fire emits light, so overlapping flames must ADD rather than occlude.
-		# On the default mix blend the nearest particle simply hides the ones
-		# behind it and a cluster reads as opaque orange rubble; additive makes
-		# the overlap brighten, which is what the eye recognises as flame.
-		# Opt-in per effect: dust and debris are lit, not luminous, and would
-		# turn into white smears.
+		# Fire emits light, so overlaps must brighten rather than occlude; on
+		# mix blend a cluster reads as opaque rubble. Opt-in per effect: dust
+		# and debris are lit, not luminous, and would turn into white smears.
 		if bool(spec.get("additive", false)):
 			mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 		particles.material = mat
@@ -321,12 +298,9 @@ func burst_at_position(world_pos: Vector2, effect_id: String) -> CPUParticles2D:
 	return particles
 
 
-## Play a horizontal sprite-sheet animation once on a grid cell, then free it.
-##
-## Complements the particle bursts rather than competing with them: a flipbook
-## draws one authored shape (a fireball), particles throw many identical ones
-## (debris). `display_height` scales the sheet to a readable size on a 64 px
-## tile regardless of the source resolution.
+## Play a sheet animation once on a cell, then free it. A flipbook draws one
+## authored shape; particles throw many identical ones. `display_height` scales
+## to a readable size on a 64 px tile whatever the source resolution.
 func flipbook_at_cell(cell: Vector2i, sheet_path: String, frames: int,
 		duration: float, display_height: float, vframes: int = 1) -> Sprite2D:
 	if not is_instance_valid(grid_manager):
@@ -335,13 +309,11 @@ func flipbook_at_cell(cell: Vector2i, sheet_path: String, frames: int,
 		frames, duration, display_height, vframes)
 
 
-## Same, at a world position — a dying unit is mid-animation between cells, so
-## snapping its marker to a cell centre would place it where it no longer is.
+## Same at a world position — a dying unit is between cells, so snapping to a
+## cell centre would place its marker where it no longer is.
 ##
-## `vframes` supports grid sheets (the death skull is 7x2). Sprite2D.frame walks
-## a grid in row-major order, so the tween target is still a single frame count;
-## only the scale maths needs the row count, since a frame is
-## texture_height / vframes tall, not texture_height.
+## `vframes` supports grid sheets (the skull is 7x2). `Sprite2D.frame` walks
+## row-major, so only the scale maths needs the row count.
 func flipbook_at_position(world_pos: Vector2, sheet_path: String, frames: int,
 		duration: float, display_height: float, vframes: int = 1) -> Sprite2D:
 	if not effects_enabled:
@@ -379,12 +351,9 @@ func _set_sheet_frame(value: float, sprite: Sprite2D, frames: int) -> void:
 		sprite.frame = clampi(int(value), 0, frames - 1)
 
 
-## Rattle the camera.
-##
-## Animates `offset`, never `position`. `position` is what Camera2D's `limit_*`
-## properties clamp, so shaking it would be silently squashed against the map
-## edge — the shake would weaken exactly where the player is most likely to be
-## fighting. `offset` is applied after clamping and is unaffected.
+## Animates `offset`, never `position`: `position` is what `limit_*` clamps, so
+## a position shake is silently squashed at the map edge — weakest exactly where
+## the fighting happens. `offset` is applied after clamping.
 func shake(strength: float, duration: float) -> void:
 	if not shake_enabled or strength <= 0.0:
 		return

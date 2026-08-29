@@ -28,7 +28,7 @@ var objects: MapObjectManager
 
 func _ready() -> void:
 	print("==========================================================")
-	print("🎯 [TEST MILESTONE 5] Advanced AI · VFX · Mount · Audio")
+	print(" [TEST MILESTONE 5] Advanced AI · VFX · Mount · Audio")
 	print("==========================================================")
 
 	main = load("res://scenes/Match.tscn").instantiate()
@@ -2123,7 +2123,7 @@ func _test_black_castle_encounters() -> void:
 			"a unit cannot surrender to a monster — there is nobody to surrender to")
 
 	# --- the turn banner is coloured for whoever is actually playing --------
-	# A literal 🔵 in the format string told a Purple player they were blue,
+	# A literal in the format string told a Purple player they were blue,
 	# every turn, for the whole match.
 	var pips: Dictionary = {}
 	for faction_id in MatchSetup.participants:
@@ -2373,19 +2373,19 @@ func _test_ai_appetite() -> void:
 func _check(condition: bool, message: String) -> void:
 	if condition:
 		_passed += 1
-		print("  ✅ %s" % message)
+		print("%s" % message)
 	else:
 		_failed += 1
 		_failures.append(message)
-		print("  ❌ %s" % message)
+		print("%s" % message)
 
 
 func _report() -> void:
 	print("\n==========================================================")
 	if _failed == 0:
-		print("🎉 MILESTONE 5 — ALL %d CHECKS PASSED" % _passed)
+		print(" MILESTONE 5 — ALL %d CHECKS PASSED" % _passed)
 	else:
-		print("⚠️  MILESTONE 5 — %d passed, %d FAILED" % [_passed, _failed])
+		print("MILESTONE 5 — %d passed, %d FAILED" % [_passed, _failed])
 		for failure in _failures:
-			print("    ✗ %s" % failure)
+			print("%s" % failure)
 	print("==========================================================")

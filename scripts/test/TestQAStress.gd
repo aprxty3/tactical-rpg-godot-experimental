@@ -2,7 +2,7 @@ extends Node2D
 
 func _ready() -> void:
 	print("==========================================================")
-	print("🛡️ [QA AUTOMATED TEST SUITE] STARTING FULL SYSTEM AUDIT...")
+	print(" [QA AUTOMATED TEST SUITE] STARTING FULL SYSTEM AUDIT...")
 	print("==========================================================")
 
 	# 1. Load Main Battlefield Scene
@@ -42,7 +42,7 @@ func _ready() -> void:
 		assert(lancer_res != null, "Lancer resource for %s must exist" % fac)
 		assert(is_equal_approx(lancer_res.sprite_scale, 0.50), "Lancer sprite_scale must be 0.50, got %f" % lancer_res.sprite_scale)
 		
-	print("✅ [QA 01] Core subsystems, initial 5/8 capacity, 100% starting HP, and Lancer metrics validated.")
+	print(" [QA 01] Core subsystems, initial 5/8 capacity, 100% starting HP, and Lancer metrics validated.")
 
 	# 2. Verify Battlefield & Building Layout (30x20)
 	assert(grid_mgr.grid_size == Vector2i(30, 20), "Grid size must be 30x20")
@@ -60,7 +60,7 @@ func _ready() -> void:
 				Building.BuildingType.HOUSE: village_count += 1
 
 	assert(building_count >= 15, "Battlefield must have all landmark buildings placed")
-	print("✅ [QA 02] Battlefield validated: %d Buildings (%d Castles, %d Mines, %d Villages)" % [
+	print(" [QA 02] Battlefield validated: %d Buildings (%d Castles, %d Mines, %d Villages)" % [
 		building_count, castle_count, mine_count, village_count
 	])
 
@@ -81,7 +81,7 @@ func _ready() -> void:
 		"Blue max capacity must be %d after claiming 1 village, got %d"
 			% [expect_after_village, blue_cap_after_village])
 	assert(blue_used_after_village == 5, "Blue used capacity must remain 5 (not 0) after claiming village, got %d" % blue_used_after_village)
-	print("✅ [QA 02b] Village claim verified: Capacity updated to %d/%d (Used capacity accurately preserved)." % [blue_used_after_village, blue_cap_after_village])
+	print(" [QA 02b] Village claim verified: Capacity updated to %d/%d (Used capacity accurately preserved)." % [blue_used_after_village, blue_cap_after_village])
 
 	# A castle is worth more than a village and pays only from the SECOND one —
 	# a faction's own keep is already priced into BASE_TROOP_CAPACITY, so taking
@@ -102,7 +102,7 @@ func _ready() -> void:
 	enemy_castle.capture(GameConfig.Faction.RED_LEGION)
 	assert(eco_mgr.get_max_capacity(GameConfig.Faction.BLUE_KINGDOM) == expect_after_village,
 		"Losing the taken castle must give the capacity back")
-	print("✅ [QA 02c] Castle claim verified: +%d capacity on the second keep, returned on loss."
+	print(" [QA 02c] Castle claim verified: +%d capacity on the second keep, returned on loss."
 		% GameConfig.CASTLE_CAPACITY_BONUS)
 
 	# 3. Test Recruitment at Blue Castle
@@ -123,7 +123,7 @@ func _ready() -> void:
 	assert(recruited_unit != null, "Recruitment must spawn a valid TacticalUnit")
 	assert(grid_mgr.get_unit_at(spawn_pos) == recruited_unit, "Unit must be registered in GridManager")
 	assert(eco_mgr.get_gold(GameConfig.Faction.BLUE_KINGDOM) == initial_gold - pawn_data.recruit_cost_gold, "Gold must be deducted accurately")
-	print("✅ [QA 03] Recruitment mechanics passed: %s recruited at %s." % [recruited_unit.unit_data.unit_name, spawn_pos])
+	print(" [QA 03] Recruitment mechanics passed: %s recruited at %s." % [recruited_unit.unit_data.unit_name, spawn_pos])
 
 	# 4. Test Unit Movement and Pathfinding
 	var target_cell := Vector2i(5, 16)
@@ -131,7 +131,7 @@ func _ready() -> void:
 	EventBus.unit_move_requested.emit(recruited_unit, target_cell)
 	await get_tree().create_timer(0.4).timeout
 	assert(recruited_unit.grid_position == target_cell, "Unit must reach target cell")
-	print("✅ [QA 04] Unit movement & Tween execution verified at %s." % target_cell)
+	print(" [QA 04] Unit movement & Tween execution verified at %s." % target_cell)
 
 	# 5. Test Combat Resolution (Pawn vs Cultist Pawn)
 	var enemy_res: UnitData = load("res://resources/units/pawn_black.tres")
@@ -146,7 +146,7 @@ func _ready() -> void:
 	var combat_report: Dictionary = combat_res.resolve_combat(recruited_unit, enemy_unit)
 	assert(combat_report.has("primary_attack"), "Combat report must have primary attack")
 	assert(enemy_unit.current_health < enemy_initial_hp, "Enemy must take damage from combat")
-	print("✅ [QA 05] Combat Resolver verified: Dealt %d damage to %s." % [
+	print(" [QA 05] Combat Resolver verified: Dealt %d damage to %s." % [
 		combat_report["primary_attack"]["damage"], enemy_res.unit_name
 	])
 
@@ -155,7 +155,7 @@ func _ready() -> void:
 	var upgrade_success: bool = eco_mgr.process_upgrade(GameConfig.Faction.BLUE_KINGDOM, recruited_unit, warrior_res, false) # False = in field
 	assert(upgrade_success, "Upgrade with Field Tax should succeed if treasury allows")
 	assert(recruited_unit.unit_data == warrior_res, "UnitData should now be Warrior")
-	print("✅ [QA 06] Unit Promotion & Field Tax verified: Unit promoted to %s." % recruited_unit.unit_data.unit_name)
+	print(" [QA 06] Unit Promotion & Field Tax verified: Unit promoted to %s." % recruited_unit.unit_data.unit_name)
 
 	# 7. Test Multi-Turn Cycle & AI Simulation (5 Full Turns)
 	print("⏳ [QA 07] Simulating 5 full consecutive turn cycles with AI automation...")
@@ -167,9 +167,9 @@ func _ready() -> void:
 			TurnManager.end_turn()
 			await get_tree().create_timer(0.2).timeout
 
-	print("✅ [QA 07] Turn cycling & AI routines executed with ZERO crashes.")
+	print(" [QA 07] Turn cycling & AI routines executed with ZERO crashes.")
 
 	print("==========================================================")
-	print("🎉 [QA AUDIT RESULT] ALL 7 AUTOMATED INTEGRATION TESTS PASSED (100%)")
+	print(" [QA AUDIT RESULT] ALL 7 AUTOMATED INTEGRATION TESTS PASSED (100%)")
 	print("==========================================================")
 	get_tree().quit(0)

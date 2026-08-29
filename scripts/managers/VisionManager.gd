@@ -2,16 +2,13 @@ extends Node
 class_name VisionManager
 ## VisionManager — Logic layer manager for Fog of War.
 ##
-## Owns two things per faction: which cells it can currently SEE, and which
-## cells it has ever seen (explored). Everything that needs to know whether
-## something is observable asks here — the HUD, the input handler, and the AI
-## alike, so the fog is symmetric and the AI cannot cheat.
+## Two sets per faction: what it can SEE now, and what it has ever seen. The
+## HUD, the input handler and the AI all ask here, so the fog is symmetric and
+## the AI cannot cheat.
 ##
-## Visibility deliberately uses the Advance Wars rule rather than raycast line
-## of sight: a cell is seen when it is inside an observer's radius, and a unit
-## standing on concealing terrain (forest, rocks) is only spotted from an
-## adjacent tile. That is cheap, has no corner cases, and reads as fair to a
-## player who already understands the genre.
+## The Advance Wars rule, not raycast line of sight: a cell is seen inside a
+## radius, and a unit on concealing terrain is only spotted from adjacent.
+## Cheap, no corner cases, and already familiar to the genre's players.
 
 @export_group("Fog Settings")
 ## Master switch. Off means every cell is visible to everyone, which is what

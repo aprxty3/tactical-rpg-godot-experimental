@@ -27,7 +27,7 @@ func _ready() -> void:
 			assert(unit.animation_player.has_animation("run"), "run anim exists")
 			assert(unit.animation_player.has_animation("attack"), "attack anim exists")
 			
-			print("✅ [%s] %s (Class: %s, Tier: %d) -> HP: %d, ATK: %d, DEF: %d, MOV: %d" % [
+			print(" [%s] %s (Class: %s, Tier: %d) -> HP: %d, ATK: %d, DEF: %d, MOV: %d" % [
 				file_name, udata.unit_name, udata.unit_class, udata.tier, udata.max_health, udata.attack_power, udata.defense_power, udata.movement_points
 			])
 			
@@ -37,5 +37,5 @@ func _ready() -> void:
 		
 	dir.list_dir_end()
 	
-	print("🎉 Successfully validated all %d unit definitions across all 5 factions!" % tested_count)
+	print(" Successfully validated all %d unit definitions across all 5 factions!" % tested_count)
 	get_tree().quit(0)

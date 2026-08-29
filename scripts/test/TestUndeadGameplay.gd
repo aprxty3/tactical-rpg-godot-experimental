@@ -2,7 +2,7 @@ extends Node2D
 
 func _ready() -> void:
 	print("==========================================================")
-	print("🧛 [TEST UNDEAD GAMEPLAY] TESTING VAMPIRE & SKELETON TREE...")
+	print(" [TEST UNDEAD GAMEPLAY] TESTING VAMPIRE & SKELETON TREE...")
 	print("==========================================================")
 
 	var main_scene_res: PackedScene = load("res://scenes/Match.tscn")
@@ -28,7 +28,7 @@ func _ready() -> void:
 	castle_black.faction_id = GameConfig.Faction.BLUE_KINGDOM
 	eco_mgr.add_gold(GameConfig.Faction.BLUE_KINGDOM, 500)
 	eco_mgr.add_iron(GameConfig.Faction.BLUE_KINGDOM, 10)
-	print("🏰 Castle Black captured by Blue Kingdom.")
+	print(" Castle Black captured by Blue Kingdom.")
 
 	# 2. Recruit Skeleton Fodder for Blue Kingdom
 	var skel_res: UnitData = load("res://resources/units/skeleton_base_black.tres")
@@ -44,7 +44,7 @@ func _ready() -> void:
 	var skel_attackable: Array[Vector2i] = grid_mgr.get_attackable_cells(skel_unit.grid_position, skel_unit.unit_data.attack_range_min, skel_unit.unit_data.attack_range_max)
 	assert(skel_reachable.size() > 0, "Skeleton must have reachable movement tiles")
 	assert(skel_attackable.size() > 0, "Skeleton must have attackable tiles")
-	print("✅ Skeleton Fodder reachable tiles: %d, attackable tiles: %d" % [skel_reachable.size(), skel_attackable.size()])
+	print(" Skeleton Fodder reachable tiles: %d, attackable tiles: %d" % [skel_reachable.size(), skel_attackable.size()])
 
 	# 4. Recruit Vampire for Blue Kingdom
 	var vamp_res: UnitData = load("res://resources/units/vampire_black.tres")
@@ -59,7 +59,7 @@ func _ready() -> void:
 	var vamp_attackable: Array[Vector2i] = grid_mgr.get_attackable_cells(vamp_unit.grid_position, vamp_unit.unit_data.attack_range_min, vamp_unit.unit_data.attack_range_max)
 	assert(vamp_reachable.size() > 0, "Vampire must have reachable movement tiles")
 	assert(vamp_attackable.size() > 0, "Vampire must have attackable tiles")
-	print("✅ Vampire reachable tiles: %d, attackable tiles: %d" % [vamp_reachable.size(), vamp_attackable.size()])
+	print(" Vampire reachable tiles: %d, attackable tiles: %d" % [vamp_reachable.size(), vamp_attackable.size()])
 
 	# 5. Test Undead Upgrade Tree: Skeleton -> Skeleton Warrior -> Bone Reaper
 	var skel_war_res: UnitData = load("res://resources/units/skeleton_black.tres")
@@ -73,7 +73,7 @@ func _ready() -> void:
 	assert(upg_ok2, "Upgrade to Bone Reaper must succeed")
 	assert(skel_unit.faction_id == GameConfig.Faction.BLUE_KINGDOM, "Bone Reaper must remain Blue Kingdom")
 	assert(grid_mgr.get_reachable_cells(skel_unit).size() > 0, "Bone Reaper must have reachable tiles")
-	print("✅ Undead Skeleton upgrade chain verified: Skeleton Fodder -> Skeleton Warrior -> Bone Reaper")
+	print(" Undead Skeleton upgrade chain verified: Skeleton Fodder -> Skeleton Warrior -> Bone Reaper")
 
 	# 6. Test Vampire Upgrade Tree: Vampire -> Vampire Lord
 	var vamp_lord_res: UnitData = load("res://resources/units/vampirelord_black.tres")
@@ -81,9 +81,9 @@ func _ready() -> void:
 	assert(upg_vamp, "Upgrade to Vampire Lord must succeed")
 	assert(vamp_unit.faction_id == GameConfig.Faction.BLUE_KINGDOM, "Vampire Lord must remain Blue Kingdom")
 	assert(grid_mgr.get_reachable_cells(vamp_unit).size() > 0, "Vampire Lord must have reachable tiles")
-	print("✅ Undead Vampire upgrade chain verified: Vampire -> Vampire Lord")
+	print(" Undead Vampire upgrade chain verified: Vampire -> Vampire Lord")
 
 	print("==========================================================")
-	print("🎉 [TEST UNDEAD GAMEPLAY] ALL TESTS PASSED (100%)")
+	print(" [TEST UNDEAD GAMEPLAY] ALL TESTS PASSED (100%)")
 	print("==========================================================")
 	get_tree().quit(0)

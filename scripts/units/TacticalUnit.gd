@@ -36,11 +36,9 @@ var is_mounted: bool = true
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
 # === Overhead Status Readout ===
-## HP bar, morale strip and floating combat text, all owned by one child
-## component. Instanced in code rather than declared in each unit scene: all 40+
-## unit `.tscn` files predate it, and building it here leaves every one of them
-## valid untouched — the same backwards-compatible-by-construction rule the
-## mount system follows.
+## HP bar, morale strip and floating text, in one child component. Instanced in
+## code rather than declared per scene, so all 40+ unit `.tscn` files stay valid
+## untouched.
 var overlay: UnitOverlay
 
 
@@ -116,12 +114,9 @@ func _setup_default_animations() -> void:
 	animation_player.play("idle")
 
 
-## Play a specific animation if it exists.
-##
-## For units with per-direction attack sheets this also swaps the texture to the
-## one matching `facing`, then swaps back for any other animation. The swap is
-## confined to this one function on purpose: callers keep saying
-## `play_animation("attack")` and neither know nor care that cavalry is special.
+## For units with per-direction sheets this also swaps the texture to match
+## `facing`, then swaps back. Confined here so callers keep saying
+## `play_animation("attack")` without knowing cavalry is special.
 func play_animation(anim_name: String) -> void:
 	if not animation_player:
 		return
@@ -161,13 +156,9 @@ func _restore_base_sheet() -> void:
 	_setup_default_animations()
 
 
-## Make the unit face a specific global position.
-##
-## Always sets flip_h, which is the whole behaviour for units without
-## directional art — unchanged from before, and the reason none of the existing
-## resources needed touching. Units that DO have per-direction sheets also
-## record which of the five authored facings applies, so the attack animation
-## can pick the matching one.
+## Always sets `flip_h`, which is the entire behaviour for units without
+## directional art — the reason no existing resource needed touching. Units with
+## per-direction sheets also record which of the five facings applies.
 func face_direction(target_global_pos: Vector2) -> void:
 	if not sprite:
 		return
@@ -176,12 +167,9 @@ func face_direction(target_global_pos: Vector2) -> void:
 	facing = _facing_for(delta)
 
 
-## Map a direction vector onto one of the five authored facings.
-##
-## Only the magnitudes matter for the choice; the sign of x is carried by
-## flip_h. The 2.4 ratio splits "mostly vertical" from "diagonal": a shallower
-## split made a unit attacking one tile up and one tile across read as straight
-## up, which looks wrong next to the tile it is actually hitting.
+## Only magnitudes matter; the sign of x is carried by `flip_h`. The 2.4 ratio
+## splits "mostly vertical" from "diagonal" — shallower made a one-up-one-across
+## attack read as straight up, beside the tile it was actually hitting.
 func _facing_for(delta: Vector2) -> String:
 	var ax: float = absf(delta.x)
 	var ay: float = absf(delta.y)
@@ -208,10 +196,8 @@ func has_directional_art() -> bool:
 # MOUNT — riders on and off the horse
 # ==============================================================================
 #
-# Everything below reads through the profile and falls back to the plain stat
-# block when there is none. That is what lets 84 of the 85 unit resources ignore
-# the mount system entirely: no profile means get_effective_* returns exactly
-# what get_* always returned.
+# Everything below falls back to the plain stat block when there is no profile,
+# so units without one are untouched: `get_effective_*` returns what `get_*` did.
 
 ## Can this unit get on and off a horse at all?
 func can_mount() -> bool:
@@ -254,12 +240,9 @@ func get_effective_movement() -> int:
 	return maxi(1, base)
 
 
-## Get on or off the horse. Returns false when the unit cannot or may not.
-##
-## Costs the unit's action for the turn. Without that price a rider could stand
-## in place swapping between Cavalry and Melee to present whichever class beats
-## whatever is attacking it — dodging the advantage triangle for free, which is
-## the one thing the triangle exists to prevent.
+## Costs the unit's action. Without that price a rider could swap between
+## Cavalry and Melee in place to present whichever class beats its attacker —
+## dodging the advantage triangle for free.
 func toggle_mount() -> bool:
 	if not can_mount() or pending_surrender or not can_act():
 		return false
@@ -328,17 +311,12 @@ func heal(amount: int) -> void:
 		EventBus.unit_healed.emit(self, actual_healed)
 
 
-## Red glitch on taking a hit.
-##
-## A smooth fade to red and back reads as "tinted", not as "struck" — the eye
-## needs a discontinuity to register impact. So this is a hard-cut flicker:
-## `tween_callback` steps rather than `tween_property` interpolation, alternating
-## a blown-out red against a dimmed frame while the sprite jumps sideways. The
-## horizontal jump is what sells it as a glitch rather than a flash.
+## A hard-cut flicker, not a fade: the eye needs a discontinuity to read impact,
+## so this steps with `tween_callback` rather than interpolating, and the
+## sideways jump is what sells it as a glitch.
 ##
 ## Jitters `sprite.position`, never `sprite.offset` — `offset` carries the baked
-## `UnitData.sprite_offset` that normalises every unit to 38 px, so writing to it
-## would fight the render-metric pass and leave units misaligned.
+## `sprite_offset` that normalises every unit to 38 px.
 const GLITCH_STEPS: Array[Dictionary] = [
 	{"tint": Color(2.20, 0.30, 0.30), "shift": 4.0},
 	{"tint": Color(0.35, 0.05, 0.05), "shift": -3.0},
@@ -479,12 +457,9 @@ func adjust_morale(delta: int) -> GameConfig.MoraleLevel:
 	return new_level
 
 
-## Defect to a new faction without dying.
-##
-## The unit adopts the new owner's own art where a `{role}_{faction}` variant
-## exists, and arrives shaken and spent — capturing an enemy should not also
-## hand you a free extra action this turn. TurnManager re-buckets it off the
-## unit_captured signal, keeping this an actor-only concern.
+## Defect without dying. Adopts the new owner's art where a variant exists, and
+## arrives shaken and spent — a capture should not also hand you a free action.
+## TurnManager re-buckets it off `unit_captured`.
 func change_faction(new_faction_id: int) -> void:
 	if faction_id == new_faction_id:
 		return

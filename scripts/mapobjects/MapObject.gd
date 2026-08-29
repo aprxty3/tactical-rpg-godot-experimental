@@ -3,12 +3,9 @@ class_name MapObject
 ## MapObject — Actor layer base for anything that sits on a single battlefield
 ## cell and reacts to the battle around it: treasure, explosives, fire.
 ##
-## All three answer the same two questions — what happens when a unit steps
-## here, and what happens each round — so they share one base rather than three
-## near-identical scripts.
-## Subclasses stay small and hold no manager references of their own: anything
-## needing gold, units or terrain calls back through `manager`, which is
-## injected by MapObjectManager when the object is spawned.
+## All three answer the same two questions: what happens when a unit steps here,
+## and what happens each round. Subclasses hold no manager references — anything
+## needing gold, units or terrain calls back through the injected `manager`.
 
 ## Cell this object occupies. Set by MapObjectManager at spawn time.
 @export var grid_position: Vector2i = Vector2i.ZERO

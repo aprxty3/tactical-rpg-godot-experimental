@@ -2,14 +2,11 @@ extends RefCounted
 class_name ArmyMuster
 ## ArmyMuster — puts each participant's opening army on the board.
 ##
-## These used to be six nodes saved into the scene file, which is exactly why
-## the match could only ever be Blue versus Red: a scene file cannot hold "three
-## units for whichever factions happen to be playing". Once that moved into
-## code it landed in `MatchController` alongside input handling, selection state
-## and the highlight overlay; this is that block on its own.
+## These were six nodes in the scene file, which is why a match could only be
+## Blue versus Red — a scene cannot hold "three units for whoever is playing".
 ##
-## Runs once, at setup, and holds no state between calls — so a test can muster
-## an army onto a bare grid without building a match around it.
+## Runs once at setup and holds no state, so a test can muster onto a bare grid
+## without building a match around it.
 
 ## How far from its castle an army will look for somewhere to stand before it
 ## gives up. Four rings is already 80 cells; needing more than that means the

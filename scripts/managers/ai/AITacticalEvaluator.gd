@@ -2,23 +2,15 @@ extends RefCounted
 class_name AITacticalEvaluator
 ## AITacticalEvaluator — the AI's judgement, separated from its turn loop.
 ##
-## `AIManager` decides *when* to act; this decides *what is worth doing*. The
-## split exists so the scoring can be exercised without running a turn: every
-## function here is a pure read of world state, so a test can build a board,
-## ask "is this Gold Mine worth more than that Iron Mine", and get an answer
-## without any awaits, timers or signals.
-##
-## It holds no state of its own. Everything comes from the managers injected at
-## construction, which also means it can never quietly disagree with them.
+## `AIManager` decides *when* to act; this decides *what is worth doing*. Every
+## function is a pure read of world state, so scoring can be tested on a built
+## board without awaits, timers or signals. It holds no state of its own.
 ##
 ## Two rules it must never break:
-##   1. Damage is never recomputed here — `CombatResolver.preview_damage()` is
-##      the only source. A second copy of the formula would drift the moment
-##      either side was tuned, and the AI would plan against rules the player
-##      does not play against.
-##   2. Nothing is scored that the faction cannot see. Every enemy lookup goes
-##      through `can_see()`, so the fog binds the AI exactly as it binds the
-##      player.
+##   1. Damage is never recomputed — `CombatResolver.preview_damage()` is the
+##      only source, or the AI plans against rules the player does not play.
+##   2. Nothing invisible is scored. Every enemy lookup goes through `can_see()`,
+##      so the fog binds the AI exactly as it binds the player.
 
 var _grid: GridManager
 var _combat: CombatResolver
@@ -64,14 +56,9 @@ func visible_enemies() -> Array[TacticalUnit]:
 # ATTACK SCORING
 # ==============================================================================
 
-## How good is this swing, as a fraction of the target's remaining health?
-##
-## Normalising by HP rather than using raw damage is what stops the AI from
-## always hammering the toughest unit on the board: 20 damage to a 25 HP mage is
-## a far better use of an action than 30 damage to a 200 HP castle-guard.
-##
-## Returns a number where higher is better; negative means the swing costs more
-## than it gains. Callers should ignore anything at or below zero.
+## Swing quality as a fraction of the target's remaining health. Normalising by
+## HP stops the AI hammering the toughest unit: 20 damage to a 25 HP mage beats
+## 30 to a 200 HP guard. Negative means the swing costs more than it gains.
 func score_attack(attacker: TacticalUnit, defender: TacticalUnit) -> float:
 	if not is_instance_valid(attacker) or not is_instance_valid(defender):
 		return -INF
@@ -102,13 +89,10 @@ func score_attack(attacker: TacticalUnit, defender: TacticalUnit) -> float:
 	return score
 
 
-## What an enemy is worth to WALK TOWARD, as opposed to `score_attack`, which
-## ranks a swing already in range.
-##
-## Deliberately the same shape as `score_objective` — value divided by real path
-## cost — so the two are directly comparable and the caller can simply take the
-## larger. Anything else (a distance threshold, an "engage" mode flag) would make
-## the two incomparable and turn the choice into a heuristic.
+## What an enemy is worth to WALK TOWARD (`score_attack` ranks a swing already
+## in range). Same shape as `score_objective` — value over real path cost — so
+## the caller can simply take the larger; a mode flag would make them
+## incomparable.
 func score_enemy_target(unit: TacticalUnit, enemy: TacticalUnit) -> float:
 	if not is_instance_valid(unit) or not is_instance_valid(enemy):
 		return -INF
@@ -139,11 +123,9 @@ func best_enemy_target(unit: TacticalUnit) -> Dictionary:
 	return {"unit": best, "score": best_score}
 
 
-## Would this swing finish the target outright?
-##
-## Kept here rather than in the caller so the damage number still comes from one
-## place — a wounded unit is allowed to stay and land a kill instead of
-## retreating, and that decision must agree with the score that ranked it.
+## Would this swing finish the target? Kept here so the damage number comes from
+## one place: a wounded unit may stay to land a kill, and that call must agree
+## with the score that ranked it.
 func would_kill(attacker: TacticalUnit, defender: TacticalUnit) -> bool:
 	if not is_instance_valid(attacker) or not is_instance_valid(defender):
 		return false
@@ -167,10 +149,8 @@ func best_attack_target(unit: TacticalUnit) -> TacticalUnit:
 	)
 
 	# Threshold is 0, not -INF: a swing scoring at or below zero costs more in
-	# counter-damage than it gains, and taking it anyway is how an army feeds
-	# itself piecemeal into a stronger line. Declining leaves the unit free to
-	# reposition or take an objective instead — it is never left idle, because
-	# the caller falls through to movement when this returns null.
+	# counter-damage than it gains. Declining is not idling — the caller falls
+	# through to movement when this returns null.
 	var best: TacticalUnit = null
 	var best_score: float = 0.0
 	for cell in cells:
@@ -205,31 +185,20 @@ func path_cost_between(from_cell: Vector2i, to_cell: Vector2i) -> int:
 	return _grid.get_path_cost(path)
 
 
-## What a building is worth to this unit: value per step of travel.
-##
-## Dividing by path cost rather than sorting by distance is the whole point —
-## it lets a valuable objective a little further away outrank a cheap one
-## underfoot, which is exactly the "strategic target prioritization" the
-## Roadmap asks for and the old nearest-building-wins rule could not express.
+## What a building is worth to this unit: value per step of travel. Dividing by
+## path cost lets a better objective further away outrank a cheap one underfoot,
+## which nearest-building-wins could not express.
 func score_objective(unit: TacticalUnit, building: Building) -> float:
 	if not is_instance_valid(unit) or not is_instance_valid(building):
 		return -INF
-	# Building answers "what would ending a move here get me". Anything but a
-	# capture is worth nothing to march on: already ours, or — since the Black
-	# Coven's keep arrived — ground no army is allowed to take at all. Without
-	# this the AI would score the monster den as its top objective and feed
-	# units into it one at a time, forever, capturing nothing.
+	# Anything but a capture is worth nothing to march on. Without this the AI
+	# scores the monster den top and feeds units into it one at a time, forever.
 	if building.claim_for(_faction_id) != Building.Claim.CAPTURE:
 		return -INF
-	# Somebody is standing on it. A building is claimed by ENDING a move on its
-	# cell, and an occupied cell cannot be ended on — so this is not something
-	# the unit can take, however much it is worth.
-	#
-	# General rule, not a monster one, but the monsters are what made it matter:
-	# the Black Castle is the most valuable building on the board and its boss
-	# never leaves it, so without this every army marches on a keep none of them
-	# can enter and queues up outside it for the rest of the match. The enemy
-	# standing there is still handled — as an enemy, by `best_enemy_target`.
+	# Occupied: a building is claimed by ENDING a move on its cell, which an
+	# occupied cell forbids. A general rule, but the boss standing permanently on
+	# the Black Castle is what made it matter — without it every army queues
+	# outside a keep none can enter. The occupant is still handled, as an enemy.
 	if is_instance_valid(_grid) and _grid.get_unit_at(building.grid_position) != null:
 		return -INF
 
@@ -266,14 +235,9 @@ func best_objective(unit: TacticalUnit) -> Building:
 # THREAT & RETREAT
 # ==============================================================================
 
-## Expected incoming damage if `unit` stood on `cell` at the start of the enemy's
-## next turn.
-##
-## An enemy threatens a cell when it could both reach striking distance and
-## strike: movement points plus attack range. That is the standard tactics-game
-## threat range and it is deliberately an over-estimate of a single turn's reach
-## — being slightly too cautious costs the AI a tempo, being too optimistic
-## costs it the unit.
+## Expected incoming damage if `unit` stood on `cell` next turn. Threat range is
+## movement plus attack range — deliberately an over-estimate, because being too
+## cautious costs a tempo and being too optimistic costs the unit.
 func threat_at(cell: Vector2i, unit: TacticalUnit) -> float:
 	if not is_instance_valid(unit) or not is_instance_valid(_combat):
 		return 0.0
@@ -294,12 +258,9 @@ func threat_at(cell: Vector2i, unit: TacticalUnit) -> float:
 	return total
 
 
-## Is this unit in enough trouble to break off and fall back?
-##
-## Two independent triggers: it is already badly hurt, or it is standing
-## somewhere that the enemy can kill it from regardless of how healthy it looks.
-## The second is what stops a full-health mage from being left parked inside
-## three enemies' reach.
+## Two independent triggers: badly hurt, or standing somewhere the enemy can
+## kill it from regardless of health. The second stops a full-health mage being
+## parked inside three enemies' reach.
 func should_retreat(unit: TacticalUnit) -> bool:
 	if not is_instance_valid(unit) or not is_instance_valid(unit.unit_data):
 		return false
@@ -316,12 +277,9 @@ func should_retreat(unit: TacticalUnit) -> bool:
 	)
 
 
-## Where to fall back to: the reachable cell that minimises incoming damage,
-## with cover breaking ties.
-##
-## Returns Vector2i(-1, -1) when standing still is already the safest option —
-## running into worse ground is not a retreat, and the caller should then let
-## the unit fight where it is.
+## The reachable cell minimising incoming damage, cover breaking ties. Returns
+## (-1, -1) when standing still is already safest — running into worse ground is
+## not a retreat.
 func best_retreat_cell(unit: TacticalUnit) -> Vector2i:
 	if not is_instance_valid(unit) or not is_instance_valid(_grid):
 		return Vector2i(-1, -1)

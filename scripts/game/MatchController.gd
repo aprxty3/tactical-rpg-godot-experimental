@@ -3,15 +3,11 @@ class_name MatchController
 ## The battlefield. Wires the managers, builds the map, musters the armies and
 ## turns player input into commands.
 ##
-## Was `TestGridController` in `scripts/test/` — a test board that had been
-## promoted into the product. Moving it here is not cosmetic: while it lived
-## under `test/`, the player's faction was a `const` and the opponent was
-## hardcoded to Red, because nothing about it had to answer to a player.
+## Was `TestGridController` under `scripts/test/`: while it lived there the
+## player's faction was a `const` and the opponent hardcoded to Red.
 ##
-## ⚠️ Still doing too much: dependency wiring, map construction, input handling,
-## selection state, the player's commands and the highlight overlay are six
-## concerns in one file. Splitting them is the next pass; this one only moved
-## what the four-faction work forced it to move.
+## Still doing too much — wiring, map construction, input, selection state,
+## commands and the highlight overlay are six concerns in one file.
 
 @onready var grid_manager: GridManager = $GridManager
 @onready var combat_resolver: CombatResolver = $CombatResolver
@@ -80,12 +76,10 @@ var grid_overlay: GridOverlay
 
 
 func _ready() -> void:
-	# The four TileMapLayers carry explicit negative z_index values (-4 water,
-	# -3 ground, -2 path, -1 bridge) so they draw below this node's own _draw()
-	# highlights. A positive z_index here would NOT work instead: the layers are
-	# our own children, so z_as_relative ties their effective z_index to ours,
-	# and ties resolve by tree order — children paint over their parent's
-	# _draw() output.
+	# The layers carry explicit negative z_index (-4 water .. -1 bridge) so they
+	# draw below this node's `_draw()` highlights. A positive z_index here would
+	# not work: `z_as_relative` ties children to us, and ties resolve by tree
+	# order — children paint over their parent's `_draw()`.
 
 	EventBus.unit_move_completed.connect(_on_unit_move_completed)
 	EventBus.combat_resolved.connect(_on_combat_resolved)
@@ -172,14 +166,10 @@ func _ready() -> void:
 	_refresh_overlay()
 
 
-## Paint the 30x20 battlefield: rivers, bridges, roads and shoreline.
-## MapBuilder owns the layout; GridManager stays the only authority on what is
-## walkable, so water is registered as blocked terrain rather than being
-## inferred from tile ids at query time.
-##
-## Split from the rest of map construction because the armies are placed between
-## the two halves: this half decides where the water is, and nothing can be
-## mustered until that is known.
+## MapBuilder owns the layout; GridManager stays the only authority on
+## walkability, so water is registered as blocked rather than inferred from tile
+## ids. Split from the rest because the armies are mustered between the halves,
+## and nothing can be placed until the water is known.
 func _build_terrain() -> void:
 	if not map_builder:
 		return
@@ -194,19 +184,13 @@ func _build_terrain() -> void:
 	grid_manager.set_terrain_blocked_cells(blocked)
 
 
-## Plant the props and freeze the terrain map.
+## Plant the props and freeze the terrain map. Pulled ahead of the resource roll
+## because a tree makes a cell forest at 2 MP: rolling mines first measured
+## fairness against bare rivers, and six rolls in twenty-four came out lopsided
+## once the trees landed.
 ##
-## Split out of `_finish_map_setup` and pulled forward, ahead of the resource
-## roll, because of what it decides: a cell is forest because a tree was drawn
-## on it, and forest costs 2 MP where plain costs 1. Rolling the mines first
-## meant measuring their fairness against bare rivers and then planting the
-## trees that made it untrue — six rolls in twenty-four came out lopsided that
-## way, one army reaching the iron two moves before another.
-##
-## What the props must stay off is the ground each army musters on: its castle
-## and the rings around it, which is where `ArmyMuster` looks for standing room.
-## The authored building cells are reserved too, so the layout in the scene file
-## is still clean if the roll below declines to replace it.
+## Props stay off each army's muster ground and off the authored building cells,
+## so the scene layout is still clean if the roll declines to replace it.
 func _dress_terrain() -> void:
 	if not map_builder:
 		return
@@ -224,15 +208,12 @@ func _dress_terrain() -> void:
 	grid_manager.set_terrain_map(map_builder.get_terrain_map())
 
 
-## Roll a fresh mine-and-village layout for this match.
+## After the props, or it measures a map about to change underneath it; before
+## the muster, because the muster refuses cells holding a building and a mine
+## arriving later would land on a soldier.
 ##
-## Sits between the dressed terrain and the armies. It has to come after the
-## props, or it measures a map that is about to change underneath it; and before
-## the muster, because the muster search refuses cells that hold a building, so
-## a mine arriving afterwards can land on top of a soldier.
-##
-## `ResourceScatter` leaves the authored layout alone if it cannot find a
-## measured-fair one, so a failure here costs variety, never fairness.
+## `ResourceScatter` keeps the authored layout when it cannot find a fair roll,
+## so failing here costs variety, never fairness.
 func _scatter_resources() -> void:
 	var rng := RandomNumberGenerator.new()
 	if resource_seed == 0:
@@ -252,12 +233,10 @@ func _finish_map_setup() -> void:
 	if not map_builder:
 		return
 
-	# Units carry only a pixel position from the scene file; GridManager fills in
-	# their grid_position, and it defers that to the end of the frame. Both the
-	# prop reservation below and the fog's first sight pass read grid_position, so
-	# pull the registration forward — otherwise every unit still reads (0, 0) and
-	# the fog permanently marks the map's top-left corner as explored for whoever
-	# owns them.
+	# Units carry only a pixel position from the scene; GridManager fills in
+	# `grid_position` and defers that to end of frame. Prop reservation and the
+	# fog's first sight pass both read it, so registration is pulled forward —
+	# otherwise every unit reads (0, 0) and the fog marks the top-left explored.
 	grid_manager.register_existing_units()
 
 	# Keep hazards and treasure off anything gameplay-relevant. Recomputed here

@@ -2,17 +2,14 @@ extends Node
 class_name MoraleManager
 ## MoraleManager — Logic layer manager for unit morale and surrender.
 ##
-## Morale itself is a scalar owned by each TacticalUnit; this manager is the
-## only thing that writes it. It listens to the battlefield through EventBus and
-## translates events into morale shifts, then acts on the result: units that
-## break either surrender to their attacker or desert outright.
+## Morale is a scalar on each TacticalUnit; this manager is the only writer. It
+## turns EventBus traffic into morale shifts, then acts: broken units surrender
+## or desert.
 ##
-## Surrender is deliberately two-phase. A unit that breaks is *frozen*
-## (`pending_surrender`) and `surrender_triggered` is emitted; the captor then
-## decides. A human captor is asked through the HUD, an AI captor decides for
-## itself with the capacity rule below, and nothing resolves until someone
-## calls resolve_surrender(). That keeps the choice out of this manager and the
-## rules out of the UI.
+## Surrender is two-phase on purpose. A broken unit is frozen and
+## `surrender_triggered` fires; the captor decides — human via the HUD, AI by
+## the capacity rule below — and nothing resolves until `resolve_surrender()`.
+## That keeps the choice out of this manager and the rules out of the UI.
 
 @export_group("Morale Settings")
 ## The faction whose surrender decisions are made by a human through the HUD.
@@ -219,14 +216,10 @@ func begin_surrender(unit: TacticalUnit, captor_faction_id: int) -> void:
 	if not is_instance_valid(unit) or _pending.has(unit):
 		return
 
-	# Monsters take no prisoners and collect no ransom. Surrendering to them is
-	# not an outcome the game has, so the unit simply does not break: it fights
-	# where it stands and dies or survives on the combat rules alone.
-	#
-	# Refused HERE rather than at the two branches below because both of them
-	# assume a captor with a treasury and a roster — an army. Letting a ghoul
-	# reach `resolve_surrender` would press a captured knight into the undead
-	# ranks, which is a fine mechanic and emphatically not this one.
+	# Monsters take no prisoners and no ransom, so the unit simply does not
+	# break. Refused here rather than at the branches below, which both assume a
+	# captor with a treasury and a roster — letting a ghoul reach
+	# `resolve_surrender` would press a knight into the undead ranks.
 	if GameConfig.is_marauder(captor_faction_id):
 		return
 
@@ -271,12 +264,10 @@ func resolve_surrender(unit: TacticalUnit, choice: String) -> void:
 	var captor_faction_id: int = _pending[unit]
 	_pending.erase(unit)
 
-	# The AI asks before it chooses; the human is asked by a dialog, and a dialog
-	# can be answered "capture" by an army with no room for one. The ceiling is
-	# enforced here instead of at each caller, because this is the single point
-	# every claim — human, AI or scripted — passes through. Ransom is the
-	# fallback rather than a refusal: the prisoner is frozen until this resolves,
-	# so there has to be an outcome.
+	# A dialog can be answered "capture" by an army with no room. The ceiling is
+	# enforced here because every claim — human, AI or scripted — passes through
+	# this point. Ransom is the fallback rather than a refusal: the prisoner is
+	# frozen until this resolves, so there must be an outcome.
 	if choice == "capture" and not has_room_for(captor_faction_id, unit):
 		choice = "ransom"
 

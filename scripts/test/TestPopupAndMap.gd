@@ -22,7 +22,7 @@ func _ready() -> void:
 			assert(has_tile, "Cell must be populated in Ground or Water layer at " + str(pos))
 			filled_cells += 1
 			
-	print("✅ Verified 100% TileMap grid coverage: ", filled_cells, " tiles populated across layers!")
+	print(" Verified 100% TileMap grid coverage: ", filled_cells, " tiles populated across layers!")
 	
 	# 2. Verify End Turn Confirmation Popup
 	assert(hud.has_method("show_end_turn_confirmation"), "HUD has show_end_turn_confirmation")
@@ -32,18 +32,18 @@ func _ready() -> void:
 	# Open modal
 	hud.show_end_turn_confirmation()
 	assert(hud.is_end_turn_confirmation_active(), "Modal is visible after show")
-	print("✅ Verified End Turn Confirmation modal opens properly!")
+	print(" Verified End Turn Confirmation modal opens properly!")
 	
 	# Cancel modal
 	hud.hide_end_turn_confirmation()
 	assert(not hud.is_end_turn_confirmation_active(), "Modal is hidden after cancel")
-	print("✅ Verified End Turn Confirmation modal cancels properly!")
+	print(" Verified End Turn Confirmation modal cancels properly!")
 	
 	# Confirm modal
 	hud.show_end_turn_confirmation()
 	hud._on_confirm_end_turn()
 	assert(not hud.is_end_turn_confirmation_active(), "Modal is hidden after confirm")
-	print("✅ Verified End Turn Confirmation modal emits end_turn on confirmation!")
+	print(" Verified End Turn Confirmation modal emits end_turn on confirmation!")
 	
-	print("🎉 All Popup and Map enhancements verified successfully with ZERO errors!")
+	print(" All Popup and Map enhancements verified successfully with ZERO errors!")
 	get_tree().quit(0)

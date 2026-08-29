@@ -47,11 +47,9 @@ class_name UnitData
 @export var spritesheet: Texture2D
 @export var hframes: int = 6
 @export var vframes: int = 6
-## Uniform Sprite2D scale that normalizes this unit's on-screen size.
-## Source art ranges from 16x16 icons to 320x320 TinySwords frames, so a
-## single node scale would render mages/undead microscopic next to Warriors.
-## Baked offline by scripts_dev/generate_sprites.py from the frame's actual
-## content bounding box: sprite_scale = TARGET_CHAR_PX / content_height.
+## Per-unit Sprite2D scale. Source art runs 16x16 to 320x320, so one node scale
+## would render mages microscopic beside Warriors. Baked offline from the frame's
+## content bbox: TARGET_CHAR_PX / content_height.
 @export var sprite_scale: float = 1.0
 ## Sprite2D offset (in unscaled texture pixels) that centers the character
 ## horizontally and plants its feet on the tile. Also baked offline.
@@ -60,14 +58,11 @@ class_name UnitData
 @export var portrait: Texture2D
 
 @export_group("Directional Art (optional)")
-## Attack sheets keyed by facing: "Up", "UpRight", "Right", "DownRight", "Down".
-## The left-facing halves are produced by flipping the Right-side entries, so
-## five sheets cover eight directions.
+## Attack sheets by facing: Up, UpRight, Right, DownRight, Down. Left-facing
+## halves come from flipping, so five sheets cover eight directions.
 ##
-## **Leaving this empty is the supported default** — a unit with no entries keeps
-## the plain horizontal-flip behaviour every unit had before, which is why all
-## the existing resources needed no migration. Only the cavalry sheets that ship
-## with per-direction art fill it in.
+## **Empty is the supported default** — it reproduces the old flip-only path
+## exactly, which is why no existing resource needed migration.
 @export var directional_attack: Dictionary = {}
 ## Frames per directional attack sheet. These are single-row strips, so this is
 ## the whole layout — the TinySwords cavalry attacks are 3 frames.
@@ -95,12 +90,10 @@ func is_morale_immune() -> bool:
 	return unit_class == "Undead"
 
 
-## Return `data` rewritten as the given faction's own variant.
-##
-## Resources follow a `{role}_{faction}.tres` convention, so the owner's version
-## is a filename swap. Falls back to `data` unchanged when no variant exists —
-## the Black Coven's undead have no per-faction versions by design. Used both
-## when recruiting at a captured castle and when a defeated unit defects.
+## `data` rewritten as the given faction's variant — a filename swap, given the
+## `{role}_{faction}.tres` convention. Falls back unchanged when no variant
+## exists, which is what hands the undead roster to whoever takes the Black
+## Castle. Used by captured castles and by defecting prisoners.
 static func variant_for_faction(data: UnitData, faction_id: int) -> UnitData:
 	if not is_instance_valid(data):
 		return data

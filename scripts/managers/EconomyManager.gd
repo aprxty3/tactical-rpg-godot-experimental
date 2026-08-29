@@ -27,14 +27,10 @@ func _connect_signals() -> void:
 	EventBus.unit_captured.connect(_on_unit_lifecycle_changed)
 
 
-## Initialize a faction's starting resources.
-##
-## Villages start at zero because every village on the map starts neutral, so
-## the count can only ever be built up by captures. Castles cannot: a faction
-## owns its keep from the moment the scene loads and no capture event ever fires
-## for it, so the count has to be READ off the board here or an army that later
-## takes an enemy castle would be credited with two while holding two — and
-## every capacity number after that would be one castle too generous.
+## Villages start at zero — every one begins neutral, so captures build the
+## count up. Castles cannot: a faction owns its keep from scene load and no
+## capture event ever fires for it, so the count is READ off the board here or
+## every later capacity number runs one castle too generous.
 func register_faction(faction_id: int, starting_gold: int = 200, starting_iron: int = 5) -> void:
 	_faction_gold[faction_id] = starting_gold
 	_faction_iron[faction_id] = starting_iron
@@ -42,11 +38,8 @@ func register_faction(faction_id: int, starting_gold: int = 200, starting_iron: 
 	_faction_castles[faction_id] = _count_castles(faction_id)
 
 
-## Castles this faction currently holds, read from the board.
-##
-## Returns 0 rather than failing when there is no tree to walk: the focused test
-## scenes build an EconomyManager on its own, with no board at all, and they are
-## entitled to a manager that still answers questions about gold.
+## Castles held, read from the board. Returns 0 rather than failing with no
+## tree — the focused test scenes build this manager with no board at all.
 func _count_castles(faction_id: int) -> int:
 	if not is_inside_tree():
 		return 0
@@ -71,13 +64,9 @@ func get_iron(faction_id: int) -> int:
 	return _faction_iron.get(faction_id, 0)
 
 
-## Everything this faction can field: its own lands, plus what it has taken.
-##
-## Castles count from the SECOND one. `BASE_TROOP_CAPACITY` already stands for
-## a faction's own keep, so paying for the first as well would hand every army
-## five free capacity at match start; and subtracting for a lost keep would
-## starve the castle-less "rogue army" the victory rules deliberately let keep
-## fighting. `maxi` is what holds that floor.
+## Castles count from the SECOND: `BASE_TROOP_CAPACITY` already stands for the
+## opening keep, and subtracting on its loss would starve the rogue army the
+## victory rules deliberately keep alive. `maxi` holds that floor.
 func get_max_capacity(faction_id: int) -> int:
 	var village_count: int = _faction_villages.get(faction_id, 0)
 	var extra_castles: int = maxi(0, int(_faction_castles.get(faction_id, 0)) - 1)
@@ -86,12 +75,9 @@ func get_max_capacity(faction_id: int) -> int:
 		+ extra_castles * GameConfig.CASTLE_CAPACITY_BONUS)
 
 
-## Calculate the total Troop Capacity weight of active units.
-##
-## Validity-checked first: a roster entry can outlive its node by a frame, and
-## `is` on a freed instance is a hard crash rather than a false. This is read on
-## every HUD refresh, recruit check and surrender prompt, so it has to survive a
-## stale entry instead of taking the game down with it.
+## Total troop weight of active units. Validity-checked first: a roster entry
+## can outlive its node by a frame and `is` on a freed instance crashes. Read on
+## every HUD refresh, recruit check and surrender prompt.
 func get_used_capacity(faction_id: int, active_units: Array) -> int:
 	var total := 0
 	for unit in active_units:
@@ -108,13 +94,9 @@ func get_free_capacity(faction_id: int, active_units: Array) -> int:
 	return get_max_capacity(faction_id) - get_used_capacity(faction_id, active_units)
 
 
-## Would `weight` more troop weight still fit?
-##
-## The rule lives here, once, because three separate things add troops: a castle
-## recruiting, a captor claiming a prisoner, and a chest paying out a mercenary.
-## Only the first ever asked. An army that could not BUY its 13th point of
-## troops could still be HANDED one, and the ceiling that recruitment enforces
-## turned out to be the only one the game had.
+## One rule, here, because three things add troops — recruiting, claiming a
+## prisoner, and a chest mercenary — and only the first used to ask. An army
+## that could not BUY its 13th point could still be HANDED one.
 func has_capacity_for(faction_id: int, weight: int, active_units: Array) -> bool:
 	return get_free_capacity(faction_id, active_units) >= weight
 
@@ -230,11 +212,8 @@ func _apply_starvation(active_units: Array, faction_id: int) -> void:
 
 # === Signal Handlers ===
 
-## Which ledger each capturable building type moves.
-##
-## A dictionary rather than a `match` with a branch per type, because both
-## branches were byte-identical apart from the tally they touched — and the
-## castle would have been a third copy of the same fifteen lines.
+## A dictionary rather than a `match` per type: the branches were identical
+## apart from the tally, and the castle would have been a third copy.
 const CAPACITY_LEDGER: Dictionary = {
 	"village": "_faction_villages",
 	"castle": "_faction_castles",
@@ -280,14 +259,11 @@ func _on_unit_lifecycle_changed(_arg1 = null, _arg2 = null, _arg3 = null) -> voi
 		EventBus.capacity_changed.emit(fid, used_cap, max_cap)
 
 
-## A building was burned off the map. Only villages carry troop capacity, so
-## only they need unwinding here — but the emit is deliberately not filtered at
-## the source, so a future destructible building type arrives at one handler.
+## A building was burned off the map. Only villages carry capacity, but the
+## emit is unfiltered at the source so a future destructible type lands here too.
 ##
-## This was a `pass` with a note saying it depended on the node structure. It
-## stopped being hypothetical the moment monsters could raze a village: without
-## it, an army kept the +2 capacity of a village that no longer existed, and
-## kept it permanently, because nothing else ever decrements that count.
+## Was a `pass` until monsters could raze a village — without it an army kept
+## the capacity of a village that no longer existed, permanently.
 func _on_building_destroyed(building: Node) -> void:
 	if not is_instance_valid(building) or not (building is Building):
 		return

@@ -400,12 +400,9 @@ const FACTION_SELECT_SCENE: String = "res://scenes/ui/FactionSelect.tscn"
 const MENU_SCENE: String = "res://scenes/ui/MainMenu.tscn"
 
 
-## Retry — back to the faction screen, not a reload of this same board.
-##
-## `reload_current_scene` would have replayed the match with the army the player
-## just lost with, which is the one choice a defeat argues against. Going through
-## the faction screen also re-rolls the map, since the board is scattered fresh
-## on every build of the match scene.
+## Retry goes to the faction screen, not a reload: `reload_current_scene` would
+## replay the match with the army the player just lost with. Going through the
+## screen also re-rolls the board.
 func _on_retry_pressed() -> void:
 	_leave_match(FACTION_SELECT_SCENE)
 

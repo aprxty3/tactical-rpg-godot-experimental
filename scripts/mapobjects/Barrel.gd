@@ -2,13 +2,11 @@ extends MapObject
 class_name Barrel
 ## Barrel — a powder keg parked beside a chokepoint.
 ##
-## Detonates when a unit walks into it, when an attack targets it, or when it is
-## caught in another barrel's blast. It does NOT block movement: an obstacle
-## sitting in a bridge approach could wall off a crossing entirely, and a keg
-## you can shoot is more interesting than a keg you must walk around.
+## Detonates on being walked into, attacked, or caught in another keg's blast.
+## Does NOT block movement — an obstacle in a bridge approach could wall off a
+## crossing, and a keg you can shoot beats one you must walk around.
 ##
-## The blast itself — damage, chaining, and the fires it starts — belongs to
-## MapObjectManager, which knows the grid and the roster.
+## The blast belongs to MapObjectManager, which knows the grid and the roster.
 
 const BARREL_TEXTURE: String = "res://assets/items/traps_and_items/box_1/box_1_1.png"
 ## The art pack ships plain crates; a rusty-red wash is what tells the player

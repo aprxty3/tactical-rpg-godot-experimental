@@ -3,11 +3,9 @@ class_name MapObjectManager
 ## MapObjectManager — Logic layer manager for everything standing on the map
 ## that is not a unit or a building: treasure chests, powder kegs and fire.
 ##
-## It owns the cell registry, drives the once-per-round tick, and holds the
-## rules the objects themselves deliberately do not: how a blast chains, how
-## fire spreads and scorches, and what comes out of a chest. The objects stay
-## dumb actors; every rule that needs the grid, the economy or the roster lives
-## here, behind one injected setup() like the rest of the managers.
+## Owns the cell registry, the once-per-round tick, and every rule the objects
+## deliberately lack: blast chaining, fire spread, chest outcomes. The objects
+## stay dumb actors; anything needing the grid, economy or roster lives here.
 
 @export_group("Hazard Settings")
 ## Seed for chest scatter and Pandora rolls. 0 randomizes each match; any other
@@ -185,19 +183,14 @@ func _on_unit_move_completed(unit: Node, _from: Vector2i, to: Vector2i) -> void:
 			obj.on_unit_entered(unit)
 
 
-## Hazards that trigger on being CROSSED, not on being stopped on.
+## Hazards that trigger on being CROSSED, not stopped on — traps only. A chest
+## is opened by stopping and a keg can be routed around, but a mine you can
+## stride over is not a mine: at six cells in five hundred, destination-only
+## traps were scattered and never met.
 ##
-## Only traps. A chest is opened by stopping to open it and a keg is a landmark
-## you can see and route around, so both stay destination-only — but a buried
-## mine that a unit can stride over on its way past is not a mine, and that is
-## exactly why traps were being scattered onto the map and never met: the odds
-## of ending a move on one of six cells out of roughly five hundred are close to
-## nothing.
-##
-## The blast lands at the mine's own cell while the walker finishes at its
-## destination, because the move tween has already run by the time this fires.
-## Interrupting a unit mid-walk would mean GridManager asking this manager where
-## the hazards are, and the grid does not know hazards exist.
+## The blast lands at the mine's cell while the walker finishes its move, since
+## the tween has already run. Interrupting mid-walk would mean GridManager
+## asking about hazards, and the grid does not know they exist.
 func _on_unit_path_walked(unit: Node, path: Array) -> void:
 	if not (unit is TacticalUnit):
 		return
@@ -275,24 +268,17 @@ func _apply_blast(cell: Vector2i, chain_index: int) -> void:
 		if is_instance_valid(victim):
 			# TRUE damage: a keg does not care how good your armour is.
 			victim.take_damage(GameConfig.BARREL_DAMAGE, "true")
-		# Everything the blast touches catches, with no flammability roll.
-		#
-		# That roll used to gate this, and it was the wrong rule for a detonation:
-		# kegs are parked at BRIDGE and ROAD chokepoints, both `flammable: 0.00`,
-		# so the one place a keg can actually be shot was the one place its blast
-		# could never leave a fire. Terrain flammability still governs where fire
-		# SPREADS on its own (`spread_fire_from`) — that is the roll's real job.
+		# No flammability roll: kegs sit at BRIDGE and ROAD chokepoints, both
+		# `flammable: 0.00`, so the one place a keg is shootable was the one
+		# place its blast could never leave fire. The roll's real job is
+		# governing where fire spreads on its own (`spread_fire_from`).
 		ignite(target)
 
 
-## Fire the buried trap at `origin`: a 3x2 wall of blast and flame.
-##
-## Deliberately NOT routed through `detonate_at`. A keg's blast is a Manhattan
-## radius that chains into neighbouring kegs; a trap is a fixed rectangle that
-## chains into nothing — `HIDDEN_TRAP_MIN_SPACING` guarantees no second trap is
-## close enough to reach. Forcing both through one function would mean a
-## rectangle/radius flag and a chain flag threaded through every call, to save
-## about six lines.
+## A 3x2 wall of blast and flame. Not routed through `detonate_at`: a keg is a
+## Manhattan radius that chains, a trap is a rectangle that cannot (spacing
+## guarantees it). Merging them would thread a shape flag and a chain flag
+## through every call to save six lines.
 func spring_trap_at(origin: Vector2i, trigger: TacticalUnit = null) -> void:
 	# Consume first, exactly as `detonate_at` does for barrels: the blast can
 	# damage the unit standing on the trap, and a re-entrant spring during that
@@ -333,15 +319,11 @@ func spring_trap_at(origin: Vector2i, trigger: TacticalUnit = null) -> void:
 			ignite(cell)
 
 
-## The 3x2 footprint centred on `origin`, clipped to the map.
+## The 3x2 footprint centred on `origin`, clipped to the map. Height 2 cannot
+## centre on one row, so the extra row goes ABOVE: the unit that stepped on the
+## mine stays in the lower row and the blast erupts upward out of it.
 ##
-## Width 3 centres cleanly (origin +/- 1). Height 2 cannot be centred on a single
-## row, so the extra row goes ABOVE the origin: the unit that stepped on the mine
-## is always in the lower row, and the blast reads as erupting upward out of it
-## rather than swallowing the cell behind.
-##
-## `origin` is always element 0, which is what lets a listener centre a single
-## blast sprite without re-deriving the shape.
+## `origin` is always element 0, so a listener can centre one sprite on it.
 func trap_blast_cells(origin: Vector2i) -> Array[Vector2i]:
 	var size: Vector2i = GameConfig.HIDDEN_TRAP_BLAST_SIZE
 	var half_w: int = (size.x - 1) / 2

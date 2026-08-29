@@ -1,21 +1,18 @@
 extends Node
 ## MatchSetup — the choices that define ONE match, carried across scene loads.
 ##
-## Deliberately separate from `GameConfig`, which they are easy to confuse:
-## GameConfig holds the game's fixed rules and never changes while the game runs;
-## MatchSetup holds what the player picked on the menu and changes every match.
+## Easy to confuse with `GameConfig`: that holds fixed rules and never changes
+## at runtime; this holds what the player picked and changes every match.
 ##
-## It has to be an autoload. The faction choice is made on one screen and
-## consumed on another, and `change_scene_to_file()` frees everything in between
-## — an exported property on the match scene could never survive that trip.
+## Must be an autoload — the faction is chosen on one screen and consumed on
+## another, and `change_scene_to_file()` frees everything in between.
 ##
-## Campaign will extend this rather than replace it: a chapter number, a
-## persistent roster and a save slot all belong to "this run", not to the rules.
+## Campaign will extend it: a chapter, a roster and a save slot all belong to
+## "this run", not to the rules.
 
-## The four armies that take the field. Black Coven is deliberately absent, but
-## no longer because it is idle: it garrisons the Black Castle with monsters and
-## takes a turn like anyone else. It is absent because it cannot win or lose, and
-## this list is "who is contending". See `marauders` below.
+## The four armies that contend. Black Coven is absent not because it is idle —
+## it garrisons the Black Castle and takes a turn — but because it cannot win or
+## lose, and this list is "who is contending". See `marauders`.
 const DEFAULT_PARTICIPANTS: Array[int] = [
 	GameConfig.Faction.BLUE_KINGDOM,
 	GameConfig.Faction.RED_LEGION,
@@ -26,18 +23,15 @@ const DEFAULT_PARTICIPANTS: Array[int] = [
 ## Which of the participants the human is playing.
 var player_faction: int = GameConfig.Faction.BLUE_KINGDOM
 
-## Everyone taking a turn this match, in turn order. A var rather than a
-## constant so a campaign chapter can field three armies, or five.
+## Turn order. A var so a campaign chapter can field three armies, or five.
 var participants: Array[int] = []
 
-## Factions that take a turn but cannot win — the Black Coven's monsters. Kept
-## beside `participants` rather than folded into it because the two lists answer
+## Take a turn but cannot win. Kept beside `participants` because the two answer
 ## different questions: who is playing, and who is merely on the board.
 var marauders: Array[int] = []
 
-## Seeds the scattered chests, traps and kegs. 0 means "pick one at random on
-## match start"; a fixed value reproduces a board exactly, which is what the
-## test suites rely on.
+## Seeds the scatter. 0 draws at random; a fixed value reproduces a board
+## exactly, which the test suites rely on.
 var map_seed: int = 0
 
 

@@ -2,10 +2,9 @@ extends Camera2D
 class_name TacticalCamera
 ## TacticalCamera — pan & zoom for a battlefield larger than the viewport.
 ##
-## The 30x20 grid is 1920x1280 world pixels, so it no longer fits on screen at
-## 1:1. Pan by dragging with any mouse button, with WASD/arrows, or by pushing
-## the cursor into the screen edge; zoom with the wheel. Camera2D's own limit_*
-## properties do the clamping, so the view can never leave the map.
+## The 30x20 grid is 1920x1280 px, so it no longer fits at 1:1. Pan by drag,
+## WASD/arrows or screen edge; zoom with the wheel. Camera2D's `limit_*` does
+## the clamping, so the view can never leave the map.
 
 @export var pan_speed: float = 900.0
 @export var edge_pan_margin: float = 24.0
@@ -136,13 +135,9 @@ func shake(strength: float, duration: float) -> void:
 		_shake_remaining = duration
 
 
-## Decay the shake and write it to `offset`.
-##
-## `offset` and NOT `position`: Camera2D clamps `position` against limit_left /
-## limit_right / limit_top / limit_bottom, so a position-based shake is silently
-## flattened against the map edge — weakest exactly where the fighting tends to
-## be. `offset` is applied after that clamp, so the shake is identical
-## everywhere on the map.
+## Writes to `offset`, NOT `position`: Camera2D clamps `position` against its
+## `limit_*`, so a position shake is silently flattened at the map edge —
+## weakest exactly where the fighting happens. `offset` is applied after.
 func _process_shake(delta: float) -> void:
 	if _shake_remaining <= 0.0:
 		if offset != Vector2.ZERO:

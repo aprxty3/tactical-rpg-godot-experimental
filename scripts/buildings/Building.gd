@@ -105,13 +105,10 @@ func get_type_string() -> String:
 	return "unknown"
 
 
-## What `faction_id` gets for ending a move here.
-##
-## The single place the "who may take what" question is answered, because three
-## callers used to imply their own answer by simply calling `capture()`: the
-## move handler, the AI's objective scoring, and the tests. Monsters raid rather
-## than conquer — they hold no ground, so a keep or a mine is just scenery to
-## them, and a village is something to burn.
+## What `faction_id` gets for ending a move here — the single place "who may
+## take what" is answered, because three callers used to imply their own answer
+## by calling `capture()` directly. Monsters raid rather than conquer: keeps and
+## mines are scenery to them, a village is something to burn.
 func claim_for(arriving_faction_id: int) -> Claim:
 	if faction_id == arriving_faction_id:
 		return Claim.NOTHING
@@ -121,24 +118,18 @@ func claim_for(arriving_faction_id: int) -> Claim:
 		if building_type in MARAUDER_RAZES and faction_id != GameConfig.Faction.NEUTRAL:
 			return Claim.RAZE
 		return Claim.NOTHING
-	# A marauder's ground IS claimable, and the Black Castle is the point of the
-	# whole encounter: clear the den and the keep in the middle of the map is
-	# yours. An earlier version refused this, which made the boss a wall with
-	# nothing behind it.
-	#
-	# Nothing extra guards it, because nothing has to. The boss stands ON the
-	# keep's cell and a unit cannot end its move on an occupied one, so "kill the
-	# guardian first" is enforced by the board rather than by a rule here.
+	# A marauder's ground IS claimable — clearing the den is the point of the
+	# encounter, and an earlier version refusing it made the boss a wall with
+	# nothing behind it. Nothing extra guards the keep: the boss stands ON its
+	# cell and a move cannot end on an occupied one, so the board enforces
+	# "kill the guardian first".
 	return Claim.CAPTURE
 
 
-## Burn this building off the map.
-##
-## Emits before freeing, and frees at the end of the frame, so every listener
-## still gets a valid node to read the owner and type off. `remove_from_group`
-## is not optional: `get_nodes_in_group("buildings")` is how income, capacity,
-## victory and the AI all find buildings, and a queued-but-not-yet-freed node
-## would keep paying its owner for one more turn.
+## Emits before freeing so listeners still get a valid node to read owner and
+## type off. `remove_from_group` is not optional: income, capacity, victory and
+## the AI all walk that group, and a queued-but-unfreed node would keep paying
+## its owner for another turn.
 func raze() -> void:
 	remove_from_group("buildings")
 	# `building_destroyed` only. `resource_node_captured` would have been the
@@ -223,12 +214,9 @@ func recruit_unit(unit_data: UnitData, spawn_cell: Vector2i, economy_mgr: Node, 
 	return new_unit
 
 
-## Return the owning faction's variant of `data`.
-##
-## Castles are capturable, so a Blue army that takes the Yellow Empire's keep
-## would otherwise recruit yellow-sprited troops that fight for Blue. The
-## resolution itself lives on UnitData because defection needs the identical
-## lookup when a surrendered unit changes sides.
+## Castles are capturable, so without this a Blue army taking the Yellow keep
+## would recruit yellow-sprited troops fighting for Blue. The lookup lives on
+## UnitData because defection needs the identical one.
 func resolve_for_owner(data: UnitData) -> UnitData:
 	return UnitData.variant_for_faction(data, faction_id)
 

@@ -2,24 +2,18 @@ extends Node
 class_name EncounterManager
 ## EncounterManager — the Black Castle's garrison, and the turn it takes.
 ##
-## The fifth thing on the board that moves, and deliberately not a fifth army.
-## An `AIManager` plays to win: it recruits, banks gold, values every building
-## by what it yields and marches on whatever is worth taking. None of that
-## applies to a den of monsters. They own no economy, buy nothing, and hold no
-## ground — a keep or a mine is scenery to them. What they do is refuse to let
-## anyone hold the middle of the map for free.
+## Its own manager rather than an `AIManager` with four flags: an AIManager
+## plays to win — recruits, banks gold, values buildings by yield. Monsters own
+## no economy and hold no ground. Their job is to stop anyone holding the middle
+## of the map for free.
 ##
-## So this is its own manager rather than an `AIManager` with four flags. The
-## judgement is still shared: `AITacticalEvaluator` picks targets and scores
-## swings here exactly as it does for the armies, which is what keeps a ghoul
-## attacking through the same damage rules the player attacks through.
+## Judgement is still shared. `AITacticalEvaluator` scores swings here exactly as
+## it does for armies, so a ghoul attacks through the player's damage rules.
 ##
 ## Two rules shape everything below:
-##   1. **The leash.** No monster ever steps further than `ENCOUNTER_LEASH` from
-##      the den. It is enforced when choosing a step, not corrected afterwards,
-##      so a monster can never be out of bounds even for one frame.
-##   2. **The boss never moves.** It is what the keep is built around. It swings
-##      at whatever comes into reach and is otherwise furniture.
+##   1. **The leash.** Enforced when choosing a step, not corrected afterwards,
+##      so a monster is never out of bounds even for a frame.
+##   2. **The boss never moves.** It swings at what comes into reach.
 
 @export_group("Encounter Settings")
 ## Which faction the monsters belong to. Black Coven holds the centre castle and
@@ -79,14 +73,11 @@ func setup(grid_mgr: GridManager, units_parent: Node2D,
 	_next_spawn_round = TurnManager.turn_number + GameConfig.ENCOUNTER_SPAWN_INTERVAL
 
 
-## Stand the opening garrison up: the boss on the keep, a couple of monsters
-## around it.
+## Boss on the keep, a couple of monsters around it.
 ##
-## Call AFTER `TurnManager.setup_match`, so `unit_spawned` lands on a roster that
-## already has a bucket for this faction. Spawning earlier is not an error — the
-## setup sweep would find them in the tree — but it depends on which of two
-## mechanisms happens to catch them, and only one of them works for the
-## reinforcements below.
+## Call AFTER `TurnManager.setup_match` so `unit_spawned` lands on a roster that
+## already has a bucket for this faction. Earlier still works via the setup
+## sweep, but that sweep never runs again for the reinforcements below.
 func garrison() -> void:
 	if den_cell == Vector2i(-1, -1):
 		push_warning("EncounterManager: no Black Castle on this map; no monsters spawned.")
@@ -162,14 +153,11 @@ func _act(unit: TacticalUnit) -> void:
 		await get_tree().create_timer(action_delay).timeout
 
 
-## Where this monster wants to be, in priority order:
-##   1. the nearest intruder standing inside the den's territory,
-##   2. the nearest occupied village inside it — the one thing they can burn,
-##   3. home, if the monster has somehow ended up outside the leash.
+## Priority: nearest intruder inside the den's territory, then nearest held
+## village (the one thing they burn), then home if outside the leash.
 ##
-## Note what is missing: they never march on a castle or a mine. Not because a
-## check forbids it here, but because there is nothing they could do on arrival
-## — `Building.claim_for` gives a marauder nothing for either.
+## Castles and mines are absent by consequence, not by a check here —
+## `Building.claim_for` gives a marauder nothing on arrival.
 func _pick_destination(unit: TacticalUnit) -> Vector2i:
 	var best_cell := Vector2i(-1, -1)
 	var best_cost: int = -1
@@ -208,14 +196,11 @@ func _pick_destination(unit: TacticalUnit) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
-## The reachable cell that gets closest to `target_cell` WITHOUT breaking the
-## leash.
+## Closest reachable cell to `target_cell` WITHOUT breaking the leash.
 ##
-## Deliberately not `AITacticalEvaluator.best_step_towards`: that one is free to
-## pick any reachable cell, which for a fast monster chasing a fleeing scout
-## means walking clean out of the den's territory. Filtering the candidates —
-## rather than moving and then dragging the monster back — is what makes the
-## leash a rule instead of a correction.
+## Not `AITacticalEvaluator.best_step_towards`, which may pick any reachable
+## cell and would walk a fast monster clean out of the den chasing a scout.
+## Filtering candidates is what makes the leash a rule and not a correction.
 func _step_towards(unit: TacticalUnit, target_cell: Vector2i) -> Vector2i:
 	var reachable: Array[Vector2i] = grid_manager.get_reachable_cells(unit)
 	if reachable.is_empty():
@@ -235,12 +220,10 @@ func _step_towards(unit: TacticalUnit, target_cell: Vector2i) -> Vector2i:
 	return best_cell
 
 
-## Wait for ONE monster's walk to finish, with a hard ceiling.
-##
-## Polls the unit's own moving flag rather than awaiting `unit_move_completed`,
-## which resumes on whichever unit arrives first and never resumes at all if the
-## move was rejected. Either failure ends with this coroutine calling
-## `end_turn()` out of sequence, which is how a turn loop runs away.
+## Wait for ONE monster's walk, with a hard ceiling. Polls its own flag rather
+## than awaiting `unit_move_completed`, which resumes on whichever unit arrives
+## first and never at all on a rejected move — either way `end_turn()` fires out
+## of sequence and the turn loop runs away.
 func _await_move(unit: TacticalUnit, max_seconds: float = 4.0) -> void:
 	var elapsed: float = 0.0
 	while elapsed < max_seconds:
@@ -254,12 +237,10 @@ func _await_move(unit: TacticalUnit, max_seconds: float = 4.0) -> void:
 # THE DEN
 # ==============================================================================
 
-## Add one monster every `ENCOUNTER_SPAWN_INTERVAL` rounds while under the cap.
+## One monster every `ENCOUNTER_SPAWN_INTERVAL` rounds while under the cap.
 ##
-## Stops dead once the boss falls. That is the whole reward for killing it: the
-## den keeps whatever is still standing, but it stops being a source, so the
-## centre of the map can finally be cleared for good instead of bleeding a new
-## ghoul every third round for the rest of the match.
+## Stops dead once the boss falls — that is the reward for killing it. Survivors
+## stay, but the den stops being a source, so the centre can be cleared for good.
 func _reinforce() -> void:
 	if not is_instance_valid(_boss):
 		return
@@ -291,11 +272,9 @@ func _spawn_wanderer() -> TacticalUnit:
 	return _spawn(roster[_rng.randi_range(0, roster.size() - 1)], cell)
 
 
-## Instance one monster and put it on the board.
-##
-## `unit_spawned` is what registers it with the grid AND puts it on
-## TurnManager's roster, so it is emitted last, after grid_position is set —
-## GridManager reads that field off the unit rather than taking a cell argument.
+## `unit_spawned` registers the monster with the grid AND the TurnManager
+## roster, so it is emitted last — GridManager reads `grid_position` off the
+## unit rather than taking a cell argument.
 func _spawn(data_path: String, cell: Vector2i) -> TacticalUnit:
 	if not is_instance_valid(unit_container) or not ResourceLoader.exists(data_path):
 		push_warning("EncounterManager: cannot spawn %s" % data_path)

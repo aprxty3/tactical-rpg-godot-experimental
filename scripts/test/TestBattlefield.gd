@@ -12,7 +12,7 @@ func _ready() -> void:
 	await _test_terrain_blocking()
 	await _test_building_capture_visuals()
 	await _test_captured_castle_recruits_owner_units()
-	print("\n🎉 ALL BATTLEFIELD TESTS PASSED")
+	print("\n ALL BATTLEFIELD TESTS PASSED")
 	get_tree().quit()
 
 
@@ -39,7 +39,7 @@ func _test_map_shape() -> void:
 	assert(castles == 5, "Five faction castle slots, got %d" % castles)
 	assert(mines >= 6, "At least six resource nodes, got %d" % mines)
 	assert(villages >= 6, "At least six villages, got %d" % villages)
-	print("✅ [Map Shape] 30x20 grid, %d castles, %d mines, %d villages" % [castles, mines, villages])
+	print(" [Map Shape] 30x20 grid, %d castles, %d mines, %d villages" % [castles, mines, villages])
 
 	root.queue_free()
 	await get_tree().process_frame
@@ -72,7 +72,7 @@ func _test_terrain_blocking() -> void:
 			bridge_found = true
 			assert(grid.is_cell_walkable(c), "Bridge at %s must be walkable" % c)
 	assert(bridge_found, "At least one bridge crosses the west river")
-	print("✅ [Terrain] %d impassable cells, bridges remain crossable" % blocked.size())
+	print(" [Terrain] %d impassable cells, bridges remain crossable" % blocked.size())
 
 	builder.queue_free()
 	grid.queue_free()
@@ -96,7 +96,7 @@ func _test_building_capture_visuals() -> void:
 	village.capture(GameConfig.Faction.BLUE_KINGDOM)
 	var blue_tex: Texture2D = village.get_node("Sprite2D").texture
 	assert(blue_tex != red_tex, "Recapture must swap to the new owner's art")
-	print("✅ [Capture Visuals] neutral -> Red -> Blue each swaps the sprite")
+	print(" [Capture Visuals] neutral -> Red -> Blue each swaps the sprite")
 
 	var castle: Building = load("res://scenes/buildings/Castle_Purple.tscn").instantiate()
 	add_child(castle)
@@ -105,7 +105,7 @@ func _test_building_capture_visuals() -> void:
 	castle.capture(GameConfig.Faction.BLUE_KINGDOM)
 	assert(castle.get_node("Sprite2D").texture != purple_tex,
 		"A captured castle must render as the capturing faction's castle")
-	print("✅ [Capture Visuals] Purple castle taken by Blue renders as a Blue castle")
+	print(" [Capture Visuals] Purple castle taken by Blue renders as a Blue castle")
 
 	village.queue_free()
 	castle.queue_free()
@@ -130,7 +130,7 @@ func _test_captured_castle_recruits_owner_units() -> void:
 	var fodder: UnitData = load("res://resources/units/skeleton_base_black.tres")
 	assert(castle.resolve_for_owner(fodder) == fodder,
 		"Units without a faction variant fall back to themselves")
-	print("✅ [Captured Recruitment] owner's variant resolved, undead fall back cleanly")
+	print(" [Captured Recruitment] owner's variant resolved, undead fall back cleanly")
 
 	castle.queue_free()
 	await get_tree().process_frame

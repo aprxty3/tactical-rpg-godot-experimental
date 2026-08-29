@@ -2,28 +2,21 @@ extends Node2D
 class_name MenuBackdrop
 ## MenuBackdrop — the battlefield, drawn behind the main menu.
 ##
-## The menu used to be a flat dark rectangle. This puts the actual board behind
-## it: the same `MapBuilder` the match runs, the same tileset, the same castles
-## and mines and villages. Terrain and props, no units, no fog, no HUD.
+## The same `MapBuilder`, tileset and buildings the match uses — terrain and
+## props only, no units, fog or HUD. Scenery: it reads no input, keeps no state
+## and talks to no manager.
 ##
-## It is scenery and nothing else. Nothing here reads input, keeps state, or
-## talks to a manager — the menu can be opened, left and reopened without any of
-## it mattering. Two consequences worth stating, because both are deliberate:
+## Two deliberate consequences:
+##   1. **Buildings leave the `buildings` group on the way in.** They are real
+##      `Building` nodes, and income, capacity, the victory check and the AI all
+##      find buildings by walking that group. A decorative castle in it is a
+##      castle the game can count.
+##   2. **No `GridManager`.** Nothing pathfinds here, and a grid would invite
+##      something later to treat this as a live board.
 ##
-##   1. **The buildings leave the `buildings` group on the way in.** They are
-##      real `Building` nodes (that is what makes them look right, banners and
-##      all) and `Building._ready()` adds every one of them to that group.
-##      Income, troop capacity, the victory check and the AI all find their
-##      buildings by walking it. A decorative castle in there is a castle the
-##      game can count, so they are pulled straight back out.
-##   2. **No `GridManager`.** Nothing here pathfinds or occupies a cell, and a
-##      grid would only invite something later to treat this as a live board.
-##
-## The layout is a copy of the one authored in `Match.tscn`, not a reference to
-## it — reading it out of the match scene means loading every script that scene
-## touches (the controller, the HUD, every manager) to find out where a village
-## goes. Drift here is cosmetic: the match rolls its own resource layout at
-## start anyway, so these positions are the fallback board, not the real one.
+## The layout is a copy of `Match.tscn`'s, not a reference — reading it out
+## would load every script that scene touches. Drift is cosmetic: the match
+## rolls its own layout at start, so these are the fallback positions.
 
 ## World size of one cell, matching `GridManager.cell_size` on the match scene.
 const CELL: Vector2i = Vector2i(64, 64)
