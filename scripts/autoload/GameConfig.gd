@@ -2,6 +2,7 @@ extends Node
 ## GameConfig — Global constants, enums, and configuration (Autoload Singleton).
 ## Pure data: no signals, no logic, just shared definitions.
 
+
 # === Faction IDs ===
 enum Faction {
 	BLUE_KINGDOM = 0,
@@ -12,6 +13,7 @@ enum Faction {
 	NEUTRAL = 99,
 }
 
+
 # === Turn Phases ===
 enum Phase {
 	UPKEEP,           # Collect income, check logistics, reset units
@@ -19,6 +21,7 @@ enum Phase {
 	ACTION,           # Move, attack, interact, capture
 	END_TURN,         # Evaluate victory/defeat, switch faction
 }
+
 
 # === Unit Class Types ===
 enum UnitClass {
@@ -32,6 +35,7 @@ enum UnitClass {
 	UNDEAD,           # Skeleton, Vampire — dark faction
 }
 
+
 # === Damage Types ===
 enum DamageType {
 	PHYSICAL,
@@ -42,6 +46,7 @@ enum DamageType {
 	POISON,
 }
 
+
 # === Morale Levels (Milestone 4 — Roadmap) ===
 enum MoraleLevel {
 	FEARLESS = 4,     # +15% ATK, immune to surrender
@@ -51,11 +56,13 @@ enum MoraleLevel {
 	FEARFUL = 0,      # -20% ATK, auto-desert chance
 }
 
+
 # === Combat Advantage Multipliers ===
 const ADVANTAGE_MULTIPLIER: float = 1.5   # Strong matchup
 const DISADVANTAGE_MULTIPLIER: float = 0.7 # Weak matchup
 const NEUTRAL_MULTIPLIER: float = 1.0
 const HOLY_VS_UNDEAD_MULTIPLIER: float = 2.5  # Priest vs Skeleton/Vampire
+
 
 # === Economy Constants ===
 ## Includes your starting keep, which is why CASTLE_CAPACITY_BONUS pays from
@@ -83,6 +90,7 @@ const CASTLE_GARRISON_HEAL_RATIO: float = 0.40
 const FIELD_TAX_MULTIPLIER: int = 2       # 200% cost for field upgrades
 const STARVATION_DAMAGE: int = 15         # True damage per overcap turn
 
+
 # === Faction Resource Suffix ===
 ## Unit resources are named `{role}_{faction}.tres`. One table so a captured
 ## castle and a defecting prisoner resolve "their colour of this unit" alike.
@@ -93,6 +101,7 @@ const FACTION_SUFFIX: Dictionary = {
 	Faction.YELLOW_EMPIRE: "yellow",
 	Faction.BLACK_COVEN: "black",
 }
+
 
 # === Faction Display Names ===
 ## Derived from FACTION_SUFFIX so a faction cannot be renamed in one place only.
@@ -105,7 +114,6 @@ static func faction_display_name(faction_id: int) -> String:
 ## "Red Enemy", "Purple Enemy" — the label for a faction the player is fighting.
 static func faction_enemy_name(faction_id: int) -> String:
 	return "%s Enemy" % faction_display_name(faction_id)
-
 
 ## Only the noun. The colour still comes from FACTION_SUFFIX, so one rename
 ## there covers both.
@@ -124,7 +132,6 @@ static func faction_title(faction_id: int) -> String:
 	if house == "":
 		return faction_display_name(faction_id)
 	return "%s %s" % [faction_display_name(faction_id), house]
-
 
 ## The pip the HUD puts before "YOUR TURN". Was hardcoded blue, which told a
 ## Purple player they were blue every turn.
@@ -150,6 +157,7 @@ const FACTION_TINT_COLORS: Dictionary = {
 	Faction.YELLOW_EMPIRE: Color(0.95, 0.8, 0.15),
 	Faction.BLACK_COVEN: Color(0.35, 0.32, 0.4),
 }
+
 
 # === Wandering Encounters (Black Coven) ===
 ## Factions that raid rather than conquer: they claim nothing, burn villages,
@@ -188,15 +196,15 @@ const ENCOUNTER_INITIAL: int = 2
 ## Rounds between reinforcements while under the cap.
 const ENCOUNTER_SPAWN_INTERVAL: int = 3
 
+
 # === Map Event Probabilities (Pandora's Box) ===
 const PANDORA_WAR_SPOILS_CHANCE: float = 0.50
 const PANDORA_MERCENARY_CHANCE: float = 0.20
 const PANDORA_TRAP_CHANCE: float = 0.15
 const PANDORA_AWAKEN_DEAD_CHANCE: float = 0.15
 
-# ==============================================================================
 # MILESTONE 4 — Terrain, Morale, Vision, Hazards
-# ==============================================================================
+
 
 # === Terrain Types ===
 ## MapBuilder derives it while painting; GridManager stores it and is the single
@@ -227,6 +235,7 @@ const TERRAIN_RULES: Dictionary = {
 ## Movement cost treated as "unreachable". Any cost at or above this is pruned
 ## by the movement field rather than being paid.
 const MOVE_COST_IMPASSABLE: int = 99
+
 
 # === Morale ===
 ## A 0..100 scalar owned by TacticalUnit; MoraleLevel is derived from it, so
@@ -287,6 +296,7 @@ const MORALE_SHOCK_RADIUS: int = 3
 ## Adjacent enemies required before a unit counts as flanked.
 const MORALE_FLANK_MIN_ENEMIES: int = 2
 
+
 # === Surrender & Desertion ===
 ## Chance a unit surrenders after surviving an attack, keyed by morale level.
 ## Levels absent from this table never surrender (FAIR and above hold the line).
@@ -303,6 +313,7 @@ const SURRENDER_RANSOM_RATIO: float = 0.5
 ## Chance a FEARFUL unit deserts on its own during upkeep.
 const DESERTION_CHANCE_FEARFUL: float = 0.15
 
+
 # === Vision / Fog of War ===
 ## Fallback sight radius when UnitData.vision_range is left at 0.
 const VISION_DEFAULT: int = 4
@@ -314,6 +325,7 @@ const VISION_CASTLE: int = 4
 const VISION_BUILDING: int = 2
 ## A unit on concealing terrain is only spotted from within this range.
 const VISION_CONCEALED_REVEAL_RANGE: int = 1
+
 
 # === Environmental Hazards ===
 const BARREL_DAMAGE: int = 45             # TRUE damage, ignores defense
@@ -328,6 +340,7 @@ const FIRE_SPREAD_MULT: float = 1.0
 ## always catches, grass still only sometimes, so a keg leaves no guaranteed
 ## firestorm.
 const BLAST_IGNITION_MULT: float = 3.0
+
 
 # === Hidden Traps ===
 ## Buried mines: invisible until stepped on. Named HIDDEN_* to keep them
@@ -347,6 +360,7 @@ const HIDDEN_TRAP_COUNT: int = 14
 ## the 3x2 blast still cannot bridge it, and at five the scatter would quietly
 ## place fewer than fourteen (it draws without replacement and gives up).
 const HIDDEN_TRAP_MIN_SPACING: int = 4
+
 
 # === Enemy AI Tuning ===
 ## Divided by real path cost, so this is value per step rather than proximity.
@@ -391,6 +405,7 @@ const AI_ENEMY_VALUE: float = 88.0
 ## outranks every building.
 const AI_WOUNDED_BONUS: float = 60.0
 
+
 # === AI Recruitment Composition ===
 ## Discount per unit of the same class already owned.
 ##
@@ -408,6 +423,7 @@ const AI_RECRUIT_JITTER: float = 0.45
 ## Cost still nudges the choice at a thousandth of its value (120g = 0.12) —
 ## enough to prefer the better unit among equals, not enough to be the tiebreak.
 const AI_RECRUIT_COST_WEIGHT: float = 0.001
+
 
 # === Pandora's Box Rewards ===
 const PANDORA_SPOILS_GOLD: Vector2i = Vector2i(80, 220)

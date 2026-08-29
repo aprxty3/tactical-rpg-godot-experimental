@@ -26,6 +26,7 @@ var economy_manager: Node = null
 ## Optional — supplies the terrain readout in the unit inspector.
 var grid_manager: Node = null
 
+
 func _ready() -> void:
 	# Hide inspector, victory, and modal at start
 	inspector_panel.hide()
@@ -112,8 +113,6 @@ func show_upgrade_popup(unit: Node, is_at_castle: bool) -> void:
 		unit,
 	)
 
-
-# ==============================================================================
 
 signal surrender_choice_made(unit: Node, choice: String)
 
@@ -203,6 +202,7 @@ func initialize(eco_mgr: Node, grid_mgr: Node = null) -> void:
 	_refresh_resources(player_faction_id)
 	_refresh_turn_label()
 
+
 func _on_turn_started(faction_id: int) -> void:
 	current_faction_id = faction_id
 	# Anyone who is not the player is an enemy, named by their colour. Hardcoding
@@ -231,8 +231,10 @@ func _on_turn_started(faction_id: int) -> void:
 	_refresh_resources(player_faction_id)
 	_refresh_turn_label()
 
+
 func _on_phase_changed(_new_phase: int) -> void:
 	_refresh_turn_label()
+
 
 func _refresh_resources(faction_id: int) -> void:
 	if not economy_manager:
@@ -243,17 +245,21 @@ func _refresh_resources(faction_id: int) -> void:
 	var used_cap = economy_manager.get_used_capacity(faction_id, TurnManager.get_faction_units(faction_id))
 	cap_label.text = "👥 Troop Cap: %d/%d" % [used_cap, max_cap]
 
+
 func _on_gold_changed(faction_id: int, new_amount: int) -> void:
 	if faction_id == player_faction_id:
 		gold_label.text = "💰 Gold: %d" % new_amount
+
 
 func _on_iron_changed(faction_id: int, new_amount: int) -> void:
 	if faction_id == player_faction_id:
 		iron_label.text = "⛏️ Iron: %d" % new_amount
 
+
 func _on_capacity_changed(faction_id: int, used: int, max_cap: int) -> void:
 	if faction_id == player_faction_id:
 		cap_label.text = "👥 Troop Cap: %d/%d" % [used, max_cap]
+
 
 func _refresh_turn_label() -> void:
 	var phase_name = ""
@@ -263,6 +269,7 @@ func _refresh_turn_label() -> void:
 		2: phase_name = "Action"
 		3: phase_name = "End"
 	turn_label.text = "Turn %d - %s" % [TurnManager.turn_number, phase_name]
+
 
 func _on_unit_selected(unit: Node) -> void:
 	inspector_panel.show()
@@ -285,6 +292,7 @@ func _on_unit_selected(unit: Node) -> void:
 		_update_context_text("Click blue tile to move or enemy to attack.\n[U] Upgrade unit.")
 	else:
 		_update_context_text("Click blue tile to move or enemy to attack.")
+
 
 ## Morale readout: the band, the raw scalar, and what it is doing to damage.
 func _morale_line(unit: TacticalUnit) -> String:
@@ -329,17 +337,21 @@ func show_building_info(bld: Node) -> void:
 	elif bld.get("building_type") == 1: # GOLD_MINE
 		_update_context_text("Gold Mine (+50 Gold per turn).")
 
+
 func _on_unit_deselected() -> void:
 	inspector_panel.hide()
 	if current_faction_id != 1:
 		_update_context_text("Select unit or Castle.")
 
+
 func _on_building_captured(building: Node, _faction_id: int) -> void:
 	if inspector_panel.visible and inspector_title.text.contains(building.name):
 		show_building_info(building)
 
+
 func _update_context_text(text: String) -> void:
 	context_label.text = text
+
 
 ## The match is over.
 ##
@@ -389,7 +401,6 @@ func _show_game_over_modal(player_won: bool) -> void:
 		game_over_modal.main_menu_pressed.connect(_on_main_menu_pressed)
 		add_child(game_over_modal)
 	game_over_modal.present(player_won)
-
 
 ## Where each result-screen button goes. Both are full scene changes rather
 ## than an in-place reset: the board, the economy, the fog, the scattered

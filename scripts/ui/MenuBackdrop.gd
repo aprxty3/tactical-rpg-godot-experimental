@@ -2,21 +2,10 @@ extends Node2D
 class_name MenuBackdrop
 ## MenuBackdrop — the battlefield, drawn behind the main menu.
 ##
-## The same `MapBuilder`, tileset and buildings the match uses — terrain and
-## props only, no units, fog or HUD. Scenery: it reads no input, keeps no state
-## and talks to no manager.
-##
-## Two deliberate consequences:
-##   1. **Buildings leave the `buildings` group on the way in.** They are real
-##      `Building` nodes, and income, capacity, the victory check and the AI all
-##      find buildings by walking that group. A decorative castle in it is a
-##      castle the game can count.
-##   2. **No `GridManager`.** Nothing pathfinds here, and a grid would invite
-##      something later to treat this as a live board.
-##
-## The layout is a copy of `Match.tscn`'s, not a reference — reading it out
-## would load every script that scene touches. Drift is cosmetic: the match
-## rolls its own layout at start, so these are the fallback positions.
+## Scenery only: no input, no state, no manager. Buildings are pulled out of the
+## `buildings` group on the way in — income, capacity, victory and the AI all
+## walk it, so a decorative castle in there is one the game can count. No
+## GridManager either. The layout is a copy of `Match.tscn`'s; drift is cosmetic.
 
 ## World size of one cell, matching `GridManager.cell_size` on the match scene.
 const CELL: Vector2i = Vector2i(64, 64)
@@ -61,19 +50,14 @@ func _build_map() -> void:
 				reserved.append(bld.grid_position + Vector2i(dx, dy))
 	map_builder.scatter_decor(decor, CELL, reserved)
 
-
 ## Scale and centre the board to fill the window.
 ##
-## Covers rather than fits: a letterboxed map would put bars against the menu's
-## own background and read as a rendering fault. The overflow is the outer ring
-## of the map, which is empty ground on every side.
-##
-## **Capped at 1:1.** A tall, narrow window needs a cover factor above 1, and
-## magnifying this art past its native size does two bad things at once — it
-## shimmers, because the scale is not an integer, and it zooms so far in that
-## the backdrop stops reading as a map and becomes a field of grass. Past that
-## point a thin band of scrim on two edges is the better trade.
+## Covers rather than fits — letterbox bars would read as a rendering fault, and
+## the overflow is the map's empty outer ring. Capped at 1:1: magnifying past
+## native size shimmers on a non-integer scale and zooms in far enough that the
+## backdrop stops reading as a map.
 const MAX_ZOOM: float = 1.0
+
 
 func _fit_to_viewport() -> void:
 	var world: Vector2 = Vector2(map_builder.grid_size * CELL)

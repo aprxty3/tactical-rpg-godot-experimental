@@ -53,7 +53,6 @@ func setup(grid_mgr: GridManager, eco_mgr: Node,
 	evaluator = AITacticalEvaluator.new(grid_mgr, combat_mgr, vision_mgr, ai_faction_id)
 	_rng.randomize()
 
-
 ## Stops a second AI turn starting while the first runs. This handler is a
 ## coroutine, so a rapid turn change spawns a second `_execute_ai_turn()`; each
 ## calls `end_turn()`, and the extra one consumes the PLAYER's turn.
@@ -72,7 +71,6 @@ func _on_turn_started(faction_id: int) -> void:
 	_turn_running = false
 
 
-## Execute the entire AI turn flow
 func _execute_ai_turn() -> void:
 	# 0. Write down everything currently in sight before moving a single unit.
 	_refresh_scouting_report()
@@ -140,16 +138,12 @@ func _ai_try_recruit() -> void:
 			await get_tree().create_timer(action_delay).timeout
 
 
-## Which unit to buy. Public and side-effect free so it can be exercised on a
-## bare list — the same reason `AITacticalEvaluator` exists.
+## Public and side-effect free, so it can be exercised on a bare list. Replaces
+## a `(advantage, cost)` maximum where every tie went to the priciest unit and
+## the answer was always another mage.
 ##
-## Replaces a `(advantage, cost)` maximum that was deterministic twice over:
-## every tie went to the priciest unit, and Mage counters the commonest class,
-## so the answer was always another mage.
-##
-## Four terms, descending authority: counter advantage; a penalty per unit of
-## that class already owned (the term that does the work — an army is a
-## composition); cost at a thousandth of its value; jitter to break ties.
+## Four terms: counter advantage, a penalty per unit of that class already owned
+## (the one doing the work), cost at a thousandth, and jitter.
 func pick_recruit(candidates: Array, counter_class: String,
 		active_units: Array) -> UnitData:
 	var own_classes: Dictionary = {}
@@ -294,10 +288,8 @@ func _shoot_barrel(unit: TacticalUnit, cell: Vector2i) -> void:
 	unit.consume_action()
 	object_manager.detonate_at(cell)
 
-
-# ==============================================================================
 # SCOUTING — what the AI is allowed to know
-# ==============================================================================
+
 
 ## Can this faction actually see the unit right now?
 ## Routed through the evaluator so there is exactly one answer to this question
@@ -395,16 +387,10 @@ func _find_strategic_destination(unit: TacticalUnit) -> Vector2i:
 	if not tree:
 		return Vector2i(-1, -1)
 
-	# 1. Buildings and enemies compete on ONE scale: value divided by the real
-	#    path cost to reach them. Whichever scores higher is where this unit
-	#    goes.
-	#
-	#    The old rule returned the best building the moment it found one, so on
-	#    a map holding 4 gold mines, 2 iron mines, 6 villages and 5 castles there
-	#    was always a building and the enemy-hunting branch below was
-	#    unreachable. The army captured its way around the map and only ever
-	#    fought when a player unit happened to stand in its path — which reads
-	#    exactly like an AI that never attacks.
+	# 1. Buildings and enemies compete on ONE scale: value over real path cost.
+	#    The old rule returned the first building it found, and on a map with
+	#    seventeen of them the enemy-hunting branch below was unreachable — an
+	#    army that captured its way around and never picked a fight.
 	if is_instance_valid(evaluator):
 		var objective: Building = evaluator.best_objective(unit)
 		var objective_score: float = -INF
@@ -454,4 +440,3 @@ func _manhattan_distance(a: Vector2i, b: Vector2i) -> int:
 ## End AI turn and return control to the player
 func _end_ai_turn() -> void:
 	TurnManager.end_turn()
-

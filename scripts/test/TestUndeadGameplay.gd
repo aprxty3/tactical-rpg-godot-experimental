@@ -1,5 +1,6 @@
 extends Node2D
 
+
 func _ready() -> void:
 	print("==========================================================")
 	print(" [TEST UNDEAD GAMEPLAY] TESTING VAMPIRE & SKELETON TREE...")

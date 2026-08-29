@@ -62,10 +62,8 @@ func setup(grid_mgr: GridManager, layer: TileMapLayer) -> void:
 		fog_layer.tile_set = _build_fog_tileset(grid_mgr.cell_size)
 	recompute()
 
-
-# ==============================================================================
 # QUERIES — the public contract every other system uses
-# ==============================================================================
+
 
 ## Can `faction_id` see the terrain at this cell right now?
 func is_cell_visible(faction_id: int, cell: Vector2i) -> bool:
@@ -103,10 +101,8 @@ func visible_enemies_of(faction_id: int) -> Array[TacticalUnit]:
 			found.append(unit)
 	return found
 
-
-# ==============================================================================
 # COMPUTATION
-# ==============================================================================
+
 
 func _on_recompute_event(_a = null, _b = null, _c = null) -> void:
 	recompute()
@@ -206,10 +202,8 @@ func _compute_spotted(seen: Dictionary, observers: Array) -> Dictionary:
 				break
 	return spotted
 
-
-# ==============================================================================
 # RENDERING
-# ==============================================================================
+
 
 ## Hide unit nodes the observer cannot see. Sprites stand taller than their own
 ## tile, so relying on the fog layer to cover them would leave heads poking out

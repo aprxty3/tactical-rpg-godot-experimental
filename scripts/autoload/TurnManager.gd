@@ -3,6 +3,7 @@ extends Node
 ## Drives the core gameplay loop: Upkeep → Production → Action → End Turn.
 ## Communicates via EventBus signals. References EconomyManager via signal, not path.
 
+
 # === State ===
 var current_phase: GameConfig.Phase = GameConfig.Phase.UPKEEP
 var current_faction_index: int = 0
@@ -23,10 +24,9 @@ var contenders: Array[int] = []
 ## Key: faction_id (int), Value: Array of TacticalUnit nodes.
 var faction_units: Dictionary = {}
 
+
 # === Manager References (injected, not hardcoded paths) ===
 var economy_manager: Node = null
-
-
 ## Latched when a victory or defeat is declared. Cleared by `setup_match`, which
 ## is what a scene reload runs — so Retry starts a live match rather than one
 ## that is already over.
@@ -82,21 +82,18 @@ func setup_match(factions: Array[int], eco_manager: Node,
 					faction_units[node.faction_id].append(node)
 
 
-## Get the faction ID of the currently active faction.
 func get_current_faction() -> int:
 	if faction_order.is_empty():
 		return -1
 	return faction_order[current_faction_index]
 
 
-## Get all active units for a specific faction.
 func get_faction_units(faction_id: int) -> Array:
 	return faction_units.get(faction_id, [])
 
 
 # === Phase Execution ===
 
-## Start the turn for the current faction. Begins with Upkeep.
 func start_turn() -> void:
 	var faction_id := get_current_faction()
 	if faction_id < 0:
@@ -106,7 +103,6 @@ func start_turn() -> void:
 	_enter_phase(GameConfig.Phase.UPKEEP)
 
 
-## Advance to the next phase. Called when the current phase is complete.
 func advance_phase() -> void:
 	match current_phase:
 		GameConfig.Phase.UPKEEP:
@@ -130,8 +126,6 @@ func end_turn() -> void:
 	_end_current_turn()
 
 
-
-## Execute logic for entering a specific phase.
 func _enter_phase(phase: GameConfig.Phase) -> void:
 	current_phase = phase
 	EventBus.phase_changed.emit(phase)
@@ -149,7 +143,6 @@ func _enter_phase(phase: GameConfig.Phase) -> void:
 
 # === Phase Implementations ===
 
-## Upkeep Phase: collect income, check logistics, reset units.
 func _execute_upkeep() -> void:
 	var faction_id := get_current_faction()
 	var units := get_faction_units(faction_id)
@@ -194,7 +187,6 @@ func _execute_upkeep() -> void:
 		if is_instance_valid(unit) and unit is TacticalUnit:
 			unit.reset_for_new_turn()
 
-
 ## Which building types resupply the troops standing on them, and how hard.
 ## A type absent from here heals nothing, which is every type not listed.
 const GARRISON_HEAL_BY_TYPE: Dictionary = {
@@ -225,21 +217,18 @@ func _heal_garrisons(units: Array, heal_cells: Dictionary) -> void:
 		tactical.heal(maxi(1, amount))
 
 
-## Production Phase: player can recruit and build.
 func _execute_production() -> void:
 	# Player-driven phase — wait for player input (recruit, build)
 	# Auto-advance for AI factions will be handled separately
 	pass
 
 
-## Action Phase: player can move, attack, interact.
 func _execute_action() -> void:
 	# Player-driven phase — wait for player input (move, attack, capture)
 	# Auto-advance for AI factions will be handled separately
 	pass
 
 
-## End Turn Phase: check victory/defeat, then switch faction.
 func _execute_end_turn() -> void:
 	var faction_id := get_current_faction()
 
@@ -250,7 +239,6 @@ func _execute_end_turn() -> void:
 	EventBus.turn_ended.emit(faction_id)
 
 
-## End current faction's turn and move to next.
 func _end_current_turn() -> void:
 	current_faction_index += 1
 

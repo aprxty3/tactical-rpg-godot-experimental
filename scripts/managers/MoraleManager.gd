@@ -2,14 +2,11 @@ extends Node
 class_name MoraleManager
 ## MoraleManager — Logic layer manager for unit morale and surrender.
 ##
-## Morale is a scalar on each TacticalUnit; this manager is the only writer. It
-## turns EventBus traffic into morale shifts, then acts: broken units surrender
-## or desert.
+## Morale is a scalar on each TacticalUnit; this is its only writer.
 ##
-## Surrender is two-phase on purpose. A broken unit is frozen and
-## `surrender_triggered` fires; the captor decides — human via the HUD, AI by
-## the capacity rule below — and nothing resolves until `resolve_surrender()`.
-## That keeps the choice out of this manager and the rules out of the UI.
+## Surrender is two-phase: the broken unit freezes, `surrender_triggered` fires,
+## and nothing resolves until the captor calls `resolve_surrender()`. That keeps
+## the choice out of this manager and the rules out of the UI.
 
 @export_group("Morale Settings")
 ## The faction whose surrender decisions are made by a human through the HUD.
@@ -43,10 +40,8 @@ func setup(grid_mgr: GridManager, eco_mgr: Node) -> void:
 	grid_manager = grid_mgr
 	economy_manager = eco_mgr
 
-
-# ==============================================================================
 # UPKEEP — regen, flanking, desertion
-# ==============================================================================
+
 
 ## Run once per faction turn, before its units act.
 func _on_turn_started(faction_id: int) -> void:
@@ -95,10 +90,8 @@ func _count_adjacent_enemies(unit: TacticalUnit) -> int:
 			count += 1
 	return count
 
-
-# ==============================================================================
 # BATTLEFIELD EVENTS — morale shifts
-# ==============================================================================
+
 
 ## A death is felt by everyone nearby: allies falter, enemies take heart.
 func _on_unit_died(unit: Node, _cause: String) -> void:
@@ -188,10 +181,8 @@ func _units_near(cell: Vector2i, radius: int, exclude: TacticalUnit) -> Array[Ta
 				found.append(tactical)
 	return found
 
-
-# ==============================================================================
 # SURRENDER
-# ==============================================================================
+
 
 ## Roll for a break after a unit survives an attack. FAIR and above hold the
 ## line; the undead never break at all.

@@ -3,19 +3,11 @@ class_name GridOverlay
 ## GridOverlay — the tactical highlight layer: grid mesh, move range, attack
 ## range, the selected unit and building, and the hover cursor.
 ##
-## This was `MatchController._draw()`. Sixty-odd lines of pure rendering sat in
-## the same file as input handling, selection state and match wiring, and every
-## one of the controller's fourteen `queue_redraw()` calls repainted the whole
-## board through it.
-##
-## **Draw order is load-bearing.** The map layers carry negative `z_index`
-## (water -4 through bridge -1, decor -1) precisely so the controller's own
-## drawing landed on top of them, while Buildings and Units — both at z 0 — drew
-## after it in tree order. A node's own `_draw` runs before any of its children,
-## so reproducing that means this overlay must be the FIRST child of the match
-## root. `MatchController` calls `move_child(overlay, 0)` for exactly that
-## reason; moving it later in the tree would bury the highlights under the units
-## standing on them.
+## **Draw order is load-bearing.** Map layers sit at negative `z_index` so this
+## draws above them, while Buildings and Units at z 0 draw after it in tree
+## order. A node's `_draw` runs before its children, so this must be the FIRST
+## child of the match root — `MatchController` calls `move_child(overlay, 0)`.
+## Anywhere later buries the highlights under the units standing on them.
 
 const GRID_LINE: Color = Color(1, 1, 1, 0.18)
 

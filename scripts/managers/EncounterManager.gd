@@ -2,18 +2,12 @@ extends Node
 class_name EncounterManager
 ## EncounterManager — the Black Castle's garrison, and the turn it takes.
 ##
-## Its own manager rather than an `AIManager` with four flags: an AIManager
-## plays to win — recruits, banks gold, values buildings by yield. Monsters own
-## no economy and hold no ground. Their job is to stop anyone holding the middle
-## of the map for free.
+## Its own manager, not an `AIManager` with flags: monsters own no economy and
+## hold no ground. Judgement is still shared — `AITacticalEvaluator` scores
+## swings here as it does for armies.
 ##
-## Judgement is still shared. `AITacticalEvaluator` scores swings here exactly as
-## it does for armies, so a ghoul attacks through the player's damage rules.
-##
-## Two rules shape everything below:
-##   1. **The leash.** Enforced when choosing a step, not corrected afterwards,
-##      so a monster is never out of bounds even for a frame.
-##   2. **The boss never moves.** It swings at what comes into reach.
+## The leash is enforced when choosing a step, never corrected afterwards. The
+## boss never moves.
 
 @export_group("Encounter Settings")
 ## Which faction the monsters belong to. Black Coven holds the centre castle and
@@ -87,10 +81,8 @@ func garrison() -> void:
 	for i in range(GameConfig.ENCOUNTER_INITIAL):
 		_spawn_wanderer()
 
-
-# ==============================================================================
 # TURN
-# ==============================================================================
+
 
 func _on_turn_started(active_faction_id: int) -> void:
 	if active_faction_id != faction_id or _turn_running:
@@ -232,10 +224,8 @@ func _await_move(unit: TacticalUnit, max_seconds: float = 4.0) -> void:
 		await get_tree().process_frame
 		elapsed += get_process_delta_time()
 
-
-# ==============================================================================
 # THE DEN
-# ==============================================================================
+
 
 ## One monster every `ENCOUNTER_SPAWN_INTERVAL` rounds while under the cap.
 ##

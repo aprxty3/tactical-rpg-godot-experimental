@@ -2,15 +2,10 @@ extends MapObject
 class_name Trap
 ## Trap — a buried mine. Invisible until something stands on it.
 ##
-## The only MapObject with no sprite. Chests and kegs are landmarks to route
-## around; a trap punishes a route that looked safe, so drawing it at all would
-## defeat it. No reveal, no adjacency tell — the AI walks the same blind map,
-## which is the only thing making an invisible hazard fair.
-##
-## `consume()` still runs (it unregisters and frees), it just fades nothing.
-##
-## The blast belongs to MapObjectManager, which knows the grid and the roster.
-## This object only knows it was stepped on.
+## The only MapObject with no sprite — drawing it at all would defeat it. No
+## reveal and no adjacency tell: the AI walks the same blind map, which is what
+## makes an invisible hazard fair. The blast belongs to MapObjectManager; this
+## only knows it was stepped on.
 
 
 func _ready() -> void:

@@ -1,20 +1,11 @@
 extends Node
 ## AudioManager — Autoload for music and sound effects.
 ##
-## Listens to EventBus and nothing listens back, so gameplay never has to know
-## audio exists. Two jobs:
-##
-##   SFX — a small pool of players instead of one per sound. The previous
-##   version held a single `AudioStreamPlayer` per effect, so a second hit
-##   during a melee cut the first one off mid-impact; a battle sounded thinner
-##   than it was. A pool lets them overlap.
-##
-##   MUSIC — two players crossfaded against each other, plus ducking so combat
-##   is audible over the score. Track choice follows whose turn it is.
-##
-## Volumes go through the Music and SFX buses (`default_bus_layout.tres`) rather
-## than per-player volume, so one slider moves everything on a bus and effects
-## can be added to a bus later without touching this script.
+## Listens to EventBus and nothing listens back, so gameplay never knows audio
+## exists. SFX use a small pool — one player per effect cut the previous hit off
+## mid-melee. Music is two crossfaded players with ducking, following whose turn
+## it is. Volume goes through the buses, not per-player, so one slider moves a
+## whole bus.
 
 const BUS_MASTER: String = "Master"
 const BUS_MUSIC: String = "Music"
@@ -72,10 +63,8 @@ func _ready() -> void:
 	_music_base_db = AudioServer.get_bus_volume_db(_bus(BUS_MUSIC))
 	_connect_signals()
 
-
-# ==============================================================================
 # SETUP
-# ==============================================================================
+
 
 func _build_sfx_pool() -> void:
 	for i in range(SFX_POOL_SIZE):
@@ -111,10 +100,8 @@ func _connect_signals() -> void:
 	EventBus.defeat_condition_met.connect(_on_defeat)
 	EventBus.turn_started.connect(_on_turn_started)
 
-
-# ==============================================================================
 # SFX
-# ==============================================================================
+
 
 ## Play a named effect on the next free voice.
 ##
@@ -129,10 +116,8 @@ func play_sfx(id: String) -> void:
 	player.stream = _sfx_streams[id]
 	player.play()
 
-
-# ==============================================================================
 # MUSIC
-# ==============================================================================
+
 
 ## Fade from whatever is playing to `track_id`.
 ##
@@ -202,10 +187,8 @@ func _music_stream(track_id: String) -> AudioStream:
 		(stream as AudioStreamMP3).loop = true
 	return stream
 
-
-# ==============================================================================
 # DUCKING
-# ==============================================================================
+
 
 ## Dip the Music bus so a hit is audible over the score, then let it back up.
 ##
@@ -227,10 +210,8 @@ func duck_music(active: bool) -> void:
 		seconds
 	)
 
-
-# ==============================================================================
 # VOLUME API
-# ==============================================================================
+
 
 func _bus(bus_name: String) -> int:
 	return AudioServer.get_bus_index(bus_name)
@@ -264,10 +245,8 @@ func get_bus_volume_linear(bus_name: String) -> float:
 		return 0.0
 	return db_to_linear(AudioServer.get_bus_volume_db(bus))
 
-
-# ==============================================================================
 # EVENT HANDLERS
-# ==============================================================================
+
 
 func _on_unit_move_completed(_unit: Node, _from: Vector2i, _to: Vector2i) -> void:
 	play_sfx("move")

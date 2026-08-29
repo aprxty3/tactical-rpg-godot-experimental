@@ -3,18 +3,13 @@ class_name ResourceScatter
 ## ResourceScatter — lays the mines and villages out fresh every match, without
 ## giving anyone a better opening than anyone else.
 ##
-## The authored layout was hand-tuned so all four armies walked the same
-## distance to every prize — worth keeping, but the same board every match. This
-## rolls a new one and keeps the guarantee by never placing a single building:
-## it places an ORBIT of four (a cell and its three mirror images), symmetric
-## under the reflections that map one castle onto another.
+## Never places a single building: it places an ORBIT of four — a cell and its
+## three mirror images — so the layout is symmetric under the reflections that
+## map one castle onto another.
 ##
-## Symmetry alone is not proof, because the terrain beneath is only roughly
-## symmetric — the centre road sits a column off. So every candidate orbit is
-## measured by real path search from all four castles and rejected unless the
-## distances tie exactly. Fairness is measured here, not assumed.
-##
-## A RefCounted with injected collaborators, so it runs against a bare grid.
+## Symmetry is not proof, since the terrain beneath is only roughly symmetric.
+## Every orbit is measured by real path search from all four castles and
+## rejected unless the distances tie exactly.
 
 ## How much room to leave around a castle, in cells. The opening army musters
 ## from the rings immediately outside its keep, and a mine dropped into that
@@ -122,10 +117,8 @@ func roll(buildings: Array) -> Dictionary:
 	report["found"] = true
 	return report
 
-
-# ==============================================================================
 # THE MIRROR GROUP
-# ==============================================================================
+
 
 ## A cell and its three reflections. Returned in a stable order, and empty when
 ## the cell lies on an axis — a cell that is its own mirror cannot seed an orbit
@@ -166,10 +159,8 @@ func _mirror_castles(castles: Array) -> Array[Vector2i]:
 			ring.append(cell)
 	return ring
 
-
-# ==============================================================================
 # MEASUREMENT
-# ==============================================================================
+
 
 ## Real Dijkstra over the grid's move costs, not Manhattan: the first
 ## hand-balanced layout put two mines in 2 MP forest, an asymmetry a ruler
@@ -220,10 +211,8 @@ func _reach(orbit: Array[Vector2i], anchors: Array[Vector2i], fields: Dictionary
 		reach.append(best)
 	return reach
 
-
-# ==============================================================================
 # CANDIDATE POOLS
-# ==============================================================================
+
 
 ## Legal orbits that measure equal from all four castles, sorted by what they
 ## may hold. Gold on the flanks, iron in the contested middle: the flank prize
@@ -302,10 +291,8 @@ func _compute_bands() -> void:
 	_flank_band = Vector2i(0, west - 1)
 	_centre_band = Vector2i(west + 1, half)
 
-
-# ==============================================================================
 # THE DRAW
-# ==============================================================================
+
 
 ## Draw one layout: `wanted[kind]` orbits of each kind, no two chosen cells
 ## closer than ORBIT_SPACING. Retried as a whole rather than backtracked — a
@@ -360,10 +347,8 @@ func _draw(pool: Array, count: int, taken: Dictionary) -> Array[Vector2i]:
 		found += 1
 	return cells
 
-
-# ==============================================================================
 # APPLYING IT
-# ==============================================================================
+
 
 func _place(buildings: Array, cells: Array) -> void:
 	for i in range(mini(buildings.size(), cells.size())):

@@ -70,10 +70,8 @@ func setup(grid_mgr: GridManager, eco_mgr: Node, objects_parent: Node2D, units_p
 	# mercenary without holding a reference back to this manager.
 	pandora = PandoraTable.new(_rng, economy_manager, _spawn_unit, _free_cells_around)
 
-
-# ==============================================================================
 # REGISTRY
-# ==============================================================================
+
 
 func register_object(obj: MapObject) -> void:
 	if not _objects.has(obj.grid_position):
@@ -107,10 +105,8 @@ func unit_at(cell: Vector2i) -> TacticalUnit:
 		return null
 	return grid_manager.get_unit_at(cell)
 
-
-# ==============================================================================
 # SPAWNING & PLACEMENT
-# ==============================================================================
+
 
 ## Scatter the map's hazards and treasure. Barrels come from MapBuilder's bridge
 ## analysis (deterministic — they belong at the chokepoints); chests come from
@@ -170,10 +166,8 @@ func _spawn(obj: MapObject, cell: Vector2i) -> MapObject:
 	register_object(obj)
 	return obj
 
-
-# ==============================================================================
 # DISPATCH
-# ==============================================================================
+
 
 func _on_unit_move_completed(unit: Node, _from: Vector2i, to: Vector2i) -> void:
 	if not (unit is TacticalUnit):
@@ -223,10 +217,8 @@ func _tick_round() -> void:
 		if is_instance_valid(obj) and not obj.is_spent():
 			obj.on_round_tick()
 
-
-# ==============================================================================
 # EXPLOSIONS
-# ==============================================================================
+
 
 ## Detonate the barrel at `origin` and everything its blast reaches.
 ##
@@ -363,10 +355,8 @@ func _cells_within(origin: Vector2i, radius: int) -> Array[Vector2i]:
 				cells.append(cell)
 	return cells
 
-
-# ==============================================================================
 # FIRE
-# ==============================================================================
+
 
 ## Try to catch each neighbouring cell alight. Only terrain with a `flammable`
 ## chance can catch, which in practice means forest burns and everything else
@@ -403,10 +393,8 @@ func extinguish_fire_at(cell: Vector2i) -> void:
 		scorched = true
 	EventBus.fire_extinguished.emit(cell, scorched)
 
-
-# ==============================================================================
 # PANDORA'S BOX
-# ==============================================================================
+
 
 ## Resolve an opened chest into one of four outcomes and announce it.
 ##

@@ -1,14 +1,9 @@
 extends Node
 ## MatchSetup — the choices that define ONE match, carried across scene loads.
 ##
-## Easy to confuse with `GameConfig`: that holds fixed rules and never changes
-## at runtime; this holds what the player picked and changes every match.
-##
+## Not `GameConfig`: that holds fixed rules, this holds what the player picked.
 ## Must be an autoload — the faction is chosen on one screen and consumed on
 ## another, and `change_scene_to_file()` frees everything in between.
-##
-## Campaign will extend it: a chapter, a roster and a save slot all belong to
-## "this run", not to the rules.
 
 ## The four armies that contend. Black Coven is absent not because it is idle —
 ## it garrisons the Black Castle and takes a turn — but because it cannot win or

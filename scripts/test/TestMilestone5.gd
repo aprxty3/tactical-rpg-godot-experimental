@@ -2,14 +2,10 @@ extends Node2D
 ## TestMilestone5 — integration coverage for the four Milestone 5 systems:
 ## advanced enemy AI, visual polish, the mount system and the audio pipeline.
 ##
-## Same soft-check harness as TestMilestone4: every check reports and the run
-## ends with one summary line, so a break in one system cannot hide the state of
-## the other three.
-##
-## The AI section is deliberately assertion-heavy and await-free. Splitting
-## judgement out into AITacticalEvaluator is what makes that possible — the
-## scoring can be interrogated on a built board without running a turn, timing
-## an animation, or waiting on a signal.
+## Soft-check harness: every check reports and the run ends with one summary,
+## so a break in one system cannot hide the other three. The AI section is
+## await-free because `AITacticalEvaluator` can be interrogated on a built board
+## without running a turn.
 
 var _passed: int = 0
 var _failed: int = 0
@@ -90,10 +86,8 @@ func _ready() -> void:
 
 	_report()
 
-
-# ==============================================================================
 # 0. MATCH BOOTSTRAP — the match is configured, not hardcoded
-# ==============================================================================
+
 
 ## Runs before every other section, because it counts the units the scene
 ## mustered and the sections below spawn their own into the same container.
@@ -213,10 +207,8 @@ func _test_match_bootstrap() -> void:
 		hud.call("_on_turn_started", main.player_faction)
 		await get_tree().process_frame
 
-
-# ==============================================================================
 # 1. ADVANCED AI
-# ==============================================================================
+
 
 func _test_damage_preview() -> void:
 	print("\n--- 1. Damage preview (the AI's one source of truth) ---")
@@ -379,10 +371,8 @@ func _test_recruit_composition() -> void:
 	_check(is_equal_approx(combat.class_advantage("Melee", "Melee"), 1.0),
 		"a mirror matchup is neutral")
 
-
-# ==============================================================================
 # 2. VISUAL POLISH
-# ==============================================================================
+
 
 func _test_vfx() -> void:
 	print("\n--- 7. VFX ---")
@@ -443,10 +433,8 @@ func _test_camera_shake() -> void:
 		"a stronger impact during a shake reinforces rather than restarting it")
 	camera._process_shake(10.0)
 
-
-# ==============================================================================
 # 3. MOUNT SYSTEM
-# ==============================================================================
+
 
 func _test_mount_system() -> void:
 	print("\n--- 9. Mount / dismount ---")
@@ -572,10 +560,8 @@ func _test_backwards_compatibility() -> void:
 
 	_despawn([pawn])
 
-
-# ==============================================================================
 # 4. AUDIO
-# ==============================================================================
+
 
 func _test_audio() -> void:
 	print("\n--- 12. Audio pipeline ---")
@@ -640,17 +626,13 @@ func _test_audio() -> void:
 
 	am.stop_music(0.01)
 
-
-# ==============================================================================
 # HELPERS
-# ==============================================================================
 
 ## Build a bare unit from a resource. Deliberately not the .tscn: these tests
 ## care about data and rules, and instancing the full prefab would drag in
 ## per-faction scene wiring that has nothing to do with what is being checked.
-# ==============================================================================
 # 3b. FIRE VFX
-# ==============================================================================
+
 
 func _test_fire_vfx() -> void:
 	print("\n[3b] Fire VFX")
@@ -699,10 +681,8 @@ func _test_fire_vfx() -> void:
 
 	await get_tree().process_frame
 
-
-# ==============================================================================
 # 3b2. DEATH MARKER
-# ==============================================================================
+
 
 func _test_death_marker() -> void:
 	print("\n[3b2] Death leaves a marker, not a blast")
@@ -759,10 +739,8 @@ func _test_death_marker() -> void:
 
 	_despawn([victim])
 
-
-# ==============================================================================
 # 3c. HIDDEN TRAPS
-# ==============================================================================
+
 
 func _test_hidden_traps() -> void:
 	print("\n[3c] Hidden traps")
@@ -890,10 +868,8 @@ func _test_hidden_traps() -> void:
 		_check(min_gap >= GameConfig.HIDDEN_TRAP_MIN_SPACING,
 			"traps are spaced at least %d apart (closest %d)" % [GameConfig.HIDDEN_TRAP_MIN_SPACING, min_gap])
 
-
-# ==============================================================================
 # 3c2. BARREL BLAST LEAVES FIRE
-# ==============================================================================
+
 
 func _test_barrel_leaves_fire() -> void:
 	print("\n[3c2] A keg leaves fire behind")
@@ -960,10 +936,8 @@ func _count_fires() -> int:
 			n += 1
 	return n
 
-
-# ==============================================================================
 # 3d. DAMAGE GLITCH
-# ==============================================================================
+
 
 func _test_damage_glitch() -> void:
 	print("\n[3d] Red glitch on hit")
@@ -993,10 +967,8 @@ func _test_damage_glitch() -> void:
 
 	_despawn([victim])
 
-
-# ==============================================================================
 # 6. BUGFIXES — upgrade movement, AI aggression, match end
-# ==============================================================================
+
 
 func _test_upgrade_does_not_refill_movement() -> void:
 	print("\n[6a] A promotion does not refund the walk")
@@ -1072,12 +1044,9 @@ func _test_ai_hunts_enemies() -> void:
 	_check(is_equal_approx(float(best.get("score", 0.0)), far_prey_score),
 		"and reports the same score it was ranked with")
 
-	# A wounded target outranks a healthy one: finishing a unit removes a whole
-	# unit, chipping a healthy one removes nothing.
-	#
-	# Measured on the SAME cell, one after the other, so path cost and visibility
-	# are identical by construction and the only variable left is health. Two
-	# units on two cells would have let terrain decide the comparison.
+	# A wounded target outranks a healthy one. Measured on the SAME cell in turn,
+	# so path cost and visibility are identical by construction and health is the
+	# only variable — two cells would have let terrain decide it.
 	var probe_cell := Vector2i(13, 8)
 	_despawn([prey])
 	await get_tree().process_frame
@@ -1172,14 +1141,11 @@ func _spawn(res_path: String, faction: int, cell: Vector2i) -> TacticalUnit:
 	return unit
 
 
-## Put a hand-built test unit onto its faction's actual ROSTER.
-##
-## `_spawn` above is enough for anything that reads the board — the grid, the
-## fog, a combat swing. It is not enough for anything that reads the roster:
-## troop capacity, upkeep and the victory check all walk `faction_units`, which
-## TurnManager fills from `unit_spawned`, and only a real spawner emits that.
-## Sections that stand an army up to test a LIMIT have to enlist it, or they
-## measure an army the game cannot see.
+## Put a hand-built unit onto its faction's ROSTER. `_spawn` covers anything
+## reading the board, but capacity, upkeep and the victory check walk
+## `faction_units`, which TurnManager fills from `unit_spawned` — and only a real
+## spawner emits that. Test a LIMIT without enlisting and you measure an army the
+## game cannot see.
 func _enlist(unit: TacticalUnit) -> TacticalUnit:
 	if is_instance_valid(unit):
 		EventBus.unit_spawned.emit(unit, unit.faction_id)
@@ -1231,10 +1197,8 @@ func _cell_of_terrain(terrain: GameConfig.TerrainType) -> Vector2i:
 				return cell
 	return Vector2i(-1, -1)
 
-
-# ==============================================================================
 # 7. REFACTOR — the overhead readout is a component, not part of the actor
-# ==============================================================================
+
 
 ## Guards the TacticalUnit -> UnitOverlay extraction. Two things can regress:
 ## the widgets can drift back onto the actor, or the component can stop
@@ -1321,10 +1285,8 @@ func _hp_border_color(unit: TacticalUnit) -> Color:
 	var sb := bar.get_theme_stylebox("background")
 	return (sb as StyleBoxFlat).border_color if sb is StyleBoxFlat else Color.BLACK
 
-
-# ==============================================================================
 # 8. REFACTOR — the HUD's dialogs are components, not inline widget code
-# ==============================================================================
+
 
 ## Guards the MainHUD -> {UnitChoicePopup, SurrenderModal, GameOverModal} split.
 ## The recruit and upgrade popups were near-identical copies; they are now two
@@ -1410,10 +1372,8 @@ func _labels_in(root: Node) -> Array:
 		found.append_array(_labels_in(child))
 	return found
 
-
-# ==============================================================================
 # 9. REFACTOR — chest table, army muster and highlight layer are collaborators
-# ==============================================================================
+
 
 ## Guards the three remaining extractions: PandoraTable out of MapObjectManager,
 ## ArmyMuster and GridOverlay out of MatchController. Each is checked on its own
@@ -1484,20 +1444,15 @@ func _test_extracted_collaborators() -> void:
 		"and deselecting clears it")
 	_despawn([probe])
 
-
-# ==============================================================================
 # 10. MAP BALANCE — four armies on a board that was laid out for two
-# ==============================================================================
 
-## The castles have always been 4-fold symmetric; the resources were not, because
-## the map was authored when only Blue and Red fielded armies. Measured before
-## the fix, in terrain-aware walk cost from each castle to its nearest node:
-## iron was 5 for Purple/Yellow and 12 for Blue/Red, and villages were the
-## mirror of that. Blue — the default player faction — had neither a gold nor an
-## iron mine as its nearest anything.
+
+## Castles were always 4-fold symmetric; the resources were not, because the map
+## was authored for Blue vs Red. Before the fix, iron measured 5 walk-cost for
+## Purple/Yellow and 12 for Blue/Red.
 ##
-## Manhattan distance would pass a map this test should fail, so every distance
-## here is a real Dijkstra walk over the same move costs a unit pays.
+## Manhattan distance would pass a map this should fail, so every distance here
+## is a real Dijkstra walk over the move costs a unit pays.
 func _test_map_balance() -> void:
 	print("\n[10] Resources are even across all four armies")
 
@@ -1570,10 +1525,8 @@ func _test_map_balance() -> void:
 			even = false
 	_check(even, "each army is nearest to exactly 1 gold, 1 iron, 2 villages — %s" % tally.strip_edges())
 
-
-# ==============================================================================
 # 11. THE RESOURCE ROLL — a different board every match, fair every time
-# ==============================================================================
+
 
 ## `_test_map_balance` above already measured THIS match's board and found it
 ## even. That is the outcome; this is the machinery, and it is what stops the
@@ -1672,16 +1625,12 @@ func _test_resource_roll() -> void:
 	else:
 		_check(false, "a rolled layout keeps every kind inside its distance band")
 
-
-# ==============================================================================
 # 12. VILLAGES RESUPPLY THEIR GARRISON
-# ==============================================================================
 
-## A village was worth taking for the troop capacity and worth nothing once
-## taken. Standing in one now heals a fraction of MAXIMUM health each upkeep, so
-## a mauled army has somewhere to pull back to. Driven through the real upkeep
-## rather than by calling the heal directly: the rule was never the hard part,
-## being reached from the turn loop is.
+
+## Standing in your own village heals a fraction of MAXIMUM health each upkeep.
+## Driven through the real upkeep rather than calling the heal directly — the
+## rule was never the hard part, being reached from the turn loop is.
 func _test_village_garrison() -> void:
 	print("\n[12] A village resupplies whoever holds it")
 
@@ -1797,10 +1746,8 @@ func _open_cell_away_from(cell: Vector2i) -> Vector2i:
 			return candidate
 	return cell
 
-
-# ==============================================================================
 # 13. THE TROOP CEILING BINDS EVERY WAY TROOPS ARRIVE
-# ==============================================================================
+
 
 ## Recruiting always checked the ceiling. Nothing else did — so an army that
 ## could not BUY its next unit could still be handed one by a prisoner's
@@ -1978,17 +1925,12 @@ func _walk_cost(from: Vector2i, to: Vector2i) -> int:
 				frontier.append(nxt)
 	return -1
 
-
-# ==============================================================================
 # 14. THE BLACK CASTLE KEEPS A GARRISON
-# ==============================================================================
 
-## Monsters raid; they do not conquer.
-##
-## The rule they exist to test is a negative one, and negatives are what quietly
-## stop holding: a marauder that CAN claim a gold mine breaks nothing loudly, it
-## just hands the centre of the map to a faction with no economy and no turn
-## worth taking. So most of this section asserts what does NOT happen.
+
+## Monsters raid; they do not conquer. The rule is a negative one, and negatives
+## stop holding quietly — a marauder that CAN claim a mine breaks nothing loudly.
+## So most of this section asserts what does NOT happen.
 func _test_black_castle_encounters() -> void:
 	print("\n[14] The Black Castle keeps a garrison")
 
@@ -2043,11 +1985,8 @@ func _test_black_castle_encounters() -> void:
 
 	var mine_owner: int = mine.faction_id
 	var village_owner: int = village.faction_id
-	# The mine goes to a RIVAL, not to `army`. Both questions below are asked
-	# about it — "can a monster take this" and "would our army march on it" —
-	# and an army never marches on ground it already holds, so handing it to
-	# `army` would make the control check fail for a reason unrelated to
-	# monsters.
+	# The mine goes to a RIVAL: an army never marches on ground it already holds,
+	# so handing it to `army` would fail the control check for the wrong reason.
 	mine.capture(MatchSetup.participants[1])
 	village.capture(army)
 
@@ -2069,11 +2008,9 @@ func _test_black_castle_encounters() -> void:
 	village.capture(army)
 
 	# --- the AI is not lured into a den it can never take --------------------
-	# Without this the monster keep scores as the highest-value objective on the
-	# board (a castle, dead centre, near everything) and each army feeds units
-	# into it one at a time for the rest of the match.
-	# Stood next to the mine so the control check measures the claim rule and
-	# not whether a corner of the map happens to have a route to the middle.
+	# Otherwise the monster keep scores highest (a castle, dead centre) and each
+	# army feeds units into it forever. Stood next to the mine so the control
+	# check measures the claim rule, not map routing.
 	var scout: TacticalUnit = _enlist(_spawn("res://resources/units/pawn_%s.tres"
 		% GameConfig.FACTION_SUFFIX[army], army, _free_neighbour_of(mine.grid_position)))
 	var judge := AITacticalEvaluator.new(grid, main.combat_resolver, null, army)
@@ -2201,14 +2138,10 @@ func _test_black_castle_encounters() -> void:
 		village.capture(village_owner)
 
 	# --- the menu's backdrop is scenery, not a board -------------------------
-	# `MenuBackdrop` puts 21 real `Building` nodes behind the main menu so it
-	# looks like the game rather than a dark rectangle. `Building._ready()` adds
-	# every one of them to the "buildings" group, which is how income, troop
-	# capacity, the victory check and the AI all find their buildings — so a
-	# decorative castle left in there is a castle the game would count. The
-	# backdrop pulls them straight back out; this is the check that it still
-	# does, because the failure would be silent and would look like an economy
-	# bug rather than a menu one.
+	# 21 real `Building` nodes sit behind the menu, and `_ready()` adds each to
+	# the "buildings" group that income, capacity, victory and the AI all walk.
+	# The backdrop pulls them back out; failing that would read as an economy
+	# bug, not a menu one.
 	var before: int = get_tree().get_nodes_in_group("buildings").size()
 	var backdrop = load("res://scenes/ui/MenuBackdrop.tscn").instantiate()
 	add_child(backdrop)
@@ -2225,10 +2158,8 @@ func _test_black_castle_encounters() -> void:
 	backdrop.queue_free()
 	await get_tree().process_frame
 
-
-# ==============================================================================
 # 15. WHAT THE AI WANTS — CAPACITY, COMPOSITION, AGGRESSION
-# ==============================================================================
+
 
 ## Three play-testing complaints, one section: keeps were worth no capacity, the
 ## enemy only ever bought mages, and the armies read as passive.

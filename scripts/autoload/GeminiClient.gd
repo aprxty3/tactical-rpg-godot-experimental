@@ -27,11 +27,12 @@ extends Node
 
 var _api_key: String = ""
 
+
 func _ready() -> void:
 	_load_api_key()
 	_connect_event_bus()
 
-## Load API key securely from OS environment or local secret config
+
 func _load_api_key() -> void:
 	# 1. Check OS Environment variable (Preferred for CI & Dev)
 	var env_key: String = OS.get_environment("GEMINI_API_KEY")
@@ -52,21 +53,24 @@ func _load_api_key() -> void:
 	
 	print("[GeminiClient] Warning: No GEMINI_API_KEY detected. Dynamic dialogue will use offline fallbacks.")
 
+
 ## Listen to gameplay events to generate contextual banter
 func _connect_event_bus() -> void:
 	EventBus.combat_resolved.connect(_on_combat_resolved)
 	EventBus.building_captured.connect(_on_building_captured)
 
-## Set API Key programmatically at runtime
+
 func set_api_key(key: String) -> void:
 	_api_key = key
 	print("[GeminiClient] API key manually updated.")
+
 
 ## Check if Gemini client is active and ready
 func is_ready_for_requests() -> bool:
 	if DisplayServer.get_name() == "headless":
 		return false
 	return _api_key != "" and enable_dynamic_dialogue
+
 
 ## Core Async Request: Send prompt to the Gemini generateContent API
 func generate_content(prompt: String, system_instruction: String = "") -> String:
@@ -146,6 +150,7 @@ func generate_content(prompt: String, system_instruction: String = "") -> String
 	
 	return ""
 
+
 ## Translate HTTPRequest's Result enum into something a log line can explain.
 ## RESULT_TIMEOUT is the one that actually bit us; the rest are here so the next
 ## transport failure names itself instead of arriving as a bare zero.
@@ -186,6 +191,7 @@ func request_combat_banter(attacker_name: String, defender_name: String, damage:
 	else:
 		_emit_fallback_combat_dialogue(attacker_name, defender_name, is_fatal)
 
+
 ## Helper: Generate building capture declaration
 func request_capture_story(building_name: String, faction_name: String, unit_name: String) -> void:
 	if not is_ready_for_requests():
@@ -201,6 +207,7 @@ func request_capture_story(building_name: String, faction_name: String, unit_nam
 	else:
 		EventBus.dialogue_generated.emit(unit_name, "%s claims the %s!" % [faction_name, building_name], "triumphant")
 
+
 # === Event Listeners ===
 
 func _on_combat_resolved(result: Dictionary) -> void:
@@ -214,12 +221,14 @@ func _on_combat_resolved(result: Dictionary) -> void:
 	# Trigger async dialogue generation without blocking combat flow
 	request_combat_banter(attacker_name, defender_name, damage, is_fatal)
 
+
 func _on_building_captured(building: Node, faction_id: int) -> void:
 	if not enable_dynamic_dialogue:
 		return
 	var f_name: String = "Blue Kingdom" if faction_id == 0 else "Red Legion"
 	var b_name: String = String(building.name) if is_instance_valid(building) else "Building"
 	request_capture_story(b_name, f_name, "Vanguard")
+
 
 func _emit_fallback_combat_dialogue(attacker: String, defender: String, is_fatal: bool) -> void:
 	if is_fatal:

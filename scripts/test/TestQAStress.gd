@@ -1,5 +1,6 @@
 extends Node2D
 
+
 func _ready() -> void:
 	print("==========================================================")
 	print(" [QA AUTOMATED TEST SUITE] STARTING FULL SYSTEM AUDIT...")

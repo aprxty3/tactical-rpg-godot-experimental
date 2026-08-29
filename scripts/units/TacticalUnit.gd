@@ -7,6 +7,7 @@ class_name TacticalUnit
 @export var unit_data: UnitData
 @export var faction_id: int = 0
 
+
 # === Runtime State (not saved in Resource) ===
 var current_health: int = 0
 var current_movement: int = 0
@@ -31,9 +32,11 @@ var facing: String = "Down"
 ## never toggled) on units without a mount_profile.
 var is_mounted: bool = true
 
+
 # === Node References ===
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
+
 
 # === Overhead Status Readout ===
 ## HP bar, morale strip and floating text, in one child component. Instanced in
@@ -128,7 +131,6 @@ func play_animation(anim_name: String) -> void:
 	if animation_player.has_animation(anim_name):
 		animation_player.play(anim_name)
 
-
 ## True while the Sprite2D is showing a directional sheet instead of the unit's
 ## base spritesheet, so the restore only runs when there is something to undo.
 var _using_directional_sheet: bool = false
@@ -191,13 +193,11 @@ func has_directional_art() -> bool:
 		and is_instance_valid(unit_data.directional_attack[facing])
 	)
 
-
-# ==============================================================================
 # MOUNT — riders on and off the horse
-# ==============================================================================
 #
 # Everything below falls back to the plain stat block when there is no profile,
 # so units without one are untouched: `get_effective_*` returns what `get_*` did.
+
 
 ## Can this unit get on and off a horse at all?
 func can_mount() -> bool:
@@ -259,7 +259,6 @@ func toggle_mount() -> bool:
 	return true
 
 
-
 ## Initialize runtime state from UnitData resource.
 func _initialize_from_data() -> void:
 	if not unit_data:
@@ -309,7 +308,6 @@ func heal(amount: int) -> void:
 		_refresh_health(true)
 		_pop_text("+%d" % actual_healed, Color(0.25, 1.0, 0.35))
 		EventBus.unit_healed.emit(self, actual_healed)
-
 
 ## A hard-cut flicker, not a fade: the eye needs a discontinuity to read impact,
 ## so this steps with `tween_callback` rather than interpolating, and the

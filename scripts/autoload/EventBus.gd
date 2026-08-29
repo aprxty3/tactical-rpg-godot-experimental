@@ -4,6 +4,7 @@ extends Node
 ## All cross-system communication flows through here.
 ## No logic, no state — only signal declarations.
 
+
 # === Turn & Phase Signals ===
 @warning_ignore("unused_signal")
 signal turn_started(faction_id: int)
@@ -11,6 +12,7 @@ signal turn_started(faction_id: int)
 signal phase_changed(new_phase: int)
 @warning_ignore("unused_signal")
 signal turn_ended(faction_id: int)
+
 
 # === Economy Signals ===
 @warning_ignore("unused_signal")
@@ -23,6 +25,7 @@ signal capacity_changed(faction_id: int, used: int, max_cap: int)
 signal resource_node_captured(node_type: String, new_faction_id: int, old_faction_id: int)
 @warning_ignore("unused_signal")
 signal resources_insufficient(faction_id: int, resource_type: String)
+
 
 # === Unit Lifecycle Signals ===
 @warning_ignore("unused_signal")
@@ -39,6 +42,7 @@ signal unit_upgraded(unit: Node, old_data: Resource, new_data: Resource)
 signal unit_recruited(unit: Node, faction_id: int)
 @warning_ignore("unused_signal")
 signal unit_deserted(unit: Node)
+
 
 # === Unit Action Signals ===
 @warning_ignore("unused_signal")
@@ -60,6 +64,7 @@ signal unit_path_walked(unit: Node, path: Array)
 @warning_ignore("unused_signal")
 signal unit_attack_requested(attacker: Node, target: Node)
 
+
 # === Combat Signals ===
 @warning_ignore("unused_signal")
 signal combat_started(attacker: Node, defender: Node)
@@ -67,6 +72,7 @@ signal combat_started(attacker: Node, defender: Node)
 signal combat_resolved(result: Dictionary)
 @warning_ignore("unused_signal")
 signal combat_advantage_applied(advantage_type: String, multiplier: float)
+
 
 # === Morale Signals (Roadmap: Milestone 4) ===
 @warning_ignore("unused_signal")
@@ -87,6 +93,7 @@ signal unit_captured(unit: Node, old_faction_id: int, new_faction_id: int)
 @warning_ignore("unused_signal")
 signal ambush_triggered(ambusher: Node, target: Node)
 
+
 # === Terrain & Vision Signals (Milestone 4) ===
 ## A cell's terrain type changed at runtime (e.g. forest burned to scorched).
 @warning_ignore("unused_signal")
@@ -94,6 +101,7 @@ signal terrain_changed(cell: Vector2i, new_terrain: int)
 ## A faction's visible set was recomputed — the fog layer redraws on this.
 @warning_ignore("unused_signal")
 signal vision_updated(faction_id: int)
+
 
 # === Environmental Hazard Signals (Milestone 4) ===
 @warning_ignore("unused_signal")
@@ -110,6 +118,7 @@ signal fire_ignited(cell: Vector2i)
 @warning_ignore("unused_signal")
 signal fire_extinguished(cell: Vector2i, scorched: bool)
 
+
 # === Building & Map Signals ===
 @warning_ignore("unused_signal")
 signal building_captured(building: Node, faction_id: int)
@@ -118,17 +127,20 @@ signal building_destroyed(building: Node)
 @warning_ignore("unused_signal")
 signal map_event_triggered(event_type: String, position: Vector2i, result: Dictionary)
 
+
 # === Victory Signals ===
 @warning_ignore("unused_signal")
 signal victory_condition_met(faction_id: int, condition: String)
 @warning_ignore("unused_signal")
 signal defeat_condition_met(faction_id: int, condition: String)
 
+
 # === Starvation / Logistics Signals ===
 @warning_ignore("unused_signal")
 signal logistics_collapse_started(faction_id: int)
 @warning_ignore("unused_signal")
 signal logistics_collapse_ended(faction_id: int)
+
 
 # === AI Story & Dynamic Narrative Signals (Gemini Flash Lite) ===
 @warning_ignore("unused_signal")

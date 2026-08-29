@@ -61,7 +61,6 @@ const BANNER_NAME: StringName = &"FactionBanner"
 # Node References
 @onready var sprite: Sprite2D = $Sprite2D
 
-
 var _neutral_texture: Texture2D
 
 
@@ -72,7 +71,6 @@ func _ready() -> void:
 	_update_visuals()
 
 
-## Get resource income per turn (Gold & Iron)
 func get_income() -> Dictionary:
 	var gold = 0
 	var iron = 0
@@ -89,7 +87,6 @@ func get_income() -> Dictionary:
 	return {"gold": gold, "iron": iron}
 
 
-## Get the building type string for event & tracking
 func get_type_string() -> String:
 	match building_type:
 		BuildingType.CASTLE:

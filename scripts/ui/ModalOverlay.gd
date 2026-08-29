@@ -2,17 +2,12 @@ extends ColorRect
 class_name ModalOverlay
 ## ModalOverlay — a dimmed, full-screen panel that blocks the board behind it.
 ##
-## Both of this game's blocking dialogs (the surrender prompt and the result
-## screen) were built by hand with the same seven-node skeleton: a full-rect
-## ColorRect, a centred PanelContainer, a MarginContainer with four identical
-## side margins, and a VBoxContainer. This is that skeleton, once.
+## The seven-node skeleton both blocking dialogs were building by hand.
 ##
-## `MOUSE_FILTER_STOP` is the load-bearing detail, not decoration. A modal that
-## lets clicks through is cosmetic: the surrender prompt would leave a prisoner
-## frozen while the player kept playing, and the result screen would sit over a
-## match that is still running. It is also why these are Controls rather than
-## PopupPanels — a PopupPanel is dismissable by clicking outside it, and neither
-## of these dialogs has a valid "no answer" outcome.
+## `MOUSE_FILTER_STOP` is load-bearing: a modal that lets clicks through would
+## leave a prisoner frozen while the player kept playing. Controls rather than
+## PopupPanels for the same reason — a PopupPanel dismisses on an outside click,
+## and neither dialog has a valid "no answer".
 
 ## Where callers put their content. Populated through the helpers below.
 var box: VBoxContainer

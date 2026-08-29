@@ -3,18 +3,11 @@ class_name UnitOverlay
 ## UnitOverlay — the overhead status readout for one unit: HP bar, morale strip,
 ## and floating combat text.
 ##
-## Extracted from `TacticalUnit`, which had grown ~150 lines of widget
-## construction. Nothing here knows a game rule — bands, immunity and palettes
-## arrive already resolved, so it has no opinion that could drift.
+## Knows no game rule: bands, immunity and palettes arrive already resolved.
+## One component because the three widgets share a stacked column.
 ##
-## One component, not three: the widgets share a stacked column above the
-## sprite, so their offsets are coupled by layout.
-##
-## The unit calls in directly rather than via signals — a parent driving its own
-## child. The rule that must not break is the reverse: nothing here reaches back
-## up to the unit or sideways to a sibling.
-##
-## Built lazily, so a caller can push state the same frame it is created.
+## The unit calls in directly — a parent driving its child. The rule that must
+## not break is the reverse: nothing here reaches back up or sideways.
 
 ## Width of both bars, in pixels. The morale fill is a fraction of this.
 @export var bar_width: float = 70.0
@@ -31,6 +24,7 @@ class_name UnitOverlay
 ## How far floating text rises, and over how long.
 @export var float_text_rise: float = 24.0
 @export var float_text_duration: float = 0.6
+
 
 # === Widgets (built on first use) ===
 var _hp_bar: ProgressBar

@@ -119,10 +119,8 @@ func setup(grid_mgr: GridManager, cam: TacticalCamera, container: Node2D) -> voi
 	camera = cam
 	effect_container = container
 
-
-# ==============================================================================
 # EVENT HANDLERS
-# ==============================================================================
+
 
 ## A swing landed. Bigger hits shake harder, and a kill reads as a kill.
 func _on_combat_resolved(result: Dictionary) -> void:
@@ -203,12 +201,9 @@ func _on_ambush_triggered(_ambusher: Node, target: Node) -> void:
 	if is_instance_valid(target):
 		burst_at_position(target.global_position, "ambush")
 
-
-# ==============================================================================
 # PUBLIC EFFECT API
-# ==============================================================================
 
-## Fire a named burst on a grid cell.
+
 func burst_at_cell(cell: Vector2i, effect_id: String) -> CPUParticles2D:
 	if not is_instance_valid(grid_manager):
 		return null
@@ -360,10 +355,8 @@ func shake(strength: float, duration: float) -> void:
 	if is_instance_valid(camera) and camera.has_method("shake"):
 		camera.shake(strength, duration)
 
-
-# ==============================================================================
 # INTERNALS
-# ==============================================================================
+
 
 func _texture_for(file_name: String) -> Texture2D:
 	return _texture_for_path(FX_DIR + file_name)

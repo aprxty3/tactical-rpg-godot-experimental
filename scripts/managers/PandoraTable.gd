@@ -2,18 +2,12 @@ extends RefCounted
 class_name PandoraTable
 ## PandoraTable — decides what is inside an opened chest.
 ##
-## Lifted out of `MapObjectManager`, which was carrying three unrelated rule
-## systems (hazard blasts, fire spread, chest outcomes) on top of the object
-## registry itself. This is the third of those: four weighted outcomes and the
-## consequences of each.
+## Four weighted outcomes and their consequences, lifted out of
+## `MapObjectManager` along with the other two rule systems it was carrying.
 ##
-## A RefCounted with injected collaborators, following `AITacticalEvaluator` —
-## it can be built on a bare board and interrogated without spawning a manager,
-## running a turn, or waiting on a signal.
-##
-## Spawning and cell-finding arrive as Callables rather than as a reference back
-## to the manager. The table asks "put this unit here" without knowing who does
-## it, so the dependency only ever points one way.
+## A RefCounted with injected collaborators, so it can be interrogated on a bare
+## board. Spawning arrives as a Callable, not a reference back to the manager —
+## the table says "put this unit here" without knowing who does it.
 
 ## The manager's own RNG, not a fresh one. `MapObjectManager.random_seed` makes
 ## a run reproducible, and a second generator would break that guarantee for

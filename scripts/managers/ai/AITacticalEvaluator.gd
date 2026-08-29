@@ -2,15 +2,12 @@ extends RefCounted
 class_name AITacticalEvaluator
 ## AITacticalEvaluator — the AI's judgement, separated from its turn loop.
 ##
-## `AIManager` decides *when* to act; this decides *what is worth doing*. Every
-## function is a pure read of world state, so scoring can be tested on a built
-## board without awaits, timers or signals. It holds no state of its own.
+## `AIManager` decides *when* to act; this decides *what is worth doing*. Pure
+## reads of world state, so it is testable without awaits or signals.
 ##
-## Two rules it must never break:
-##   1. Damage is never recomputed — `CombatResolver.preview_damage()` is the
-##      only source, or the AI plans against rules the player does not play.
-##   2. Nothing invisible is scored. Every enemy lookup goes through `can_see()`,
-##      so the fog binds the AI exactly as it binds the player.
+## Two rules: damage is never recomputed (`preview_damage` is the only source),
+## and nothing invisible is scored (`can_see` binds the AI as it binds the
+## player).
 
 var _grid: GridManager
 var _combat: CombatResolver
@@ -25,10 +22,8 @@ func _init(grid: GridManager, combat: CombatResolver, vision: VisionManager,
 	_vision = vision
 	_faction_id = faction_id
 
-
-# ==============================================================================
 # VISIBILITY
-# ==============================================================================
+
 
 ## Without a VisionManager the AI is omniscient, which is what the pre-fog test
 ## scenes expect. With one, it sees exactly what the fog allows.
@@ -51,10 +46,8 @@ func visible_enemies() -> Array[TacticalUnit]:
 			found.append(unit)
 	return found
 
-
-# ==============================================================================
 # ATTACK SCORING
-# ==============================================================================
+
 
 ## Swing quality as a fraction of the target's remaining health. Normalising by
 ## HP stops the AI hammering the toughest unit: 20 damage to a 25 HP mage beats
@@ -165,10 +158,8 @@ func best_attack_target(unit: TacticalUnit) -> TacticalUnit:
 			best = target
 	return best
 
-
-# ==============================================================================
 # OBJECTIVE SCORING
-# ==============================================================================
+
 
 ## Real terrain-aware cost of walking from `from_cell` to `to_cell`, ignoring
 ## movement points — this measures distance in the currency the map actually
@@ -230,10 +221,8 @@ func best_objective(unit: TacticalUnit) -> Building:
 			best = node
 	return best
 
-
-# ==============================================================================
 # THREAT & RETREAT
-# ==============================================================================
+
 
 ## Expected incoming damage if `unit` stood on `cell` next turn. Threat range is
 ## movement plus attack range — deliberately an over-estimate, because being too
@@ -308,10 +297,8 @@ func _retreat_cost(cell: Vector2i, unit: TacticalUnit) -> float:
 		cost += (exposure - 1.0) * GameConfig.AI_RETREAT_COVER_WEIGHT
 	return cost
 
-
-# ==============================================================================
 # MOVEMENT
-# ==============================================================================
+
 
 ## The reachable cell that gets closest to `target_cell` in real travel cost,
 ## breaking ties toward the safer square.

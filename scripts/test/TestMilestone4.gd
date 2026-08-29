@@ -48,10 +48,8 @@ func _ready() -> void:
 
 	_report()
 
-
-# ==============================================================================
 # 1. TERRAIN
-# ==============================================================================
+
 
 func _test_terrain() -> void:
 	print("\n--- 1. Terrain ---")
@@ -82,10 +80,8 @@ func _test_terrain() -> void:
 	if water != Vector2i(-1, -1):
 		_check(not grid.is_cell_walkable(water), "Water remains impassable")
 
-
-# ==============================================================================
 # 2. MOVEMENT COST
-# ==============================================================================
+
 
 func _test_movement_cost() -> void:
 	print("\n--- 2. Movement field ---")
@@ -123,10 +119,8 @@ func _test_movement_cost() -> void:
 
 	_despawn(unit)
 
-
-# ==============================================================================
 # 3. MORALE
-# ==============================================================================
+
 
 func _test_morale() -> void:
 	print("\n--- 3. Morale ---")
@@ -164,10 +158,8 @@ func _test_morale() -> void:
 
 	_despawn(unit)
 
-
-# ==============================================================================
 # 4. SURRENDER
-# ==============================================================================
+
 
 func _test_surrender() -> void:
 	print("\n--- 4. Surrender ---")
@@ -219,10 +211,8 @@ func _test_surrender() -> void:
 		)
 		_despawn(skeleton)
 
-
-# ==============================================================================
 # 5. FOG OF WAR
-# ==============================================================================
+
 
 func _test_fog_of_war() -> void:
 	print("\n--- 5. Fog of War ---")
@@ -284,10 +274,8 @@ func _test_fog_of_war() -> void:
 	_despawn(scout)
 	vision.recompute()
 
-
-# ==============================================================================
 # 6. HAZARDS — barrels & chain detonation
-# ==============================================================================
+
 
 func _test_hazards() -> void:
 	print("\n--- 6. Barrels & chain detonation ---")
@@ -329,10 +317,8 @@ func _test_hazards() -> void:
 	if is_instance_valid(victim):
 		_despawn(victim)
 
-
-# ==============================================================================
 # 7. FIRE — spread, damage, and scorched earth
-# ==============================================================================
+
 
 func _test_fire_and_scorching() -> void:
 	print("\n--- 7. Fire & scorched earth ---")
@@ -368,13 +354,11 @@ func _test_fire_and_scorching() -> void:
 	_check(not grid.is_ambush_cover(forest), "Scorched earth is no longer ambush cover")
 	_check(grid.get_move_cost(forest) == 1, "Scorched earth is cheap to cross")
 
-
-# ==============================================================================
 # 8. PANDORA'S BOX
-# ==============================================================================
 
 var _events_seen: Dictionary = {}
 var _event_count: int = 0
+
 
 func _test_pandora() -> void:
 	print("\n--- 8. Pandora's Box ---")
@@ -408,10 +392,8 @@ func _on_map_event(event_type: String, _cell: Vector2i, _result: Dictionary) -> 
 	_event_count += 1
 	_events_seen[event_type] = true
 
-
-# ==============================================================================
 # HELPERS
-# ==============================================================================
+
 
 func _spawn_test_unit(resource_path: String, faction_id: int, cell: Vector2i) -> TacticalUnit:
 	var data: UnitData = load(resource_path) as UnitData

@@ -1,13 +1,7 @@
 extends Node2D
 class_name MatchController
-## The battlefield. Wires the managers, builds the map, musters the armies and
-## turns player input into commands.
-##
-## Was `TestGridController` under `scripts/test/`: while it lived there the
-## player's faction was a `const` and the opponent hardcoded to Red.
-##
-## Still doing too much — wiring, map construction, input, selection state,
-## commands and the highlight overlay are six concerns in one file.
+## The battlefield: wires the managers, builds the map, musters the armies and
+## turns input into commands. Still six concerns in one file.
 
 @onready var grid_manager: GridManager = $GridManager
 @onready var combat_resolver: CombatResolver = $CombatResolver
@@ -20,42 +14,31 @@ class_name MatchController
 @onready var decor_container: Node2D = $Decor
 @onready var morale_manager: MoraleManager = $MoraleManager
 @onready var vision_manager: VisionManager = $VisionManager
-## Optional: purely decorative, and nothing here ever reads it back. A scene
-## without it plays identically.
+## Decorative only; never read back.
 @onready var vfx_manager: VfxManager = get_node_or_null("VfxManager")
 @onready var map_object_manager: MapObjectManager = $MapObjectManager
 @onready var map_object_container: Node2D = $MapObjects
 
-## Seed for the per-match resource layout. 0 rolls a fresh one every match;
-## any other value reproduces the same board, which is what a bug report or a
-## repeatable test needs.
+## 0 rolls a fresh board; any other value reproduces one exactly.
 @export var resource_seed: int = 0
 
-## How long each AI waits between its own actions, so its turn reads as
-## deliberate rather than instantaneous. One knob covering every AI on the
-## field — with three opponents instead of one it is the single largest lever
-## on how long a full round takes to watch.
+## Pause between AI actions. One knob for every AI, so it is the main lever on
+## how long a full round takes to watch.
 @export var ai_action_delay: float = 0.4
 
-## How much ground around a castle stays clear of props, in cells. `ArmyMuster`
-## searches outward from the keep for somewhere to stand, and a tree in ring one
-## is one fewer opening position.
+## Prop-free rings around each castle — `ArmyMuster` needs the standing room.
 const MUSTER_CLEARANCE: int = 2
 
-## The roles each army musters with. Same three for everyone, so no faction
-## opens with an advantage that was never designed.
+## Same three for everyone, so nobody opens with an undesigned advantage.
 const STARTING_ROLES: Array[String] = ["Pawn", "Warrior", "Archer"]
 
-## The faction the human is playing. Everything view-side (fog, surrender
-## prompts, input gating) is written from this faction's perspective.
-##
-## Filled from `MatchSetup` in `_ready`. It used to be a `const`, which is
-## precisely why the player could never be anything but Blue.
+## Everything view-side — fog, prompts, input gating — is written from this
+## faction's perspective. Filled from `MatchSetup`; was a `const`, which is why
+## the player could only ever be Blue.
 var player_faction: int = GameConfig.Faction.BLUE_KINGDOM
 
-## One commander per enemy faction, built in `_ready`. These cannot be authored
-## in the scene: which factions the computer drives depends on which one the
-## player chose, and that is not known until the faction screen has been through.
+## One commander per enemy faction. Cannot be authored in the scene — which
+## factions the computer drives is not known until the faction screen.
 
 var ai_managers: Array[AIManager] = []
 
@@ -272,10 +255,8 @@ func _player_start_focus() -> Vector2:
 			return bld.global_position
 	return grid_manager.get_map_pixel_size() * 0.5
 
-
-# ==============================================================================
 # ARMIES — mustered in code, because the number of them is no longer fixed
-# ==============================================================================
+
 
 ## Placing the opening armies moved to `ArmyMuster`: castle lookup, the ring
 ## search for free ground, and unit instancing are one job, and they are the

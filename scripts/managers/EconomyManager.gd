@@ -4,6 +4,7 @@ class_name EconomyManager
 ## Listens to EventBus signals. Does NOT reference actor nodes directly.
 ## Register as a child of Managers node (NOT autoload — instantiated per-game).
 
+
 # === Per-Faction Resource State ===
 # Key: faction_id (int), Value: resource amount
 var _faction_gold: Dictionary = {}

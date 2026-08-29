@@ -1,5 +1,6 @@
 extends Node2D
 
+
 func _ready() -> void:
 	print("--- Running Village Economy & Troop Capacity Verification ---")
 

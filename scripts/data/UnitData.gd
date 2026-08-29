@@ -78,6 +78,7 @@ class_name UnitData
 # Pure lookups, not game logic: they resolve a stored value against its
 # archetype default so every caller reads the same answer.
 
+
 ## Effective sight radius, falling back to the archetype default.
 func get_vision_range() -> int:
 	if vision_range > 0:

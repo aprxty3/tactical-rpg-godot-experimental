@@ -4,6 +4,7 @@ extends Node2D
 ## 16x10 prototype: captured buildings kept the previous owner's colour, and
 ## nothing on the map was impassable.
 
+
 func _ready() -> void:
 	await get_tree().process_frame
 	# Each of these awaits internally, so they must be awaited in turn —

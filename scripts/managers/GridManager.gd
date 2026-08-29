@@ -14,6 +14,7 @@ class_name GridManager
 ## Unit movement animation speed per cell (seconds)
 @export var move_duration_per_tile: float = 0.15
 
+
 # === Core Pathfinding & Tracking ===
 var astar: AStarGrid2D
 ## Mapping of cell positions to units: Dictionary[Vector2i, TacticalUnit]
@@ -47,10 +48,8 @@ func register_existing_units() -> void:
 			var cell = world_to_grid(node.global_position)
 			register_unit(node, cell)
 
-
-# ==============================================================================
 # STEP 1: INISIALISASI & KONVERSI KOORDINAT
-# ==============================================================================
+
 
 func _initialize_astar_grid() -> void:
 	astar = AStarGrid2D.new()
@@ -85,10 +84,8 @@ func grid_to_world(grid_pos: Vector2i) -> Vector2:
 func is_within_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.x < grid_size.x and cell.y >= 0 and cell.y < grid_size.y
 
-
-# ==============================================================================
 # STEP 2: OCCUPANCY & POSISI UNIT / OBSTACLE
-# ==============================================================================
+
 
 func _connect_event_bus() -> void:
 	EventBus.unit_spawned.connect(_on_unit_spawned)
@@ -163,10 +160,7 @@ func set_terrain_blocked_cells(cells: Array[Vector2i]) -> void:
 	for cell in cells:
 		set_terrain_blocked(cell, true)
 
-
-# ==============================================================================
 # TERRAIN TYPES — cover, movement cost and concealment
-# ==============================================================================
 # MapBuilder decides the layout; GridManager owns it after that. Cover,
 # concealment and flammability all ask here, so there is exactly one answer.
 
@@ -238,10 +232,7 @@ func get_unit_at(cell: Vector2i) -> TacticalUnit:
 func is_unit_moving(unit: TacticalUnit) -> bool:
 	return _moving_units.has(unit)
 
-
-# ==============================================================================
 # STEP 3: KALKULASI JANGKAUAN (MOVEMENT & ATTACK RANGE)
-# ==============================================================================
 
 const MOVE_DIRECTIONS: Array[Vector2i] = [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]
 
@@ -384,10 +375,8 @@ func get_path_cells(from_cell: Vector2i, to_cell: Vector2i, _unit: TacticalUnit 
 
 	return path_array
 
-
-# ==============================================================================
 # STEP 4: EKSEKUSI PERGERAKAN UNIT (TWEENING & EVENTBUS)
-# ==============================================================================
+
 
 func _on_unit_move_requested(unit: Node, target_cell: Vector2i) -> void:
 	if not unit is TacticalUnit:
